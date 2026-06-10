@@ -43,6 +43,11 @@ const REVERSE_SPEED_THRESHOLD: float = 1.0
 @export var impact_damage_scale: float = 4.0
 ## Engine output fraction left when barely alive (limp-home floor).
 @export var limp_floor: float = 0.25
+## Drag area Cd·A (m²): the squared-speed drag that actually caps top speed once
+## the gearbox runs out of pull. ~0.7 m² is a typical small saloon.
+@export var drag_area: float = 0.7
+## Downforce area Cl·A (m²): presses the car into the road harder with speed.
+@export var downforce_area: float = 0.4
 
 var health: float = 100.0
 var gear: int = 1
@@ -80,6 +85,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_track_impacts()
+	_apply_aero()
 	if _driver == null:
 		engine_force = 0.0
 		brake = max_brake * 0.05
@@ -125,6 +131,14 @@ func _drive(delta: float) -> void:
 		brake = max_brake * 0.7
 	else:
 		brake = 0.0
+
+
+func _apply_aero() -> void:
+	var speed := linear_velocity.length()
+	if speed > 0.01:
+		var drag := Aerodynamics.drag_force(speed, drag_area)
+		apply_central_force(-linear_velocity / speed * drag)
+	apply_central_force(Vector3.DOWN * Aerodynamics.downforce(speed, downforce_area))
 
 
 func _track_impacts() -> void:
