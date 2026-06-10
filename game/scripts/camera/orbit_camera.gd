@@ -9,6 +9,12 @@ const PITCH_MIN: float = -1.2
 const PITCH_MAX: float = 0.5
 
 @export var sensitivity: float = 0.003
+## Gamepad right-stick look. Sensitivity is peak turn rate (rad/s) at full
+## deflection; deadzone and exponent shape the stick via StickInput so a flick
+## and a fine nudge both feel right (mouse stays on `sensitivity` above).
+@export var stick_sensitivity: float = 2.6
+@export_range(0.0, 0.9) var stick_deadzone: float = 0.18
+@export_range(1.0, 4.0) var stick_exponent: float = 1.8
 ## Over-the-shoulder framing: the arm pivot sits slightly right of the spine.
 @export var shoulder_offset: Vector3 = Vector3(0.55, 0.0, 0.0)
 @export var base_fov: float = 75.0
@@ -42,6 +48,22 @@ func _physics_process(delta: float) -> void:
 	var blend := CameraFeel.sprint_blend(speed, fov_walk_speed, fov_sprint_speed)
 	var target := CameraFeel.fov_for_blend(base_fov, sprint_fov_kick, blend)
 	_camera.fov = CameraFeel.exp_smoothed(_camera.fov, target, fov_smoothing, delta)
+
+	_apply_stick_look(delta)
+
+
+## Gamepad right-stick look, read as continuous axis state each frame (unlike
+## mouse motion, which arrives as discrete events). Shares the yaw/pitch model
+## and pitch clamp with mouse-look so both feel identical.
+func _apply_stick_look(delta: float) -> void:
+	var raw := Vector2(
+		Input.get_joy_axis(0, JOY_AXIS_RIGHT_X), Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
+	)
+	var look := StickInput.look_delta(raw, stick_deadzone, stick_exponent, stick_sensitivity, delta)
+	if look == Vector2.ZERO:
+		return
+	rotation.y -= look.x
+	_arm.rotation.x = clampf(_arm.rotation.x - look.y, PITCH_MIN, PITCH_MAX)
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -23,6 +23,12 @@ func _initialize() -> void:
 		if not (file.begins_with("test_") and file.ends_with(".gd")):
 			continue
 		var script: GDScript = load("%s/%s" % [UNIT_DIR, file])
+		if script == null or not script.can_instantiate():
+			# A parse error would otherwise abort _initialize before quit(),
+			# hanging the headless run — count it and keep going instead.
+			failed += 1
+			push_error("FAIL %s :: does not load/compile" % file)
+			continue
 		var suite: RefCounted = script.new()
 		for method in script.get_script_method_list():
 			var method_name: String = method["name"]
