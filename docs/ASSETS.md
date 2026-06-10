@@ -41,6 +41,11 @@ close to existing commercial work regardless of provenance.
 | Path | Description | Author | Source | License |
 | --- | --- | --- | --- | --- |
 | `game/icon.svg` | Project icon (sun over road) | project contributors | original | CC BY 4.0 |
+| `game/assets/world/downtown_la.json` | Building footprints/heights + road centerlines for the downtown district, extracted via `tools/osm/fetch_district.py` | © OpenStreetMap contributors | https://www.openstreetmap.org/copyright | ODbL 1.0 (data only; attribution embedded in file and credits) |
 
 *(Append one row per asset. Path relative to repo root. "Source" is `original`
-or a URL. License must be CC0, CC-BY-4.0, or CC-BY-4.0-compatible.)*
+or a URL. License must be CC0, CC-BY-4.0, or CC-BY-4.0-compatible. Exception:
+**geodata** — factual map data such as OpenStreetMap extracts is accepted under
+ODbL 1.0; it must keep its attribution embedded in the file, get a credits-screen
+entry, and stay in `game/assets/world/`. ODbL share-alike applies to the data
+files themselves, not to the game's code or rendered output.)*
