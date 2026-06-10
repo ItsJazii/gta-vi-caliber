@@ -1,8 +1,9 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="2_camera"]
 [ext_resource type="Script" path="res://scripts/player/character_animator.gd" id="3_anim"]
+[ext_resource type="Script" path="res://scripts/player/humanoid_body.gd" id="4_body"]
 
 [sub_resource type="StandardMaterial3D" id="shirt_mat"]
 albedo_color = Color(0.25, 0.45, 0.8, 1)
@@ -63,6 +64,9 @@ shape = SubResource("body_shape")
 
 [node name="Rig" type="Node3D" parent="."]
 script = ExtResource("3_anim")
+
+[node name="Body" type="Node3D" parent="Rig"]
+script = ExtResource("4_body")
 
 [node name="Hips" type="Node3D" parent="Rig"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.92, 0)
