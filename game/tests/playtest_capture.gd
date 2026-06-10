@@ -1,16 +1,18 @@
 extends SceneTree
 ## Headed QA playtest: boots real scenes, simulates input, asserts the player
-## actually moves, and saves screenshots for visual review. Needs a renderer —
-## run WITHOUT --headless:
+## actually moves and can drive the car, and saves screenshots for visual
+## review. Needs a renderer — run WITHOUT --headless:
 ##   godot --path game --script res://tests/playtest_capture.gd
 ## Screenshots land in /tmp/gta6_playtest/. Not part of check.sh (CI is headless).
 
 const OUT_DIR := "/tmp/gta6_playtest"
 const WALK_FRAMES := 180
+const DRIVE_FRAMES := 240
 
 var _frame := 0
 var _phase := "boot"
 var _start_pos := Vector3.ZERO
+var _idle_engine_pitch := 0.0
 var _failures: PackedStringArray = []
 
 
@@ -23,40 +25,143 @@ func _process(_delta: float) -> bool:
 	_frame += 1
 	match _phase:
 		"boot":
-			if _frame >= 60:
-				_shot("sandbox_idle")
-				var player := _player()
-				if player == null:
-					_failures.append("no node in 'player' group after sandbox boot")
-					return _finish()
-				_start_pos = player.global_position
-				Input.action_press("move_forward")
-				_phase = "walk"
-				_frame = 0
+			_phase_boot()
 		"walk":
-			if _frame >= WALK_FRAMES:
-				Input.action_release("move_forward")
-				_shot("sandbox_walked")
-				var player := _player()
-				var moved := player.global_position.distance_to(_start_pos)
-				print("playtest: player walked %.2f m in %d frames" % [moved, WALK_FRAMES])
-				if moved < 2.0:
-					_failures.append(
-						"player barely moved (%.2f m) — input/locomotion broken" % moved
-					)
-				_phase = "district_load"
-				_frame = 0
-				change_scene_to_file("res://scenes/world/districts/downtown_la.tscn")
+			_phase_walk()
+		"approach_car":
+			_phase_approach_car()
+		"drive":
+			_phase_drive()
+		"exit_car":
+			_phase_exit_car()
 		"district_load":
-			# District has no spawn logic guarantee; just let it build + render.
 			if _frame >= 120:
 				_shot("district_downtown")
 				return _finish()
-	return false
+	return _phase == "done"
+
+
+func _phase_boot() -> void:
+	if _frame < 60:
+		return
+	_shot("sandbox_idle")
+	var player := _player()
+	if player == null:
+		_failures.append("no node in 'player' group after sandbox boot")
+		_to_district()
+		return
+	_start_pos = player.global_position
+	Input.action_press("move_forward")
+	_next("walk")
+
+
+func _phase_walk() -> void:
+	if _frame < WALK_FRAMES:
+		return
+	Input.action_release("move_forward")
+	_shot("sandbox_walked")
+	var moved := _player().global_position.distance_to(_start_pos)
+	print("playtest: player walked %.2f m in %d frames" % [moved, WALK_FRAMES])
+	if moved < 2.0:
+		_failures.append("player barely moved (%.2f m) — input/locomotion broken" % moved)
+	# Drop the player beside the car, then ask to enter it like a human would.
+	var car := _car()
+	if car == null:
+		_failures.append("no Car node found in sandbox")
+		_to_district()
+		return
+	_player().global_position = car.global_position + Vector3(2.0, 0.2, 0.0)
+	_idle_engine_pitch = _engine_pitch(car)
+	_next("approach_car")
+
+
+func _phase_approach_car() -> void:
+	if _frame == 10:
+		_press_action_event("interact")
+	if _frame < 20:
+		return
+	if _player().get("_vehicle") == null:
+		_failures.append("interact near car did not enter it")
+		_to_district()
+		return
+	print("playtest: entered car")
+	Input.action_press("move_forward")
+	_next("drive")
+
+
+func _phase_drive() -> void:
+	if _frame < DRIVE_FRAMES:
+		return
+	Input.action_release("move_forward")
+	var car := _car()
+	var speed: float = car.linear_velocity.length()
+	var pitch := _engine_pitch(car)
+	print(
+		(
+			"playtest: car at %.1f m/s after %d frames, engine pitch %.2f"
+			% [speed, DRIVE_FRAMES, pitch]
+		)
+	)
+	if speed < 3.0:
+		_failures.append("car barely moved (%.1f m/s) — drivetrain broken" % speed)
+	if pitch <= _idle_engine_pitch + 0.01:
+		_failures.append(
+			"engine pitch did not rise under throttle (%.2f -> %.2f)" % [_idle_engine_pitch, pitch]
+		)
+	_shot("sandbox_driving")
+	_press_action_event("interact")
+	_next("exit_car")
+
+
+func _phase_exit_car() -> void:
+	if _frame < 30:
+		return
+	if _player().get("_vehicle") != null:
+		_failures.append("interact while driving did not exit the car")
+	else:
+		print("playtest: exited car")
+	_to_district()
+
+
+func _to_district() -> void:
+	_next("district_load")
+	change_scene_to_file("res://scenes/world/districts/downtown_la.tscn")
+
+
+func _next(phase: String) -> void:
+	_phase = phase
+	_frame = 0
 
 
 func _player() -> Node3D:
 	return get_first_node_in_group("player") as Node3D
+
+
+func _car() -> RigidBody3D:
+	for node in get_nodes_in_group("vehicles"):
+		if node is VehicleBody3D and node.name == "Car":
+			return node
+	return null
+
+
+## Pitch of the car's synthesized engine loop (0.0 when audio is missing).
+func _engine_pitch(car: Node3D) -> float:
+	var audio := car.get_node_or_null("Audio")
+	if audio == null:
+		return 0.0
+	for child in audio.get_children():
+		var player := child as AudioStreamPlayer3D
+		if player != null and player.playing:
+			return player.pitch_scale
+	return 0.0
+
+
+## Route a press through the event pipeline so _unhandled_input handlers see it.
+func _press_action_event(action: String) -> void:
+	var ev := InputEventAction.new()
+	ev.action = action
+	ev.pressed = true
+	Input.parse_input_event(ev)
 
 
 func _shot(name: String) -> void:
@@ -73,4 +178,5 @@ func _finish() -> bool:
 		for f in _failures:
 			push_error("playtest FAIL: " + f)
 	quit(0 if _failures.is_empty() else 1)
+	_phase = "done"
 	return true
