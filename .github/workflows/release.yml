@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.6.3"
+
+jobs:
+  export:
+    name: Export & publish release builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot-bin
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot-bin
+          curl -sSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv "/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" ~/godot-bin/godot
+          chmod +x ~/godot-bin/godot
+
+      - name: Cache export templates
+        id: cache-templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-export-templates-${{ env.GODOT_VERSION }}
+
+      - name: Download export templates
+        if: steps.cache-templates.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL -o /tmp/templates.tpz \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q /tmp/templates.tpz -d /tmp/templates
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /tmp/templates/templates \
+            ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Headless import
+        run: ~/godot-bin/godot --headless --path game --import
+
+      - name: Export Linux (x86_64)
+        run: |
+          mkdir -p dist
+          ~/godot-bin/godot --headless --path game \
+            --export-release "Linux" "$PWD/dist/gta-vi-caliber-linux.x86_64"
+
+      - name: Export Windows Desktop (x86_64)
+        run: |
+          ~/godot-bin/godot --headless --path game \
+            --export-release "Windows Desktop" "$PWD/dist/gta-vi-caliber-windows.exe"
+
+      - name: Export macOS (universal)
+        run: |
+          ~/godot-bin/godot --headless --path game \
+            --export-release "macOS" "$PWD/dist/gta-vi-caliber-macos.zip"
+
+      - name: Package artifacts
+        run: |
+          cd dist
+          zip -q gta-vi-caliber-linux-x86_64.zip gta-vi-caliber-linux.x86_64
+          zip -q gta-vi-caliber-windows-x86_64.zip gta-vi-caliber-windows.exe
+          mv gta-vi-caliber-macos.zip gta-vi-caliber-macos-universal.zip
+          ls -lh
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/gta-vi-caliber-linux-x86_64.zip
+            dist/gta-vi-caliber-windows-x86_64.zip
+            dist/gta-vi-caliber-macos-universal.zip

@@ -20,7 +20,7 @@ Goal: every clone runs instantly; contribution pipeline works end to end.
 - [x] `tools/check.sh` local gate = CI (format, lint, import, smoke, unit tests)
 - [x] GitHub Actions CI, issue templates, PR template
 - [ ] Vendor [gdUnit4](https://github.com/MikeSchulze/gdUnit4) into `game/addons/` and port the unit-test runner to it
-- [ ] First exported build artifacts (Linux/Windows/macOS) uploaded by CI on tag
+- [x] First exported build artifacts (Linux/Windows/macOS) uploaded by CI on tag
 
 ## M1 — Locomotion & camera feel
 

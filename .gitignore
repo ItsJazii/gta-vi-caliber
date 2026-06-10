@@ -1,7 +1,9 @@
 # Godot
 game/.godot/
 game/*.translation
-game/export_presets.cfg
+
+# Export output
+dist/
 
 # Built native libraries (artifacts only — never committed)
 game/bin/*.so

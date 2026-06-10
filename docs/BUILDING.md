@@ -62,6 +62,26 @@ Godot pick it up on next editor start. Details and module-authoring guidance:
 [../engine/README.md](../engine/README.md) and
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Release builds
+
+Pushing a tag matching `v*` triggers `.github/workflows/release.yml`, which
+exports release builds for Linux (x86_64), Windows (x86_64), and macOS
+(universal) using the presets in `game/export_presets.cfg`, then attaches the
+zips to a GitHub Release for that tag.
+
+To export locally instead, install the matching export templates
+(Editor → **Manage Export Templates**, version must match your editor), then:
+
+```bash
+mkdir -p dist
+godot --headless --path game --export-release "Linux"           ../dist/gta-vi-caliber-linux.x86_64
+godot --headless --path game --export-release "Windows Desktop" ../dist/gta-vi-caliber-windows.exe
+godot --headless --path game --export-release "macOS"           ../dist/gta-vi-caliber-macos.zip
+```
+
+Builds are unsigned (macOS is ad-hoc signed); the `dist/` directory is
+git-ignored.
+
 ## Headless / CI reference
 
 What CI does, should you need to reproduce it exactly:
