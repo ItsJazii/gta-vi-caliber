@@ -52,9 +52,13 @@ const GRAVITY: float = 9.81
 ## Peak grip coefficient of the tyres. ~1.6 is a sticky sport-street tyre; the
 ## traction limiter pulls drive force that would exceed grip · load.
 @export var tire_friction: float = 1.6
-## Fraction of weight (and downforce) over the driven axle. Rear-drive, so
-## rear-biased; also stands in for the squat that loads the rears on launch.
+## Fraction of weight (and downforce) statically over the driven axle. Rear-drive
+## so rear-biased; weight transfer adds the dynamic squat on top.
 @export var drive_axle_load_share: float = 0.55
+## Centre-of-gravity height (m) and wheelbase (m): set how much load squats onto
+## the rear under acceleration. A low CG over a long wheelbase transfers least.
+@export var cg_height: float = 0.5
+@export var wheelbase: float = 2.9
 
 var health: float = 100.0
 var gear: int = 1
@@ -62,6 +66,8 @@ var rpm: float = 0.0
 
 var _driver: Node3D = null
 var _prev_velocity: Vector3 = Vector3.ZERO
+var _long_accel: float = 0.0
+var _prev_forward_speed: float = 0.0
 
 @onready var _camera: Camera3D = $CameraPivot/SpringArm/Camera
 @onready var _exit_point: Marker3D = $ExitPoint
@@ -93,6 +99,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_track_impacts()
 	_apply_aero()
+	_update_long_accel(delta)
 	if _driver == null:
 		engine_force = 0.0
 		brake = max_brake * 0.05
@@ -141,12 +148,25 @@ func _drive(delta: float) -> void:
 		brake = 0.0
 
 
+## Lagged longitudinal acceleration (m/s²) from the change in forward speed. Used
+## one frame later for weight transfer — a lag that keeps the load↔grip↔force
+## chain stable instead of feeding back on itself within a frame.
+func _update_long_accel(delta: float) -> void:
+	var forward_speed := linear_velocity.dot(-global_transform.basis.z)
+	if delta > 0.0:
+		_long_accel = (forward_speed - _prev_forward_speed) / delta
+	_prev_forward_speed = forward_speed
+
+
 ## Fraction of demanded drive force the driven tyres can actually lay down right
-## now, given their load (weight + downforce share) and how much of the grip
-## budget cornering is already using (lateral accel ≈ speed · yaw rate).
+## now. Rear-axle load is its static share plus aero downforce plus the squat
+## from accelerating (weight transfer); cornering (lateral accel ≈ speed · yaw
+## rate) then spends part of that grip through the friction circle.
 func _traction_scale(speed: float, drive_force: float) -> float:
+	var static_load := mass * GRAVITY * drive_axle_load_share
 	var downforce_share := Aerodynamics.downforce(speed, downforce_area) * drive_axle_load_share
-	var load := Traction.normal_load(mass * drive_axle_load_share, GRAVITY, downforce_share)
+	var transfer := WeightTransfer.longitudinal_shift(mass, _long_accel, cg_height, wheelbase)
+	var load := WeightTransfer.axle_load(static_load + downforce_share, transfer)
 	var grip := Traction.grip_limit(load, tire_friction)
 	var lateral_force := mass * absf(speed * angular_velocity.y)
 	var available := Traction.longitudinal_grip(grip, lateral_force)
