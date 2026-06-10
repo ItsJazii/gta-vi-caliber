@@ -1,7 +1,8 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/vehicles/car.gd" id="1_car"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="2_chase"]
+[ext_resource type="Script" path="res://scripts/vehicles/vehicle_audio.gd" id="3_audio"]
 
 [sub_resource type="StandardMaterial3D" id="body_mat"]
 albedo_color = Color(0.75, 0.2, 0.15, 1)
@@ -102,6 +103,9 @@ damping_relaxation = 4.0
 [node name="WheelRRMesh" type="MeshInstance3D" parent="WheelRR"]
 transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
 mesh = SubResource("wheel_mesh")
+
+[node name="Audio" type="Node3D" parent="."]
+script = ExtResource("3_audio")
 
 [node name="ExitPoint" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0.6, 0)

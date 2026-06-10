@@ -41,7 +41,9 @@ func _process(_delta: float) -> bool:
 				var moved := player.global_position.distance_to(_start_pos)
 				print("playtest: player walked %.2f m in %d frames" % [moved, WALK_FRAMES])
 				if moved < 2.0:
-					_failures.append("player barely moved (%.2f m) — input/locomotion broken" % moved)
+					_failures.append(
+						"player barely moved (%.2f m) — input/locomotion broken" % moved
+					)
 				_phase = "district_load"
 				_frame = 0
 				change_scene_to_file("res://scenes/world/districts/downtown_la.tscn")

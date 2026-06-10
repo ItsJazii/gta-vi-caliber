@@ -40,7 +40,7 @@ Goal: get in a car, drive it, crash it, get out.
 - [x] `VehicleBody3D`-based car with tuned suspension (greybox body)
 - [x] Seamless enter/exit interaction
 - [x] Chase camera with speed-based FOV and look-behind
-- [ ] Engine/tire/impact audio loops
+- [x] Engine/tire/impact audio loops
 - [x] Damage model v1 (visual deformation can wait; mechanical state first)
 - [x] Motorbike + boat prototypes
 
