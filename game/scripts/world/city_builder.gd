@@ -69,8 +69,12 @@ static func extrude_prism(
 		vertices.append(Vector3(a.x, top, a.y))
 		for _k in 4:
 			normals.append(nrm)
+		# Wound so the triangle's geometric (winding) normal matches the outward
+		# shading normal above. Trimesh collision keys off winding, not the normal
+		# array — inward-wound walls collide only on their backface, which lets
+		# characters and raycasts pass straight through buildings.
 		indices.append_array(
-			[base_index, base_index + 1, base_index + 2, base_index, base_index + 2, base_index + 3]
+			[base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]
 		)
 
 	# Roof cap.
@@ -80,12 +84,14 @@ static func extrude_prism(
 		for p in ring:
 			vertices.append(Vector3(p.x, top, p.y))
 			normals.append(UP)
-		# triangulate_polygon yields clockwise tris for CCW input → reverse for up-facing.
+		# Keep triangulate_polygon's winding so the roof's geometric normal points
+		# up (+Y) — a downward ray/footstep must hit the roof's front face, or it
+		# falls through to the ground plane below.
 		var t := 0
 		while t + 2 < tri.size() + 1 and t + 2 < tri.size():
 			indices.append(roof_base + tri[t])
-			indices.append(roof_base + tri[t + 2])
 			indices.append(roof_base + tri[t + 1])
+			indices.append(roof_base + tri[t + 2])
 			t += 3
 
 	return {"vertices": vertices, "normals": normals, "indices": indices}
