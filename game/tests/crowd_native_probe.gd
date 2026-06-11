@@ -34,6 +34,12 @@ func _run() -> bool:
 		print("  FAIL: native classes exist but the demo did not activate them")
 		return false
 
+	# Spread = mean distance from the crowd centroid. Starts large (uniform
+	# scatter); if flock + arrive actually gather the crowd it must shrink. This
+	# is the meaningful nav check (a loose "within the field" bound can pass
+	# trivially — Codex review).
+	var initial_spread := _crowd_spread(demo.positions)
+
 	for _f in 180:  # ~3 s at 60 Hz
 		demo.step(1.0 / 60.0)
 
@@ -59,19 +65,39 @@ func _run() -> bool:
 
 	var avg_speed := sum_speed / float(demo.agent_count)
 	var avg_goal_dist := sum_goal_dist / float(demo.agent_count)
-	# Crowd must be moving (not frozen) AND gathering toward the goal: a scattered
-	# field averages ~0.5*field from any point; a navigating crowd is well under
-	# half_extent. One combined gate keeps the return count within lint limits.
-	if avg_speed < 0.1 or avg_goal_dist > demo.half_extent:
+	var final_spread := _crowd_spread(demo.positions)
+	# Meaningful nav check: the crowd must COHERE — spread (mean distance from the
+	# centroid) shrinks vs the uniform start — AND keep moving. A merely scattered
+	# field can't pass the spread test, unlike a loose "within the field" bound.
+	if avg_speed < 0.1 or final_spread >= initial_spread * 0.85:
 		print(
-			"  FAIL: crowd not navigating (speed %.2f, goal-dist %.1f)" % [avg_speed, avg_goal_dist]
+			(
+				"  FAIL: crowd not gathering (speed %.2f, spread %.1f -> %.1f)"
+				% [avg_speed, initial_spread, final_spread]
+			)
 		)
 		return false
 
 	print(
 		(
-			"  OK: %d agents, avg speed %.2f m/s, avg goal-dist %.1f, finite + in-bounds + navigating"
-			% [demo.agent_count, avg_speed, avg_goal_dist]
+			"  OK: %d agents, speed %.2f m/s, spread %.1f->%.1f, goal-dist %.1f"
+			% [demo.agent_count, avg_speed, initial_spread, final_spread, avg_goal_dist]
 		)
 	)
 	return true
+
+
+## Mean distance of the agents from their centroid — a scatter metric. Large for
+## a uniform field, small for a clustered (gathered/flocked) crowd.
+func _crowd_spread(points: PackedVector2Array) -> float:
+	var n := points.size()
+	if n == 0:
+		return 0.0
+	var centroid := Vector2.ZERO
+	for p in points:
+		centroid += p
+	centroid /= float(n)
+	var spread := 0.0
+	for p in points:
+		spread += p.distance_to(centroid)
+	return spread / float(n)
