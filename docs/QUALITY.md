@@ -5,6 +5,16 @@ bar (trailer-fidelity coastal open world). Updated by whoever runs a
 playtest/capture pass; newest entry first. Captures referenced live in
 `/tmp/gta6_playtest/` locally — judge from a fresh run, not memory.
 
+## 2026-06-11 — Venice dolly: dusk sprawl achieved, beach framing open
+
+beauty_capture now takes BEAUTY_CENTER (world recenters via FloatingOrigin
+when spawning 21 km out — Venice lands at ≈(-58,-12), so default center
+films it). Dusk stills: dense low-rise sprawl to the horizon, thousands of
+hashed lit windows, heavy sunset cloud deck — striking, but the postcard
+needs a west-facing shoreline frame (ocean+sand are behind the dolly) and
+less cloud. M3 streaming landed fleet-side (b3d633c), so the 18-district
+world pages around the player now.
+
 ## 2026-06-10 (night) — coastal district lands; world goes multi-district
 
 Venice Beach scene on main: real-shoreline sand + Ocean v1 + golden-hour

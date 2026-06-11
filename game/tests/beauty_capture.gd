@@ -43,16 +43,23 @@ func _start_shot() -> void:
 	if seconds <= 0.0:
 		seconds = 12.0
 	# Spiral descent: wide high establish → low street-level close on the core.
+	# BEAUTY_CENTER="x,z" recenters the whole move (default 0,0 = downtown);
+	# districts share one projection origin, so e.g. Venice is "-21050,6900".
+	var center := Vector3.ZERO
+	var center_env := OS.get_environment("BEAUTY_CENTER")
+	if center_env.contains(","):
+		var parts := center_env.split(",")
+		center = Vector3(parts[0].to_float(), 0.0, parts[1].to_float())
 	var points := PackedVector3Array(
 		[
-			Vector3(420.0, 180.0, 0.0),
-			Vector3(180.0, 110.0, 260.0),
-			Vector3(-160.0, 60.0, 200.0),
-			Vector3(-180.0, 25.0, -60.0),
-			Vector3(-40.0, 8.0, -120.0),
+			center + Vector3(420.0, 180.0, 0.0),
+			center + Vector3(180.0, 110.0, 260.0),
+			center + Vector3(-160.0, 60.0, 200.0),
+			center + Vector3(-180.0, 25.0, -60.0),
+			center + Vector3(-40.0, 8.0, -120.0),
 		]
 	)
-	_camera.play_shot(points, seconds, Vector3(0.0, 40.0, 0.0))
+	_camera.play_shot(points, seconds, center + Vector3(0.0, 40.0, 0.0))
 	_camera.shot_finished.connect(_on_shot_finished)
 	_shot_started = true
 	_frame = 0
