@@ -1,0 +1,51 @@
+[gd_scene load_steps=6 format=3]
+
+; Los Angeles via the M3 district streamer: districts page in and out around the
+; player from the world manifest, so the map scales to all of LA without loading
+; every tile at once. Player starts in downtown; drive/walk toward Hollywood and
+; it streams in at its real 9.5 km offset.
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
+[ext_resource type="Script" path="res://scripts/world/district_streamer.gd" id="3_streamer"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.38, 0.52, 0.74, 1)
+sky_horizon_color = Color(0.7, 0.72, 0.73, 1)
+ground_horizon_color = Color(0.7, 0.72, 0.73, 1)
+ground_bottom_color = Color(0.52, 0.52, 0.5, 1)
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+tonemap_mode = 2
+ssao_enabled = true
+glow_enabled = true
+fog_enabled = true
+fog_light_color = Color(0.74, 0.77, 0.8, 1)
+fog_density = 0.0006
+
+[node name="LosAngelesStreamed" type="Node3D" groups=["world"]]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.383022, -0.321394, 0, 0.642788, 0.766044, 0.5, -0.663414, 0.55667, 0, 60, 0)
+light_energy = 1.1
+shadow_enabled = true
+directional_shadow_max_distance = 600.0
+
+[node name="Streamer" type="Node3D" parent="."]
+script = ExtResource("3_streamer")
+
+[node name="SpawnPoint" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="DebugHud" parent="." instance=ExtResource("2_hud")]
