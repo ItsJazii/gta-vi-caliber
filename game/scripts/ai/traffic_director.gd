@@ -21,6 +21,17 @@ extends Node3D
 ## How far ahead (m) to pick each car's next destination when routing.
 @export var trip_radius: float = 60.0
 @export var walkable_attempts: int = 8
+## Auto-build the routing grid from the physics world on the first tick (same
+## scheme as CrowdDirector): raycast a coarse grid from above the rooflines and
+## block cells that hit a building/wall or no ground. Off → assign `nav` yourself
+## (e.g. share a CrowdDirector's grid) or leave null for straight-line cruising.
+@export var bake_nav: bool = false
+@export var nav_cell_size: float = 3.0
+@export var nav_radius: float = 110.0
+@export var nav_probe_height: float = 400.0
+@export var ground_probe_down: float = 60.0
+@export var max_walkable_rise: float = 2.5
+@export_flags_3d_physics var ground_mask: int = 1
 ## Palette for body paint variety across the fleet.
 @export var car_colors: PackedColorArray = PackedColorArray(
 	[
@@ -53,9 +64,36 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	var center := player.global_position
+	if bake_nav and nav == null:
+		_bake_nav(center)
 	_cull(center)
 	_repath(center)
 	_spawn(center)
+
+
+## Raycast a coarse grid of the area into a NavGrid, blocking cells whose ground
+## is missing or above max_walkable_rise (buildings/walls/voids). Mirrors
+## CrowdDirector so pedestrians and traffic build identical street maps.
+func _bake_nav(center: Vector3) -> void:
+	var space := get_world_3d().direct_space_state
+	if space == null:
+		return
+	var cells := maxi(int(2.0 * nav_radius / nav_cell_size), 1)
+	var grid := NavGrid.new(
+		cells, cells, nav_cell_size, Vector3(center.x - nav_radius, center.y, center.z - nav_radius)
+	)
+	var ceiling := center.y + max_walkable_rise
+	for r in cells:
+		for c in cells:
+			var at := grid.cell_to_world(c, r)
+			var from := Vector3(at.x, center.y + nav_probe_height, at.z)
+			var to := Vector3(at.x, center.y - ground_probe_down, at.z)
+			var hit := space.intersect_ray(
+				PhysicsRayQueryParameters3D.create(from, to, ground_mask)
+			)
+			if not hit.has("position") or (hit["position"] as Vector3).y > ceiling:
+				grid.set_blocked(c, r, true)
+	nav = grid
 
 
 func _cull(center: Vector3) -> void:
