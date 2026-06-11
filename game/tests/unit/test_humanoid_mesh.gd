@@ -118,3 +118,16 @@ func test_to_mesh_builds_one_surface() -> bool:
 
 func test_to_mesh_empty_is_null() -> bool:
 	return HumanoidMesh.to_mesh({}) == null
+
+
+func test_hand_has_fingers_extending_past_the_palm() -> bool:
+	# The merged fingers must reach well below the palm (which bottoms out ~-0.07);
+	# a bare palm would stop there. Fingers run to roughly -0.16.
+	var box := _aabb(HumanoidMesh.hand())
+	return box.position.y < -0.14
+
+
+func test_hand_thumb_offsets_to_one_side() -> bool:
+	# The thumb is merged at +x, so the hand reaches further +x than -x.
+	var box := _aabb(HumanoidMesh.hand())
+	return box.position.x + box.size.x > 0.07
