@@ -80,6 +80,8 @@ func _apply(snapshot: Dictionary) -> void:
 	if player != null and snapshot.has("player_pos"):
 		var values: Array = snapshot["player_pos"]
 		if values.size() == 3:
+			if player.has_method("eject"):
+				player.call("eject")
 			player.global_position = Vector3(values[0], values[1], values[2])
 			if player is CharacterBody3D:
 				(player as CharacterBody3D).velocity = Vector3.ZERO
