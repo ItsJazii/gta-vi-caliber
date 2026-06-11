@@ -64,7 +64,7 @@ Goal: one city district that feels inhabited.
 - [ ] Pedestrian crowds: navmesh flows, reactions (flee/gawk), spawn/despawn invisible to player
 - [ ] Time-of-day cycle driving sun, streetlights, building windows
 - [ ] Weather fronts: clear → overcast → rain, wet-surface materials
-- [ ] Ocean v1: Gerstner/FFT water with shoreline blend (**`engine/` candidate**)
+- [x] Ocean v1: Gerstner/FFT water with shoreline blend (**`engine/` candidate**)
 
 ## M5 — Play
 
