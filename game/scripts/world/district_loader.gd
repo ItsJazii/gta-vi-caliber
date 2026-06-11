@@ -11,17 +11,30 @@ extends Node3D
 
 signal district_built(building_count: int, road_count: int)
 
+const WINDOW_SHADER := preload("res://assets/materials/building_windows.gdshader")
+
+## Streetlight pole every ~this many metres of road, capped scene-wide and
+## kept near the district origin (where the player spawns) so the cap is not
+## eaten by far-away roads.
+const STREETLIGHT_SPACING_M: float = 45.0
+const MAX_STREETLIGHTS: int = 60
+const STREETLIGHT_RADIUS_M: float = 250.0
+
 ## res:// path to the district JSON (OSM-derived, ODbL).
 @export_file("*.json") var district_path: String = "res://assets/world/downtown_la.json"
 ## Build collision for buildings. Off speeds up pure-visual previews.
 @export var build_collision: bool = true
+## Spawn streetlight poles along roads (toggled at night by TimeOfDay).
+@export var build_streetlights: bool = true
 
-var _building_mat: StandardMaterial3D
+var _building_mat: ShaderMaterial
 var _roof_mat: StandardMaterial3D
 var _road_mat: StandardMaterial3D
 
 
 func _ready() -> void:
+	# TimeOfDay fades our building-window glow through set_night_amount().
+	add_to_group("night_emissive")
 	_make_materials()
 	var data := _load_district(district_path)
 	if data.is_empty():
@@ -33,6 +46,8 @@ func _ready() -> void:
 
 	var built_buildings := _build_buildings(data.get("buildings", []), proj)
 	_build_roads(data.get("roads", []), proj)
+	if build_streetlights:
+		_build_streetlights(data.get("roads", []), proj)
 	_place_actors_on_street(data.get("roads", []), proj)
 
 	var nb: int = (data.get("buildings", []) as Array).size()
@@ -122,6 +137,72 @@ func _build_roads(roads: Array, proj: GeoProjection) -> void:
 	add_child(mi)
 
 
+## Plant streetlight poles along road kerbs: shared pole mesh, one warm
+## shadowless OmniLight3D each, all in group "streetlight" so TimeOfDay can
+## hard-toggle them with hysteresis. Capped so the light count stays cheap.
+func _build_streetlights(roads: Array, proj: GeoProjection) -> void:
+	var holder := Node3D.new()
+	holder.name = "StreetLights"
+	add_child(holder)
+
+	var pole_mesh := CylinderMesh.new()
+	pole_mesh.top_radius = 0.08
+	pole_mesh.bottom_radius = 0.12
+	pole_mesh.height = 5.0
+	var pole_mat := StandardMaterial3D.new()
+	pole_mat.albedo_color = Color(0.18, 0.19, 0.21)
+	pole_mat.roughness = 0.7
+	pole_mesh.material = pole_mat
+
+	var bulb_mesh := SphereMesh.new()
+	bulb_mesh.radius = 0.16
+	bulb_mesh.height = 0.32
+	var bulb_mat := StandardMaterial3D.new()
+	bulb_mat.emission_enabled = true
+	bulb_mat.emission = Color(1.0, 0.82, 0.5)
+	bulb_mat.emission_energy_multiplier = 4.0
+	bulb_mesh.material = bulb_mat
+
+	var count := 0
+	for r in roads:
+		if count >= MAX_STREETLIGHTS:
+			break
+		var kerb := float(r["width_m"]) * 0.5 + 0.8
+		var spots := DaylightMath.spaced_along(
+			_project_ring(r["path"], proj), STREETLIGHT_SPACING_M, kerb
+		)
+		for spot in spots:
+			if count >= MAX_STREETLIGHTS:
+				break
+			if spot.length() > STREETLIGHT_RADIUS_M:
+				continue
+			var pole := MeshInstance3D.new()
+			pole.mesh = pole_mesh
+			pole.position = Vector3(spot.x, 2.5, spot.y)
+			holder.add_child(pole)
+
+			var lamp := OmniLight3D.new()
+			lamp.position = Vector3(0.0, 2.6, 0.0)
+			lamp.light_color = Color(1.0, 0.82, 0.5)
+			lamp.light_energy = 2.0
+			lamp.omni_range = 18.0
+			lamp.shadow_enabled = false
+			lamp.visible = false
+			lamp.add_to_group("streetlight")
+			pole.add_child(lamp)
+
+			var bulb := MeshInstance3D.new()
+			bulb.mesh = bulb_mesh
+			lamp.add_child(bulb)
+			count += 1
+
+
+## TimeOfDay (group "night_emissive") fades building windows in/out, 0..1.
+func set_night_amount(amount: float) -> void:
+	if _building_mat != null:
+		_building_mat.set_shader_parameter("night_amount", amount)
+
+
 ## Move the player + spawn marker onto the road vertex nearest the origin so the
 ## player never starts trapped inside a building footprint.
 func _place_actors_on_street(roads: Array, proj: GeoProjection) -> void:
@@ -148,12 +229,10 @@ func _place_actors_on_street(roads: Array, proj: GeoProjection) -> void:
 
 
 func _make_materials() -> void:
-	_building_mat = StandardMaterial3D.new()
-	_building_mat.albedo_color = Color(0.62, 0.63, 0.66)
-	_building_mat.roughness = 0.85
-	_building_mat.metallic = 0.0
-	# Double-sided keeps interiors lit if a footprint winds oddly.
-	_building_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# Buildings use the procedural window shader (object-space grid, double-
+	# sided via render_mode) so TimeOfDay can glow the windows at night.
+	_building_mat = ShaderMaterial.new()
+	_building_mat.shader = WINDOW_SHADER
 
 	_roof_mat = StandardMaterial3D.new()
 	_roof_mat.albedo_color = Color(0.4, 0.41, 0.45)
