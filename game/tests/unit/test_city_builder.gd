@@ -90,3 +90,74 @@ func test_arrays_to_mesh_builds_surface() -> bool:
 
 func test_arrays_to_mesh_empty_is_null() -> bool:
 	return CityBuilder.arrays_to_mesh({}) == null
+
+
+func test_road_ribbon_faces_up_when_culled() -> bool:
+	# Godot front faces wind clockwise seen from the front (PlaneMesh does the
+	# same). A wrong winding back-face-culls every road — they render invisible.
+	var geo := CityBuilder.road_ribbon(
+		PackedVector2Array([Vector2(0, 0), Vector2(10, 0)]), 6.0, 0.0
+	)
+	var v: PackedVector3Array = geo["vertices"]
+	var idx: PackedInt32Array = geo["indices"]
+	var t := 0
+	while t < idx.size():
+		var n := (v[idx[t + 1]] - v[idx[t]]).cross(v[idx[t + 2]] - v[idx[t]])
+		if n.y >= 0.0:
+			return false
+		t += 3
+	return true
+
+
+func test_road_ribbon_uvs_track_width_and_length() -> bool:
+	# UV.x spans the ribbon width 0..1; UV.y accumulates metres along the path.
+	var path := PackedVector2Array([Vector2(0, 0), Vector2(10, 0), Vector2(10, 30)])
+	var geo := CityBuilder.road_ribbon(path, 6.0, 0.05)
+	var uvs: PackedVector2Array = geo["uvs"]
+	if uvs.size() != (geo["vertices"] as PackedVector3Array).size():
+		return false
+	return (
+		uvs[0].is_equal_approx(Vector2(0.0, 0.0))
+		and uvs[2].is_equal_approx(Vector2(1.0, 10.0))
+		and uvs[7].is_equal_approx(Vector2(0.0, 40.0))
+	)
+
+
+func test_arrays_to_mesh_packs_uvs_and_colors() -> bool:
+	var geo := CityBuilder.road_ribbon(PackedVector2Array([Vector2(0, 0), Vector2(8, 0)]), 4.0, 0.0)
+	var colors := PackedColorArray()
+	for _i in (geo["vertices"] as PackedVector3Array).size():
+		colors.append(Color.WHITE)
+	geo["colors"] = colors
+	var mesh := CityBuilder.arrays_to_mesh(geo)
+	var arrays := mesh.surface_get_arrays(0)
+	return (
+		(arrays[Mesh.ARRAY_TEX_UV] as PackedVector2Array).size() == 4
+		and (arrays[Mesh.ARRAY_COLOR] as PackedColorArray).size() == 4
+	)
+
+
+func test_building_color_is_deterministic() -> bool:
+	var first := CityBuilder.building_color(23973401)
+	var second := CityBuilder.building_color(23973401)
+	return first == second
+
+
+func test_building_color_stays_sun_bleached() -> bool:
+	# Every id must land in the light worn-stucco range — never dark or garish.
+	for i in 64:
+		var c := CityBuilder.building_color(i * 7919 + 13)
+		if c.r < 0.3 or c.g < 0.3 or c.b < 0.3:
+			return false
+		if c.r > 1.0 or c.g > 1.0 or c.b > 1.0:
+			return false
+		if c.get_luminance() < 0.5:
+			return false
+	return true
+
+
+func test_building_color_varies_across_ids() -> bool:
+	var seen := {}
+	for i in 32:
+		seen[CityBuilder.building_color(i * 104729 + 7)] = true
+	return seen.size() >= 4

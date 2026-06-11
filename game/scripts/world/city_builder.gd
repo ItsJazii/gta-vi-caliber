@@ -10,6 +10,33 @@ extends RefCounted
 
 const UP: Vector3 = Vector3.UP
 
+## Sun-bleached wall palette: worn stucco/concrete tones (VISION.md coastal-city
+## look). building_color() picks per building so blocks don't read as one grey
+## extrusion.
+const WALL_PALETTE: Array[Color] = [
+	Color(0.93, 0.89, 0.80),  # bleached white plaster
+	Color(0.87, 0.78, 0.58),  # cream stucco
+	Color(0.80, 0.70, 0.52),  # sandstone
+	Color(0.78, 0.58, 0.45),  # faded terracotta
+	Color(0.72, 0.70, 0.65),  # weathered concrete
+	Color(0.82, 0.66, 0.58),  # dusty rose
+	Color(0.62, 0.70, 0.60),  # faded sage
+	Color(0.60, 0.66, 0.72),  # hazy blue-grey
+]
+
+
+## Deterministic wall colour from the stable OSM building id: palette pick plus
+## a small value jitter so palette twins on the same block still differ.
+static func building_color(id: int) -> Color:
+	var h := absi(hash(id))
+	var base: Color = WALL_PALETTE[h % WALL_PALETTE.size()]
+	var jitter := (float((h >> 16) & 0xFF) / 255.0 - 0.5) * 0.14
+	return Color(
+		clampf(base.r + jitter, 0.0, 1.0),
+		clampf(base.g + jitter, 0.0, 1.0),
+		clampf(base.b + jitter, 0.0, 1.0)
+	)
+
 
 ## Strip a redundant closing vertex (OSM rings repeat the first point at the end)
 ## and collapse any near-duplicate consecutive points.
@@ -101,14 +128,17 @@ static func road_ribbon(path: PackedVector2Array, width: float, y: float) -> Dic
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var indices := PackedInt32Array()
+	var uvs := PackedVector2Array()
+	var along := 0.0
 
 	for i in range(pts.size() - 1):
 		var a := pts[i]
 		var b := pts[i + 1]
 		var dir := b - a
-		if dir.length() < 0.001:
+		var seg := dir.length()
+		if seg < 0.001:
 			continue
-		dir = dir.normalized()
+		dir = dir / seg
 		var side := Vector2(-dir.y, dir.x) * half
 		var base_index := vertices.size()
 		vertices.append(Vector3(a.x - side.x, y, a.y - side.y))
@@ -117,11 +147,20 @@ static func road_ribbon(path: PackedVector2Array, width: float, y: float) -> Dic
 		vertices.append(Vector3(b.x - side.x, y, b.y - side.y))
 		for _k in 4:
 			normals.append(UP)
+		# UV.x spans the width 0..1, UV.y accumulates metres along the
+		# centreline — road shaders draw lane paint/sidewalks from these.
+		uvs.append(Vector2(0.0, along))
+		uvs.append(Vector2(1.0, along))
+		uvs.append(Vector2(1.0, along + seg))
+		uvs.append(Vector2(0.0, along + seg))
+		along += seg
+		# Clockwise-from-above winding: Godot front faces match PlaneMesh, so
+		# up-facing ribbons survive back-face culling (they used to be culled).
 		indices.append_array(
-			[base_index, base_index + 1, base_index + 2, base_index, base_index + 2, base_index + 3]
+			[base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2]
 		)
 
-	return {"vertices": vertices, "normals": normals, "indices": indices}
+	return {"vertices": vertices, "normals": normals, "indices": indices, "uvs": uvs}
 
 
 ## Like clean_ring but for open polylines (keeps the last point).
@@ -134,6 +173,8 @@ static func clean_ring_open(path: PackedVector2Array) -> PackedVector2Array:
 
 
 ## Pack a geometry Dictionary into an ArrayMesh surface. Empty dict → null.
+## Optional "uvs" / "colors" keys ride along into the matching ARRAY_* slots
+## (road paint coordinates, per-building facade tints).
 static func arrays_to_mesh(geo: Dictionary) -> ArrayMesh:
 	if geo.is_empty() or (geo["vertices"] as PackedVector3Array).is_empty():
 		return null
@@ -142,6 +183,10 @@ static func arrays_to_mesh(geo: Dictionary) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = geo["vertices"]
 	arrays[Mesh.ARRAY_NORMAL] = geo["normals"]
 	arrays[Mesh.ARRAY_INDEX] = geo["indices"]
+	if geo.has("uvs"):
+		arrays[Mesh.ARRAY_TEX_UV] = geo["uvs"]
+	if geo.has("colors"):
+		arrays[Mesh.ARRAY_COLOR] = geo["colors"]
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
