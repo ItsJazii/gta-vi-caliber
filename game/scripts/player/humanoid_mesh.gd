@@ -160,9 +160,11 @@ static func torso(
 ) -> Dictionary:
 	var h: float = height * 0.5
 	var rings: Array = [
-		Vector3(h, shoulder_w * 0.62, shoulder_d * 0.62),
-		Vector3(h * 0.78, shoulder_w, shoulder_d),
-		Vector3(h * 0.30, shoulder_w * 0.92, shoulder_d * 0.95),
+		# Broad, shallow top ring = flat shoulders the neck rises out of, rather
+		# than a pinched peak.
+		Vector3(h, shoulder_w * 0.98, shoulder_d * 0.72),
+		Vector3(h * 0.80, shoulder_w, shoulder_d),
+		Vector3(h * 0.30, shoulder_w * 0.9, shoulder_d * 0.95),
 		Vector3(-h * 0.20, waist_w * 1.06, waist_d * 1.04),
 		Vector3(-h * 0.72, waist_w, waist_d),
 		Vector3(-h, waist_w * 0.78, waist_d * 0.82),
@@ -197,14 +199,44 @@ static func head(height: float = 0.28, width: float = 0.13, depth: float = 0.13)
 	return lofted(rings, 18)
 
 
+## Neck: a short skin column that bridges the shoulders and the head so the
+## head no longer reads as floating above the collar.
+static func neck(height: float = 0.16, radius: float = 0.052) -> Dictionary:
+	var h: float = height * 0.5
+	var rings: Array = [
+		Vector3(h, radius * 0.9, radius * 0.92),
+		Vector3(0.0, radius, radius),
+		Vector3(-h, radius * 1.08, radius * 1.0),
+	]
+	return lofted(rings, 12)
+
+
+## Hair: a thin shell over the upper cranium, a touch proud of the skull, from
+## the crown down to the brow line. Authored in Head-local space (head centred at
+## origin) so the builder can parent it straight to the head with no offset.
+static func hair(head_height: float = 0.28, head_width: float = 0.13) -> Dictionary:
+	var rings: Array = []
+	var count: int = 12
+	for i in count + 1:
+		var s: float = lerpf(0.0, 0.5, float(i) / float(count))  # crown(pole) → brow
+		var y: float = head_height * 0.5 - s * head_height
+		var jaw: float = lerpf(1.04, 0.86, s)
+		# pow(sin, 0.7) fattens the crown so the top domes over like a beanie
+		# instead of pinching into a witch-hat point.
+		var r: float = head_width * pow(sin(s * PI), 0.7) * jaw * 1.08
+		rings.append(Vector3(y, r, r))
+	return lofted(rings, 18)
+
+
 ## Forearm/upper-arm as one tapered limb (shoulder → wrist), centred on origin.
 static func arm(length: float = 0.6) -> Dictionary:
 	return limb(length, 0.062, 0.07, 0.046, 14, 18)
 
 
-## Thigh/calf as one tapered limb (hip → ankle) with a calf swell.
+## Thigh/calf as one tapered limb (hip → ankle) with a calf swell. Slimmer than a
+## box so the two legs read as a clear pair instead of one solid mass.
 static func leg(length: float = 0.82) -> Dictionary:
-	return limb(length, 0.098, 0.092, 0.062, 16, 20)
+	return limb(length, 0.086, 0.08, 0.05, 16, 20)
 
 
 ## A rounded fist, spine along Y, sized to sit at the wrist.
@@ -220,7 +252,7 @@ static func hand() -> Dictionary:
 
 ## A shoe: a rounded, forward-pointing form (spine along +Z, toe forward) with a
 ## flat-ish sole implied by the squashed vertical radius.
-static func foot(length: float = 0.3, width: float = 0.09, height: float = 0.06) -> Dictionary:
+static func foot(length: float = 0.3, width: float = 0.1, height: float = 0.06) -> Dictionary:
 	var h: float = length * 0.5
 	var rings: Array = [
 		Vector3(-h, width * 0.7, height * 0.7),  # heel

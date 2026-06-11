@@ -88,11 +88,18 @@ func test_foot_is_longest_along_z() -> bool:
 	return box.size.z > box.size.x and box.size.z > box.size.y
 
 
+func test_neck_height_matches() -> bool:
+	var box := _aabb(HumanoidMesh.neck(0.16, 0.052))
+	return absf(box.size.y - 0.16) < 0.01
+
+
 func test_all_parts_build_nonempty() -> bool:
 	var parts := [
 		HumanoidMesh.torso(),
 		HumanoidMesh.pelvis(),
+		HumanoidMesh.neck(),
 		HumanoidMesh.head(),
+		HumanoidMesh.hair(),
 		HumanoidMesh.arm(),
 		HumanoidMesh.leg(),
 		HumanoidMesh.hand(),
