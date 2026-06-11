@@ -51,6 +51,8 @@ const PANTS_COLORS: Array[Color] = [
 ## the live hip/shoulder swing, so a slow walk bends gently and a sprint deeply.
 const KNEE_AMPLITUDE: float = 0.95
 const ELBOW_AMPLITUDE: float = 0.5
+## Ankle roll (radians): toe lifts at heel-strike, points at toe-off. Subtle.
+const ANKLE_AMPLITUDE: float = 0.32
 
 ## Skin tone; tweak per-NPC later for crowd variety.
 @export var skin_color: Color = Color(0.86, 0.66, 0.54)
@@ -132,8 +134,16 @@ func _process(delta: float) -> void:
 	# perfect lockstep with the animator without sharing a phase clock.
 	for leg in _legs:
 		var hip: Node3D = leg["hip"]
-		var swing := clampf(hip.rotation.x / maxf(leg["amp"], 0.01), -1.0, 1.0)
+		var hip_angle: float = hip.rotation.x
+		var swing := clampf(hip_angle / maxf(leg["amp"], 0.01), -1.0, 1.0)
 		leg["knee"].rotation.x = -Locomotion.knee_flex_from_swing(swing, KNEE_AMPLITUDE)
+		# Foot roll: cos(phase) = sqrt(1 - sin^2) with the sign taken from the
+		# swing direction, so the sole stays level — toe up at heel-strike, down
+		# at toe-off — without a separate phase clock. (sin(phase) = swing.)
+		var direction := signf(hip_angle - float(leg["prev"]))
+		leg["prev"] = hip_angle
+		var cos_phase := sqrt(maxf(0.0, 1.0 - swing * swing)) * direction
+		leg["ankle"].rotation.x = -cos_phase * ANKLE_AMPLITUDE
 	for arm in _arms:
 		var shoulder: Node3D = arm["shoulder"]
 		var swing := clampf(shoulder.rotation.x / maxf(arm["amp"], 0.01), -1.0, 1.0)
@@ -393,8 +403,12 @@ func _articulate_leg(
 	knee.add_child(
 		_seg(HumanoidMesh.limb(0.42, 0.058, 0.056, 0.045, 14, 16), _pants, Vector3(0, -0.205, 0))
 	)
-	knee.add_child(_seg(HumanoidMesh.foot(), _shoe, Vector3(0, -0.41, 0.06)))
-	_legs.append({"hip": hip, "knee": knee, "amp": amp})
+	var ankle := Node3D.new()
+	ankle.name = "Ankle"
+	ankle.position = Vector3(0, -0.41, 0)
+	knee.add_child(ankle)
+	ankle.add_child(_seg(HumanoidMesh.foot(), _shoe, Vector3(0, 0, 0.06)))
+	_legs.append({"hip": hip, "knee": knee, "ankle": ankle, "amp": amp, "prev": 0.0})
 
 
 ## Replace a single-segment arm with upper arm + elbow joint + forearm + hand.
