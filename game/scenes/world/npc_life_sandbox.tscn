@@ -1,0 +1,240 @@
+[gd_scene load_steps=18 format=3]
+
+; Playable living-city demo: walk among a crowd of citizens running their daily
+; routines (commute, work, lunch, gym, bar, home) and bantering in speech
+; bubbles. The CityDirector owns the clock; Marker3D nodes in poi_<place> groups
+; are the destinations; labelled blocks are the "buildings". Sprint at someone to
+; watch them scatter. Self-contained and streaming-safe (groups, no cross paths).
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+[ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
+[ext_resource type="PackedScene" path="res://scenes/npc/citizen.tscn" id="3_cit"]
+[ext_resource type="Script" path="res://scripts/npc/city_director.gd" id="4_dir"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_horizon_color = Color(0.66, 0.67, 0.69, 1)
+ground_horizon_color = Color(0.66, 0.67, 0.69, 1)
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.31, 0.33, 0.36, 1)
+roughness = 1.0
+
+[sub_resource type="PlaneMesh" id="ground_mesh"]
+material = SubResource("ground_mat")
+size = Vector2(200, 200)
+
+[sub_resource type="BoxShape3D" id="ground_shape"]
+size = Vector3(200, 1, 200)
+
+[sub_resource type="BoxMesh" id="unit_box"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="StandardMaterial3D" id="bm_office"]
+albedo_color = Color(0.36, 0.45, 0.62, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="bm_diner"]
+albedo_color = Color(0.74, 0.34, 0.3, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="bm_bar"]
+albedo_color = Color(0.4, 0.28, 0.5, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="bm_gym"]
+albedo_color = Color(0.3, 0.55, 0.5, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="bm_home"]
+albedo_color = Color(0.6, 0.55, 0.4, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="bm_park"]
+albedo_color = Color(0.28, 0.45, 0.26, 1)
+roughness = 1.0
+
+[node name="NpcLifeSandbox" type="Node3D" groups=["world"]]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.383022, -0.321394, 0, 0.642788, 0.766044, 0.5, -0.663414, 0.55667, 0, 20, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("ground_mesh")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("ground_shape")
+
+[node name="CityDirector" type="Node3D" parent="."]
+script = ExtResource("4_dir")
+start_hour = 8.0
+day_length_sec = 180.0
+
+[node name="Office" type="MeshInstance3D" parent="."]
+transform = Transform3D(8, 0, 0, 0, 14, 0, 0, 0, 8, 20, 7, -20)
+mesh = SubResource("unit_box")
+material_override = SubResource("bm_office")
+
+[node name="OfficeSign" type="Label3D" parent="Office"]
+transform = Transform3D(0.125, 0, 0, 0, 0.0714286, 0, 0, 0, 0.125, 0, 0.62, 0.55)
+billboard = 1
+text = "OFFICE"
+font_size = 80
+outline_size = 16
+
+[node name="POI_office" type="Marker3D" parent="." groups=["poi_office"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -15)
+
+[node name="Diner" type="MeshInstance3D" parent="."]
+transform = Transform3D(10, 0, 0, 0, 5, 0, 0, 0, 8, 20, 2.5, 20)
+mesh = SubResource("unit_box")
+material_override = SubResource("bm_diner")
+
+[node name="DinerSign" type="Label3D" parent="Diner"]
+transform = Transform3D(0.1, 0, 0, 0, 0.2, 0, 0, 0, 0.125, 0, 0.7, 0.55)
+billboard = 1
+text = "DINER"
+font_size = 80
+outline_size = 16
+
+[node name="POI_diner" type="Marker3D" parent="." groups=["poi_diner"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, 15)
+
+[node name="Bar" type="MeshInstance3D" parent="."]
+transform = Transform3D(8, 0, 0, 0, 6, 0, 0, 0, 8, 0, 3, 28)
+mesh = SubResource("unit_box")
+material_override = SubResource("bm_bar")
+
+[node name="BarSign" type="Label3D" parent="Bar"]
+transform = Transform3D(0.125, 0, 0, 0, 0.166667, 0, 0, 0, 0.125, 0, 0.65, 0.55)
+billboard = 1
+text = "BAR"
+font_size = 80
+outline_size = 16
+
+[node name="POI_bar" type="Marker3D" parent="." groups=["poi_bar"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 22)
+
+[node name="Gym" type="MeshInstance3D" parent="."]
+transform = Transform3D(9, 0, 0, 0, 7, 0, 0, 0, 9, 28, 3.5, 0)
+mesh = SubResource("unit_box")
+material_override = SubResource("bm_gym")
+
+[node name="GymSign" type="Label3D" parent="Gym"]
+transform = Transform3D(0.111111, 0, 0, 0, 0.142857, 0, 0, 0, 0.111111, 0, 0.64, 0.55)
+billboard = 1
+text = "GYM"
+font_size = 80
+outline_size = 16
+
+[node name="POI_gym" type="Marker3D" parent="." groups=["poi_gym"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 0)
+
+[node name="Home" type="MeshInstance3D" parent="."]
+transform = Transform3D(7, 0, 0, 0, 6, 0, 0, 0, 7, -20, 3, -20)
+mesh = SubResource("unit_box")
+material_override = SubResource("bm_home")
+
+[node name="HomeSign" type="Label3D" parent="Home"]
+transform = Transform3D(0.142857, 0, 0, 0, 0.166667, 0, 0, 0, 0.142857, 0, 0.65, 0.55)
+billboard = 1
+text = "APARTMENTS"
+font_size = 72
+outline_size = 16
+
+[node name="POI_home" type="Marker3D" parent="." groups=["poi_home"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 0, -15)
+
+[node name="Park" type="MeshInstance3D" parent="."]
+transform = Transform3D(16, 0, 0, 0, 0.3, 0, 0, 0, 16, -20, 0.15, 20)
+mesh = SubResource("unit_box")
+material_override = SubResource("bm_park")
+
+[node name="ParkSign" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 2, 20)
+billboard = 1
+text = "PARK"
+font_size = 80
+outline_size = 16
+
+[node name="POI_park" type="Marker3D" parent="." groups=["poi_park"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0, 18)
+
+[node name="POI_restroom" type="Marker3D" parent="." groups=["poi_restroom"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 0)
+
+[node name="POI_street" type="Marker3D" parent="." groups=["poi_street"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+
+[node name="Crowd" type="Node3D" parent="."]
+
+[node name="Barista" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 1, 4)
+archetype_id = "doomsday_barista"
+
+[node name="Pigeon" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, 4)
+archetype_id = "pigeon_influencer"
+
+[node name="Guard" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 1, -4)
+archetype_id = "method_crossing_guard"
+
+[node name="Vendor" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 1, -4)
+archetype_id = "conspiracy_vendor"
+
+[node name="Yogi" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1, 0)
+archetype_id = "aggressively_calm_yogi"
+
+[node name="Stunt" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1, 0)
+archetype_id = "retired_stunt_double"
+
+[node name="Mime" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -8)
+archetype_id = "off_duty_mime"
+
+[node name="Intern" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 10)
+archetype_id = "overcaffeinated_intern"
+
+[node name="DogWalker" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 1, 6)
+archetype_id = "philosophical_dog_walker"
+
+[node name="Critic" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 1, 6)
+archetype_id = "feral_food_critic"
+
+[node name="Coach" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 1, -6)
+archetype_id = "unlicensed_life_coach"
+
+[node name="Anchor" parent="Crowd" instance=ExtResource("3_cit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 1, -6)
+archetype_id = "weather_anchor_nobody_hired"
+
+[node name="SpawnPoint" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -2)
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -2)
+
+[node name="DebugHud" parent="." instance=ExtResource("2_hud")]
