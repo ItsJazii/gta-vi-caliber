@@ -28,6 +28,20 @@ const PHONE_SHOULDER_ROLL: float = 0.55
 @export var arm_amplitude: float = 0.5
 ## Torso vertical bob (metres) at full run.
 @export var bob_amplitude: float = 0.07
+## Lateral pelvis travel (metres) at full run: tiny weight shift over each foot.
+@export var sway_amplitude: float = 0.032
+## Pelvis/shoulder roll (radians) at full run for athletic counter-motion.
+@export var roll_amplitude: float = 0.07
+## Upper-body yaw twist (radians) at full run; shoulders counter the stepping
+## leg while pelvis/head absorb a smaller amount so the rig reads less rigid.
+@export var torso_twist_amplitude: float = 0.075
+@export var pelvis_twist_compensation: float = 0.35
+@export var head_twist_compensation: float = 0.22
+## Subtle head stabilization layered over the body motion so Mara's face does
+## not look bolted to the torso while running.
+@export var head_pitch_amplitude: float = 0.026
+@export var head_roll_amplitude: float = 0.035
+@export var head_lean_compensation: float = 0.28
 ## Maximum forward/back lean (radians) from acceleration.
 @export var max_lean: float = 0.22
 ## Acceleration (m/s²) that produces a full-magnitude lean.
@@ -45,10 +59,13 @@ var _phase: float = 0.0
 var _facing: float = 0.0
 var _blend: float = 0.0
 var _lean: float = 0.0
+var _sway: float = 0.0
+var _roll: float = 0.0
 var _air: float = 0.0
 var _phone: float = 0.0
 var _phone_target: float = 0.0
 var _hips_rest_y: float = 0.0
+var _hips_rest_x: float = 0.0
 var _prev_speed: float = 0.0
 # When the owner is the player, face where the weapon aims (not where we move)
 # so strafing reads as a third-person shooter. NPCs keep travel-facing.
@@ -56,14 +73,18 @@ var _aim_facing: bool = false
 var _weapon_controller: Node = null
 
 @onready var _hips: Node3D = $Hips
+@onready var _pelvis: Node3D = $Hips/Pelvis
+@onready var _torso: Node3D = $Hips/Torso
 @onready var _hip_l: Node3D = $Hips/HipL
 @onready var _hip_r: Node3D = $Hips/HipR
 @onready var _shoulder_l: Node3D = $Hips/ShoulderL
 @onready var _shoulder_r: Node3D = $Hips/ShoulderR
+@onready var _head: Node3D = $Hips/Head
 
 
 func _ready() -> void:
 	_hips_rest_y = _hips.position.y
+	_hips_rest_x = _hips.position.x
 	_facing = rotation.y
 	var owner_body := get_parent()
 	_aim_facing = owner_body != null and owner_body.is_in_group("player")
@@ -92,6 +113,13 @@ func animate(
 	var target_blend: float = Locomotion.move_blend(planar_speed, walk_speed, run_speed)
 	_blend = move_toward(_blend, target_blend, response_rate * delta)
 	_lean = lerpf(_lean, Locomotion.lean_angle(accel, accel_reference, max_lean), _ease(delta))
+	var grounded_blend := _blend if on_floor else 0.0
+	_sway = lerpf(
+		_sway, Locomotion.lateral_sway(_phase, sway_amplitude * grounded_blend), _ease(delta)
+	)
+	_roll = lerpf(
+		_roll, Locomotion.pelvis_roll(_phase, roll_amplitude * grounded_blend), _ease(delta)
+	)
 	_air = move_toward(_air, 1.0 if not on_floor else 0.0, air_rate * delta)
 	_phone = move_toward(_phone, _phone_target, phone_pose_rate * delta)
 
@@ -99,9 +127,12 @@ func animate(
 		_phase = Locomotion.advance_phase(_phase, planar_speed, delta)
 
 	_apply_limbs()
+	_apply_secondary_motion()
 	_apply_phone_pose()
+	_hips.position.x = _hips_rest_x + _sway
 	_hips.position.y = _hips_rest_y + Locomotion.vertical_bob(_phase, bob_amplitude * _blend)
 	_hips.rotation.x = _lean
+	_hips.rotation.z = _roll
 
 
 ## Raise (true) or lower (false) the one-handed phone-holding pose; eased in
@@ -115,6 +146,22 @@ func set_phone(raised: bool) -> void:
 func _apply_phone_pose() -> void:
 	_shoulder_r.rotation.x = lerpf(_shoulder_r.rotation.x, PHONE_SHOULDER_PITCH, _phone)
 	_shoulder_r.rotation.z = PHONE_SHOULDER_ROLL * _phone
+
+
+func _apply_secondary_motion() -> void:
+	var shoulder_roll := Locomotion.shoulder_counter_roll(_phase, roll_amplitude * 0.65 * _blend)
+	var twist := Locomotion.torso_twist(_phase, torso_twist_amplitude * _blend)
+	_shoulder_l.rotation.z = shoulder_roll
+	_shoulder_r.rotation.z = -shoulder_roll
+	_shoulder_l.rotation.y = twist
+	_shoulder_r.rotation.y = twist
+	_torso.rotation.y = twist
+	_pelvis.rotation.y = -twist * pelvis_twist_compensation
+	var head_pitch := Locomotion.head_step_pitch(_phase, head_pitch_amplitude * _blend)
+	var head_roll := Locomotion.head_counter_roll(_phase, head_roll_amplitude * _blend)
+	_head.rotation.x = head_pitch - _lean * head_lean_compensation
+	_head.rotation.y = -twist * head_twist_compensation
+	_head.rotation.z = head_roll - _roll * 0.45
 
 
 func _update_facing(planar_velocity: Vector3, planar_speed: float, delta: float) -> void:

@@ -1,16 +1,16 @@
 extends RefCounted
-## Unit tests for Mission — the objective/state-machine gameplay rules.
+## Unit tests for MissionObjectives — the objective/state-machine gameplay rules.
 
 const DEFS := [{"id": "a", "text": "Reach A"}, {"id": "b", "text": "Reach B"}]
 
 
-func _mission() -> Mission:
-	return Mission.new("Test", DEFS)
+func _mission() -> MissionObjectives:
+	return MissionObjectives.new("Test", DEFS)
 
 
 func test_starts_inactive_then_active() -> bool:
 	var m := _mission()
-	if m.state != Mission.State.INACTIVE:
+	if m.state != MissionObjectives.State.INACTIVE:
 		return false
 	m.start()
 	return m.is_active()
@@ -54,4 +54,4 @@ func test_fail_blocks_further_progress() -> bool:
 	var m := _mission()
 	m.start()
 	m.fail()
-	return m.state == Mission.State.FAILED and m.complete_objective("a") == false
+	return m.state == MissionObjectives.State.FAILED and m.complete_objective("a") == false

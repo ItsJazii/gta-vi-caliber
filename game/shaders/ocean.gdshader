@@ -38,6 +38,7 @@ uniform float u_roughness = 0.08;
 // and the foam tint (warm white reads better at golden hour than pure).
 uniform float u_foam_depth = 1.1;
 uniform vec4 u_foam_color : source_color = vec4(0.96, 0.97, 0.94, 1.0);
+uniform float u_foam_strength : hint_range(0.0, 2.0) = 1.0;
 
 uniform sampler2D u_depth_texture : hint_depth_texture, filter_nearest;
 
@@ -144,7 +145,7 @@ void fragment() {
 	streaks = streaks * 0.6 + 0.4 * foam_noise(v_param * 1.4 - vec2(0.0, u_time * 0.4));
 	float foam = clamp(foam_band * surf_pulse * smoothstep(0.35, 0.85, streaks) * 1.6, 0.0, 1.0);
 	foam += crest * smoothstep(0.5, 0.9, streaks) * 0.8;
-	foam = clamp(foam, 0.0, 1.0);
+	foam = clamp(foam * u_foam_strength, 0.0, 1.0);
 	albedo = mix(albedo, u_foam_color.rgb, foam);
 	alpha = mix(alpha, 1.0, foam * 0.85);
 	ROUGHNESS = mix(u_roughness, 0.7, foam);

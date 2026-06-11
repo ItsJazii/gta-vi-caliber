@@ -79,6 +79,43 @@ static func vertical_bob(phase: float, amplitude: float) -> float:
 	return -absf(sin(phase)) * amplitude
 
 
+## Small side-to-side pelvis travel that follows the planted foot. This is not
+## root motion; it is only a visual offset on the rig so the upper body carries
+## weight over each step instead of moving like a sliding capsule.
+static func lateral_sway(phase: float, amplitude: float) -> float:
+	return sin(phase) * amplitude
+
+
+## Roll the pelvis opposite the planted side. Kept subtle: this sells weight
+## transfer without turning the character into a cartoon walk cycle.
+static func pelvis_roll(phase: float, amplitude: float) -> float:
+	return -sin(phase) * amplitude
+
+
+## Counter-roll shoulders against the pelvis so fast movement has athletic
+## compression instead of a rigid upright torso.
+static func shoulder_counter_roll(phase: float, amplitude: float) -> float:
+	return sin(phase) * amplitude
+
+
+## Yaw the upper body against the stepping leg. This gives a procedural rig the
+## cross-body twist of a real gait instead of a rigid shoulders-square walk.
+static func torso_twist(phase: float, amplitude: float) -> float:
+	return -sin(phase) * amplitude
+
+
+## Tiny head pitch on each step: the neck absorbs body bob so the face stays
+## alive without nodding like a metronome.
+static func head_step_pitch(phase: float, amplitude: float) -> float:
+	return -absf(sin(phase)) * amplitude
+
+
+## Counter-roll the head against the pelvis/shoulders. This keeps the eyeline
+## calmer while the torso carries weight from side to side.
+static func head_counter_roll(phase: float, amplitude: float) -> float:
+	return -sin(phase) * amplitude
+
+
 ## Forward lean (radians) into acceleration: lean grows with how hard speed is
 ## changing, clamped to max_lean, so the body pitches forward when breaking into
 ## a run and rocks back when braking. accel is signed planar acceleration.

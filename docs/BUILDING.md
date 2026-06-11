@@ -52,6 +52,16 @@ sandbox currently uses none. You only need this if you're working in
 Prerequisites: a C++17 compiler, Python 3, SCons
 (`pipx install scons` or `pip install scons`).
 
+The quickest path — `tools/build_engine.sh` autodetects your platform, fetches
+the submodule if needed, and builds into `game/bin/`:
+
+```bash
+tools/build_engine.sh            # template_debug for your OS (macOS/Linux/Windows)
+tools/build_engine.sh release    # template_release (what release builds ship)
+```
+
+Or drive SCons directly:
+
 ```bash
 git submodule update --init --recursive   # pulls godot-cpp (pinned; see engine/README.md)
 cd engine
@@ -71,10 +81,21 @@ three platforms via `.github/workflows/engine.yml`.
 
 ## Release builds
 
-Pushing a tag matching `v*` triggers `.github/workflows/release.yml`, which
-exports release builds for Linux (x86_64), Windows (x86_64), and macOS
-(universal) using the presets in `game/export_presets.cfg`, then attaches the
-zips to a GitHub Release for that tag.
+Pushing a tag matching `v*` triggers `.github/workflows/release.yml`, which:
+
+1. builds the native engine (`worldcore`, `template_release`) for Linux,
+   Windows, and macOS — each on its own runner, since macOS native libraries
+   can't be cross-compiled from Linux — and uploads each as an artifact;
+2. collects all three native payloads into `game/bin/` on a Linux runner,
+   verifies each platform's library is present (a missing lib fails the build
+   rather than silently shipping without the native engine), then exports
+   release builds for Linux (x86_64), Windows (x86_64), and macOS (universal)
+   using the presets in `game/export_presets.cfg`;
+3. attaches the zips to a GitHub Release for that tag.
+
+So every published desktop build bundles the native engine layer — not just a
+hand-built macOS one. To export locally, build the native libs first
+(`tools/build_engine.sh release`) so `game/bin/` is populated before exporting.
 
 To export locally instead, install the matching export templates
 (Editor → **Manage Export Templates**, version must match your editor), then:

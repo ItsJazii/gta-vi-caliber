@@ -20,6 +20,7 @@ const FLOAT_POINTS: Array[Vector3] = [
 @export var rudder_torque_max: float = 6000.0
 
 var _driver: Node3D = null
+var _ocean: Ocean = null
 
 @onready var _camera: Camera3D = $CameraPivot/SpringArm/Camera
 @onready var _exit_point: Marker3D = $ExitPoint
@@ -46,7 +47,7 @@ func _physics_process(_delta: float) -> void:
 	var point_strength := buoyancy_strength * mass / FLOAT_POINTS.size()
 	for point in FLOAT_POINTS:
 		var world_point := global_transform * point
-		var depth := water_level - world_point.y
+		var depth := _water_height(world_point.x, world_point.z) - world_point.y
 		if depth > 0.0:
 			submerged = true
 		var force := BoatMotion.buoyancy_force(depth, point_strength)
@@ -59,3 +60,17 @@ func _physics_process(_delta: float) -> void:
 	var forward := -global_transform.basis.z
 	apply_central_force(forward * BoatMotion.thrust(throttle, max_thrust, submerged))
 	apply_torque(Vector3.UP * BoatMotion.rudder_torque(steer, rudder_torque_max, submerged))
+
+
+## Water height at a world x/z: the live Gerstner ocean if one is in the scene
+## (group "water"), else the flat `water_level` fallback so the boat still floats
+## in scenes with no Ocean node — and so the pure BoatMotion math is unaffected.
+## Sampling per float-point is what makes the hull pitch and roll with the swell
+## instead of sitting on an invisible flat plane.
+func _water_height(world_x: float, world_z: float) -> float:
+	if _ocean == null or not is_instance_valid(_ocean):
+		var nodes := get_tree().get_nodes_in_group("water")
+		_ocean = nodes[0] as Ocean if not nodes.is_empty() else null
+	if _ocean != null:
+		return _ocean.surface_height(world_x, world_z)
+	return water_level

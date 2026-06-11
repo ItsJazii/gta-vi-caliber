@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -8,7 +8,9 @@
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
 [ext_resource type="Script" path="res://scripts/world/district_streamer.gd" id="3_streamer"]
+[ext_resource type="Script" path="res://scripts/world/florida_backdrop.gd" id="4_florida"]
 [ext_resource type="Script" path="res://scripts/world/weather_controller.gd" id="5_weather"]
+[ext_resource type="Script" path="res://scripts/world/world_quality.gd" id="6_quality"]
 [ext_resource type="Script" path="res://scripts/ui/streaming_hud.gd" id="9_shud"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
@@ -53,6 +55,7 @@ adjustment_saturation = 1.28
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("env")
+script = ExtResource("6_quality")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.94, 0.18, -0.29, 0, 0.85, 0.53, 0.34, -0.5, 0.8, 0, 80, 0)
@@ -63,8 +66,13 @@ shadow_enabled = true
 shadow_blur = 1.2
 directional_shadow_max_distance = 900.0
 
+[node name="FloridaBackdrop" type="Node3D" parent="."]
+script = ExtResource("4_florida")
+
 [node name="Streamer" type="Node3D" parent="."]
 script = ExtResource("3_streamer")
+load_radius = 8500.0
+unload_radius = 9500.0
 
 [node name="Weather" type="Node3D" parent="."]
 script = ExtResource("5_weather")

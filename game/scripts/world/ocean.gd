@@ -28,6 +28,11 @@ extends MeshInstance3D
 ## Water thinner than this fades out (soft shoreline edge), metres.
 @export_range(0.05, 5.0) var edge_fade_m: float = 0.6
 @export_range(0.0, 1.0) var surface_roughness: float = 0.08
+## Depth band (m) that generates surf foam in the shader. Smaller values keep
+## broad shallow flats from turning into white paint.
+@export_range(0.05, 3.0) var foam_depth_m: float = 1.1
+@export_range(0.0, 2.0) var foam_strength: float = 1.0
+@export var foam_color: Color = Color(0.96, 0.97, 0.94, 1.0)
 
 var _material: ShaderMaterial
 var _time: float = 0.0
@@ -75,3 +80,6 @@ func _push_look_params() -> void:
 	_material.set_shader_parameter("u_absorption", absorption_per_m)
 	_material.set_shader_parameter("u_edge_fade", edge_fade_m)
 	_material.set_shader_parameter("u_roughness", surface_roughness)
+	_material.set_shader_parameter("u_foam_depth", foam_depth_m)
+	_material.set_shader_parameter("u_foam_strength", foam_strength)
+	_material.set_shader_parameter("u_foam_color", foam_color)

@@ -9,15 +9,96 @@ permissions:
 
 env:
   GODOT_VERSION: "4.6.3"
+  SCONS_CACHE: ${{ github.workspace }}/.scons-cache
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Build the native engine (worldcore) for each desktop platform, in
+  #    template_release, on its own native runner. macOS cannot be cross-built
+  #    from Linux, so each platform compiles on its matching OS and uploads the
+  #    resulting game/bin/ payload as an artifact for the export job.
+  # ---------------------------------------------------------------------------
+  native:
+    name: Native engine (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install SCons
+        run: pip install scons
+
+      - name: Cache SCons build
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCONS_CACHE }}
+          key: scons-${{ matrix.platform }}-${{ hashFiles('.gitmodules', 'engine/SConstruct') }}-${{ hashFiles('engine/src/**') }}
+          restore-keys: |
+            scons-${{ matrix.platform }}-${{ hashFiles('.gitmodules', 'engine/SConstruct') }}-
+            scons-${{ matrix.platform }}-
+
+      - name: Build GDExtension (template_release)
+        run: scons -C engine platform=${{ matrix.platform }} target=template_release
+
+      - name: Upload native payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: |
+            game/bin/lib*
+            game/bin/worldcore.gdextension
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # 2. Export every desktop platform from a single Linux runner (Godot
+  #    cross-exports fine once each platform's native lib is present in
+  #    game/bin/). Publishes the zips to the GitHub Release for the tag.
+  # ---------------------------------------------------------------------------
   export:
     name: Export & publish release builds
+    needs: native
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
+
+      - name: Download native engine payloads
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: game/bin
+
+      - name: Verify native libs are present
+        run: |
+          echo "Contents of game/bin/ after collecting native payloads:"
+          ls -lR game/bin
+          test -f game/bin/worldcore.gdextension
+          # One library per desktop platform must be present, or shipped builds
+          # would silently lose the native engine layer (the whole point).
+          test -n "$(find game/bin -name 'libworldcore.linux.template_release*' -print -quit)"
+          test -n "$(find game/bin -name 'libworldcore.windows.template_release*' -print -quit)"
+          test -d "$(find game/bin -type d -name 'libworldcore.macos.template_release.framework' -print -quit)"
 
       - name: Cache Godot
         id: cache-godot
@@ -53,8 +134,12 @@ jobs:
           mv /tmp/templates/templates \
             ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
 
-      - name: Headless import
-        run: ~/godot-bin/godot --headless --path game --import
+      - name: Headless import (with native module present)
+        run: |
+          # First import after a native build can crash at exit in the editor's
+          # doc generator (import completes; upstream bug, see engine/README.md).
+          ~/godot-bin/godot --headless --path game --import || echo "first import exited $? (known doc-gen crash, retrying)"
+          ~/godot-bin/godot --headless --path game --import
 
       - name: Export Linux (x86_64)
         run: |

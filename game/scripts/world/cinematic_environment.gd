@@ -11,6 +11,17 @@ extends RefCounted
 ## keeping its own day/night sky — which is what live world scenes use so the
 ## SkyController/DayNight horizon tinting keeps working. Pure + unit-tested in
 ## tests/unit/test_cinematic_environment.gd.
+##
+## `apply_quality(env, tier)` is the perf-gated variant the *gameplay* scene
+## uses: the near-free grade (ACES + sky ambient + bloom + aerial fog) is always
+## on so the scene never looks flat, while the costly passes layer in by tier —
+## SSAO/SSR at MEDIUM, SSIL + volumetric fog at HIGH, SDFGI at ULTRA. This is the
+## clean hook the LOOP_HANDOFF lighting note asked for: the premium look reaches
+## the player without forcing the 120→54 FPS GI hit on every GPU.
+
+## GPU-budget tiers, cheapest → richest. Each tier is a superset of the one
+## below it (see apply_quality). Ordering matters — code compares with `>=`.
+enum Quality { LOW, MEDIUM, HIGH, ULTRA }
 
 
 ## Apply the premium grade/AO/reflections/bloom/fog to an existing Environment,
@@ -103,3 +114,93 @@ static func _premium_sky() -> ProceduralSkyMaterial:
 	m.sun_angle_max = 12.0
 	m.sun_curve = 0.08
 	return m
+
+
+## Perf-gated grade for the live gameplay scene. Always applies the near-free
+## look (sky-sourced ambient/reflections, ACES tonemap, bloom, cinematic grade,
+## light aerial fog) so the scene never reads flat; then layers the costly
+## screen-space / GI passes by `tier`. Preserves the env's own sky/background.
+## Idempotent — the tier-gated heavies are reset first, so re-applying with a
+## lower tier turns them back off. Returns the same env for chaining.
+static func apply_quality(env: Environment, tier: int = Quality.MEDIUM) -> Environment:
+	if env == null:
+		env = Environment.new()
+
+	# --- always-on, ~free: image-based ambient + filmic grade + bloom --------
+	if env.background_mode == Environment.BG_CLEAR_COLOR:
+		env.background_mode = Environment.BG_SKY
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 1.0
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_white = 6.0
+	env.tonemap_exposure = 1.0
+	env.glow_enabled = true
+	env.glow_intensity = 0.7
+	env.glow_bloom = 0.12
+	env.glow_hdr_threshold = 1.1
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.08
+	env.adjustment_saturation = 1.14
+	env.adjustment_brightness = 1.01
+	# Light exponential fog reads as aerial-perspective depth; effectively free.
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL
+	env.fog_light_color = Color(0.74, 0.79, 0.86)
+	env.fog_density = 0.0008
+	env.fog_sky_affect = 0.2
+	env.fog_aerial_perspective = 0.5
+
+	# Reset the tier-gated heavies so apply_quality is idempotent across tiers.
+	env.ssao_enabled = false
+	env.ssil_enabled = false
+	env.ssr_enabled = false
+	env.volumetric_fog_enabled = false
+	env.sdfgi_enabled = false
+
+	# --- MEDIUM+: screen-space contact AO + reflections ---------------------
+	if tier >= Quality.MEDIUM:
+		env.ssao_enabled = true
+		env.ssao_radius = 3.0
+		env.ssao_intensity = 2.2
+		env.ssao_power = 1.5
+		env.ssr_enabled = true
+		env.ssr_max_steps = 48
+		env.ssr_fade_in = 0.15
+		env.ssr_fade_out = 2.0
+		env.ssr_depth_tolerance = 0.2
+
+	# --- HIGH+: indirect light bounce (SSIL) + volumetric atmosphere --------
+	if tier >= Quality.HIGH:
+		env.ssil_enabled = true
+		env.volumetric_fog_enabled = true
+		env.volumetric_fog_density = 0.002
+		env.volumetric_fog_albedo = Color(0.82, 0.86, 0.92)
+
+	# --- ULTRA: real-time global illumination (SDFGI) ----------------------
+	if tier >= Quality.ULTRA:
+		env.sdfgi_enabled = true
+		env.sdfgi_bounce_feedback = 0.5
+
+	return env
+
+
+## Resolve the active quality tier. `$GTA_QUALITY` (low|medium|high|ultra) wins
+## for quick per-launch overrides; otherwise the optional project setting
+## `rendering/quality_tier` (int 0–3); otherwise MEDIUM — the safe default that
+## ships SSAO/SSR but holds back the GI pair that tanks FPS on weaker GPUs.
+static func resolved_tier() -> int:
+	match OS.get_environment("GTA_QUALITY").strip_edges().to_lower():
+		"low":
+			return Quality.LOW
+		"medium":
+			return Quality.MEDIUM
+		"high":
+			return Quality.HIGH
+		"ultra":
+			return Quality.ULTRA
+	if ProjectSettings.has_setting("rendering/quality_tier"):
+		return clampi(
+			int(ProjectSettings.get_setting("rendering/quality_tier")), Quality.LOW, Quality.ULTRA
+		)
+	return Quality.MEDIUM

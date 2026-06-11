@@ -5,6 +5,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "native_bench/native_bench.h"
+#include "worldcore/tile_streamer.h"
 #include "worldcore/worldcore.h"
 
 using namespace godot;
@@ -16,6 +17,7 @@ void initialize_worldcore_module(ModuleInitializationLevel p_level) {
     // Register one line per module class here.
     ClassDB::register_class<WorldCore>();
     ClassDB::register_class<NativeBench>();
+    ClassDB::register_class<TileStreamer>();
 }
 
 void uninitialize_worldcore_module(ModuleInitializationLevel p_level) {

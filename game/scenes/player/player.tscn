@@ -1,10 +1,11 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="2_camera"]
 [ext_resource type="Script" path="res://scripts/player/character_animator.gd" id="3_anim"]
 [ext_resource type="Script" path="res://scripts/player/humanoid_body.gd" id="4_body"]
 [ext_resource type="Script" path="res://scripts/weapons/weapon_controller.gd" id="5_weapon"]
+[ext_resource type="PackedScene" path="res://assets/characters/char_textured.glb" id="6_mara_mesh"]
 
 [sub_resource type="StandardMaterial3D" id="shirt_mat"]
 albedo_color = Color(0.25, 0.45, 0.8, 1)
@@ -82,6 +83,9 @@ script = ExtResource("3_anim")
 [node name="Body" type="Node3D" parent="Rig"]
 script = ExtResource("4_body")
 use_mara_hero_profile = true
+imported_mara_scene = ExtResource("6_mara_mesh")
+hide_procedural_when_imported = true
+switch_imported_mara_by_camera = true
 
 [node name="Hips" type="Node3D" parent="Rig"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.92, 0)

@@ -110,6 +110,25 @@ func test_vertical_bob_double_frequency() -> bool:
 	return is_equal_approx(first, second) and first < 0.0
 
 
+func test_secondary_body_motion_tracks_stride_side() -> bool:
+	var left := Locomotion.lateral_sway(PI / 2.0, 0.03)
+	var right := Locomotion.lateral_sway(3.0 * PI / 2.0, 0.03)
+	var phase := PI / 2.0
+	return (
+		left > 0.0
+		and right < 0.0
+		and is_equal_approx(left, -right)
+		and Locomotion.pelvis_roll(phase, 0.05) < 0.0
+		and Locomotion.shoulder_counter_roll(phase, 0.04) > 0.0
+		and Locomotion.torso_twist(phase, 0.05) < 0.0
+		and is_equal_approx(
+			Locomotion.torso_twist(phase, 0.05), -Locomotion.torso_twist(phase + PI, 0.05)
+		)
+		and Locomotion.head_step_pitch(phase, 0.02) < 0.0
+		and Locomotion.head_counter_roll(phase, 0.03) < 0.0
+	)
+
+
 func test_lean_forward_on_acceleration() -> bool:
 	return Locomotion.lean_angle(30.0, 30.0, 0.25) > 0.0
 

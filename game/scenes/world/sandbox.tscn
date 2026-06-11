@@ -1,20 +1,13 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/car.tscn" id="3_car"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/bike.tscn" id="4_bike"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/boat.tscn" id="5_boat"]
-
-[sub_resource type="StandardMaterial3D" id="water_mat"]
-transparency = 1
-albedo_color = Color(0.1, 0.3, 0.5, 0.65)
-roughness = 0.1
-metallic = 0.2
-
-[sub_resource type="PlaneMesh" id="water_mesh"]
-material = SubResource("water_mat")
-size = Vector2(50, 50)
+[ext_resource type="Script" path="res://scripts/world/world_quality.gd" id="6_quality"]
+[ext_resource type="Script" path="res://scripts/world/ocean.gd" id="7_ocean"]
+[ext_resource type="Shader" path="res://shaders/ground.gdshader" id="8_ground"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_horizon_color = Color(0.66, 0.67, 0.69, 1)
@@ -28,9 +21,8 @@ background_mode = 2
 sky = SubResource("sky")
 tonemap_mode = 2
 
-[sub_resource type="StandardMaterial3D" id="ground_mat"]
-albedo_color = Color(0.36, 0.42, 0.31, 1)
-roughness = 1.0
+[sub_resource type="ShaderMaterial" id="ground_mat"]
+shader = ExtResource("8_ground")
 
 [sub_resource type="PlaneMesh" id="ground_mesh"]
 material = SubResource("ground_mat")
@@ -61,6 +53,7 @@ size = Vector3(6, 1, 6)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("env")
+script = ExtResource("6_quality")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866025, 0.383022, -0.321394, 0, 0.642788, 0.766044, 0.5, -0.663414, 0.55667, 0, 20, 0)
@@ -103,9 +96,15 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.6, 5)
 [node name="Bike" parent="." instance=ExtResource("4_bike")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.6, 5)
 
-[node name="Pond" type="MeshInstance3D" parent="."]
+[node name="Pond" type="MeshInstance3D" parent="." groups=["water"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0.5, 45)
-mesh = SubResource("water_mesh")
+script = ExtResource("7_ocean")
+size_m = 80.0
+resolution = 96
+amplitude_scale = 0.18
+wave_speed = 0.7
+absorption_per_m = 0.5
+edge_fade_m = 0.5
 
 [node name="Boat" parent="." instance=ExtResource("5_boat")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0.6, 45)

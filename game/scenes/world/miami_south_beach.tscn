@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 ; South Beach, Miami — Vice City heart. Now on the physical sky + SkyController
 ; day/night cycle (sun, ambient, world_night_amount window-glow + streetlights all
@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/world/district_loader.gd" id="3_loader"]
 [ext_resource type="Shader" path="res://assets/shaders/sky.gdshader" id="4_sky"]
 [ext_resource type="Script" path="res://scripts/world/sky_controller.gd" id="5_daynight"]
+[ext_resource type="Script" path="res://scripts/world/ocean.gd" id="6_ocean"]
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("4_sky")
@@ -88,6 +89,16 @@ day_length_seconds = 1200.0
 [node name="District" type="Node3D" parent="."]
 script = ExtResource("3_loader")
 district_path = "res://assets/world/south_beach.json"
+
+[node name="Ocean" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6140, -0.4, -1340)
+script = ExtResource("6_ocean")
+size_m = 12000.0
+resolution = 240
+amplitude_scale = 1.1
+shallow_color = Color(0.1, 0.66, 0.66, 1)
+deep_color = Color(0.0, 0.18, 0.38, 1)
+foam_strength = 1.0
 
 [node name="SpawnPoint" type="Marker3D" parent="." groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)

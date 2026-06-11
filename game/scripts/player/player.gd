@@ -147,7 +147,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var input_dir := _move_input()
-	var direction := PlayerMotion.direction_from_input(input_dir, _camera_rig.global_rotation.y)
+	var direction := PlayerMotion.direction_from_input(input_dir, _camera_rig.gameplay_yaw())
 
 	if _is_on_ladder() and (input_dir.y < 0.0 or not is_on_floor()):
 		velocity = PlayerMotion.climb_velocity(input_dir, direction, climb_speed)
@@ -211,7 +211,7 @@ func _update_swimming(delta: float) -> bool:
 	if not _swimming:
 		return false
 
-	var direction := PlayerMotion.direction_from_input(_move_input(), _camera_rig.global_rotation.y)
+	var direction := PlayerMotion.direction_from_input(_move_input(), _camera_rig.gameplay_yaw())
 	var axis := SwimMotion.vertical_axis(
 		Input.is_action_pressed("jump"), Input.is_action_pressed("dive")
 	)

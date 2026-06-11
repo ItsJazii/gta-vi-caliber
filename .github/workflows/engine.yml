@@ -67,6 +67,11 @@ jobs:
       - name: Build GDExtension (template_debug)
         run: scons -C engine platform=${{ matrix.platform }} target=template_debug
 
+      # Also build the release target so the path that ships in release.yml is
+      # validated on every PR — not discovered broken at tag time.
+      - name: Build GDExtension (template_release)
+        run: scons -C engine platform=${{ matrix.platform }} target=template_release
+
       - name: Build & run C++ unit tests
         run: |
           scons -C engine tests
