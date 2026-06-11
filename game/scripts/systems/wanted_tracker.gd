@@ -35,6 +35,11 @@ func _on_crime(killed: bool) -> void:
 	_refresh()
 
 
+## Report a crime from a non-gun source (melee, vehicular, ...).
+func report_crime(killed: bool) -> void:
+	_on_crime(killed)
+
+
 func _process(delta: float) -> void:
 	_wanted.tick(delta, false)
 	_refresh()

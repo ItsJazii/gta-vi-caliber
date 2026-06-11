@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/systems/player_health.gd" id="9_health"]
 [ext_resource type="Script" path="res://scripts/missions/mission_director.gd" id="10_mission"]
 [ext_resource type="Script" path="res://scripts/systems/save_manager.gd" id="11_save"]
+[ext_resource type="Script" path="res://scripts/combat/melee_controller.gd" id="12_melee"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_horizon_color = Color(0.66, 0.67, 0.69, 1)
@@ -382,6 +383,9 @@ script = ExtResource("10_mission")
 
 [node name="SaveManager" type="Node" parent="."]
 script = ExtResource("11_save")
+
+[node name="MeleeController" type="Node" parent="."]
+script = ExtResource("12_melee")
 
 [node name="Police" type="Node3D" parent="."]
 
