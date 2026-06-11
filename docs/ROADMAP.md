@@ -61,7 +61,15 @@ Goal: one city district that feels inhabited.
 
 - [ ] Blockout of a coastal district: streets, sidewalks, shore, 30+ building footprints
 - [ ] Road network graph + traffic system (**`engine/` candidate after profiling**)
+  - landed: `ai/nav_grid.gd` A* grid (tested) + `ai/traffic_*` streaming kinematic
+    cars that route on a world-baked navmesh and car-follow (queue, don't overlap).
+    Still TODO: a true OSM road-graph (cars currently route a baked walkability grid).
 - [ ] Pedestrian crowds: navmesh flows, reactions (flee/gawk), spawn/despawn invisible to player
+  - landed: `npc/crowd_director.gd` streams palette/stature/gait-varied premium
+    humans, spawn/despawn around the player, ground-snapped, kept out of buildings
+    via the baked navmesh. Reactions (flee) in `Pedestrian`. TODO: route peds
+    *through* `NavGrid.find_path` (now that buildings are solid) instead of straight
+    wander; gawk reaction. Demo: `scenes/world/living_city.tscn` (crowd + traffic).
 - [ ] Time-of-day cycle driving sun, streetlights, building windows
 - [ ] Weather fronts: clear → overcast → rain, wet-surface materials
 - [x] Ocean v1: Gerstner/FFT water with shoreline blend (**`engine/` candidate**)
