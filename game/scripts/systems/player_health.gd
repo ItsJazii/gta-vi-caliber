@@ -37,7 +37,9 @@ func _process(delta: float) -> void:
 
 
 ## Duck-typed damage entry point for any attacker.
-func take_damage(amount: float, _point: Vector3 = Vector3.ZERO, _normal: Vector3 = Vector3.ZERO) -> void:
+func take_damage(
+	amount: float, _point: Vector3 = Vector3.ZERO, _normal: Vector3 = Vector3.ZERO
+) -> void:
 	if _dead:
 		return
 	if _model.apply(amount):

@@ -31,7 +31,7 @@ func _draw() -> void:
 	if show_dot:
 		draw_circle(c, 1.3, color)
 	if hit_flash > 0.0:
-		var marker := (kill_color if hit_kill else Color(1, 1, 1))
+		var marker := kill_color if hit_kill else Color(1, 1, 1)
 		marker.a = clampf(hit_flash, 0.0, 1.0)
 		for d in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
 			draw_line(c + d * 4.0, c + d * 11.0, marker, thickness)
