@@ -20,6 +20,21 @@ signal footstep(surface: String, is_left: bool)
 @export var coyote_time: float = 0.12
 @export var jump_buffer_time: float = 0.12
 @export var climb_speed: float = 3.0
+## Swimming. Horizontal paddle speed, vertical stroke speed (surface/dive keys),
+## and how briskly velocity eases toward the target through the water's drag.
+@export var swim_speed: float = 4.0
+@export var swim_vertical_speed: float = 3.0
+@export var swim_acceleration: float = 12.0
+## Submersion fractions (of body height) for the swim hysteresis: start
+## swimming once chest-deep, keep swimming until back down to wading depth.
+@export_range(0.0, 1.0) var swim_enter_fraction: float = 0.6
+@export_range(0.0, 1.0) var swim_exit_fraction: float = 0.45
+## Where the body floats at rest, and how hard/fast buoyancy corrects toward it.
+@export_range(0.0, 1.0) var swim_neutral_fraction: float = 0.62
+@export var buoyancy_strength: float = 6.0
+@export var buoyancy_max_speed: float = 1.5
+## Body height (m) used for submersion; matches the collision capsule.
+@export var body_height: float = 1.8
 ## How close (m) a vehicle must be for the interact key to enter it.
 @export var enter_vehicle_range: float = 3.5
 ## Gamepad left-stick conditioning for analog walking, merged with the keyboard
@@ -30,6 +45,11 @@ signal footstep(surface: String, is_left: bool)
 ## stretches between them with speed so a sprint doesn't machine-gun steps.
 @export var walk_stride: float = 1.4
 @export var run_stride: float = 2.2
+## Landing camera shake: downward speed (m/s) at touchdown below which nothing
+## registers, the speed mapped to a full jolt, and that jolt's peak trauma.
+@export var land_shake_min_speed: float = 4.5
+@export var land_shake_max_speed: float = 16.0
+@export_range(0.0, 1.0) var land_shake_max_trauma: float = 0.5
 
 var _time_since_grounded: float = 0.0
 var _time_since_jump_pressed: float = 1.0
@@ -37,6 +57,9 @@ var _jump_spent: bool = false
 var _vehicle: Node3D = null
 var _stride_accum: float = 0.0
 var _step_is_left: bool = false
+var _swimming: bool = false
+var _phone_ui: Phone = null
+var _was_on_floor: bool = true
 
 @onready var _camera_rig: OrbitCamera = $CameraRig
 @onready var _rig: CharacterAnimator = $Rig
@@ -49,13 +72,52 @@ func _ready() -> void:
 	var footstep_audio := FootstepAudio.new()
 	add_child(footstep_audio)
 	footstep.connect(footstep_audio.on_footstep)
+	# The phone (UI + its own input + holding pose) is likewise code-spawned so
+	# the feature is self-contained and doesn't touch player.tscn.
+	_phone_ui = Phone.new()
+	add_child(_phone_ui)
+	_phone_ui.active_changed.connect(_on_phone_active)
+	_phone_ui.friend_called.connect(_on_friend_called)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_toggle_mouse_capture()
-	elif event.is_action_pressed("interact"):
+	elif event.is_action_pressed("interact") and not _on_phone():
 		_toggle_vehicle()
+
+
+## True while the phone is raised — gates sprint and vehicle entry so the player
+## is committed to a one-handed walking pose while scrolling or on a call.
+func _on_phone() -> bool:
+	return _phone_ui != null and _phone_ui.is_active()
+
+
+# Mirror the raised/pocketed phone onto the rig's one-handed holding pose.
+func _on_phone_active(active: bool) -> void:
+	_rig.set_phone(active)
+
+
+# A call connected: if a pedestrian is nearby, they "answer" — stop and raise
+# their own phone to an ear — so calling a friend you can see reads in-world.
+func _on_friend_called(_friend_name: String) -> void:
+	var ped := _nearest_pedestrian(30.0)
+	if ped != null and ped.has_method("greet"):
+		ped.greet(6.0)
+
+
+func _nearest_pedestrian(max_range: float) -> Node3D:
+	var best: Node3D = null
+	var best_distance := max_range
+	for node in get_tree().get_nodes_in_group("pedestrians"):
+		var ped := node as Node3D
+		if ped == null:
+			continue
+		var distance := global_position.distance_to(ped.global_position)
+		if distance <= best_distance:
+			best = ped
+			best_distance = distance
+	return best
 
 
 func _physics_process(delta: float) -> void:
@@ -64,11 +126,10 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_update_jump_timers(delta)
-	var keys := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	var stick := Vector2(
-		Input.get_joy_axis(0, JOY_AXIS_LEFT_X), Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)
-	)
-	var input_dir := StickInput.movement(keys, stick, move_stick_deadzone, move_stick_exponent)
+	if _update_swimming(delta):
+		return
+
+	var input_dir := _move_input()
 	var direction := PlayerMotion.direction_from_input(input_dir, _camera_rig.global_rotation.y)
 
 	if _is_on_ladder() and (input_dir.y < 0.0 or not is_on_floor()):
@@ -86,15 +147,69 @@ func _physics_process(delta: float) -> void:
 		_jump_spent = true
 		_time_since_jump_pressed = jump_buffer_time + 1.0
 
-	var speed := sprint_speed if Input.is_action_pressed("sprint") else walk_speed
+	var sprinting := Input.is_action_pressed("sprint") and not _on_phone()
+	var speed := sprint_speed if sprinting else walk_speed
 	var target := PlayerMotion.horizontal_velocity(direction, speed)
 	var rate := PlayerMotion.acceleration_rate(
 		not input_dir.is_zero_approx(), is_on_floor(), acceleration, deceleration, air_control
 	)
 	velocity = PlayerMotion.accelerated(velocity, target, rate, delta)
+	var impact_speed := maxf(-velocity.y, 0.0)
 	move_and_slide()
 	_drive_rig(delta, false)
 	_update_footsteps(delta)
+	_update_landing(impact_speed)
+
+
+## This frame's merged move vector: keyboard WASD combined with the conditioned
+## left stick (the harder-pushed source wins). Shared by walking and swimming.
+func _move_input() -> Vector2:
+	var keys := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var stick := Vector2(
+		Input.get_joy_axis(0, JOY_AXIS_LEFT_X), Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)
+	)
+	return StickInput.movement(keys, stick, move_stick_deadzone, move_stick_exponent)
+
+
+## Swim when chest-deep in any "water" volume. Returns true once it has taken
+## over movement for the frame (so _physics_process skips the walk path). Pure
+## submersion / hysteresis / stroke math lives in SwimMotion; this just samples
+## the water surface by overlap and applies the result. Surface = jump, dive =
+## the dive action; with no vertical key the body bobs at the waterline.
+func _update_swimming(delta: float) -> bool:
+	var water := _current_water()
+	if water == null:
+		_swimming = false
+		return false
+
+	var fraction := SwimMotion.submersion(global_position.y, water.surface_y(), body_height)
+	_swimming = SwimMotion.is_swimming(fraction, _swimming, swim_enter_fraction, swim_exit_fraction)
+	if not _swimming:
+		return false
+
+	var direction := PlayerMotion.direction_from_input(_move_input(), _camera_rig.global_rotation.y)
+	var axis := SwimMotion.vertical_axis(
+		Input.is_action_pressed("jump"), Input.is_action_pressed("dive")
+	)
+	var target := SwimMotion.target_velocity(direction, swim_speed, axis, swim_vertical_speed)
+	if is_zero_approx(axis):
+		target.y = SwimMotion.buoyancy(
+			fraction, swim_neutral_fraction, buoyancy_strength, buoyancy_max_speed
+		)
+	velocity = velocity.move_toward(target, swim_acceleration * delta)
+	move_and_slide()
+	_drive_rig(delta, false)
+	return true
+
+
+## The water volume the body is currently inside, if any — Area3D nodes in group
+## "water" (WaterVolume), found by overlap like ladders. First match wins.
+func _current_water() -> WaterVolume:
+	for node in get_tree().get_nodes_in_group("water"):
+		var water := node as WaterVolume
+		if water != null and water.overlaps_body(self):
+			return water
+	return null
 
 
 ## Feed the procedural animator this frame's motion. Called after move_and_slide
@@ -102,6 +217,19 @@ func _physics_process(delta: float) -> void:
 func _drive_rig(delta: float, is_climbing: bool) -> void:
 	var planar := Vector3(velocity.x, 0.0, velocity.z)
 	_rig.animate(planar, is_on_floor(), velocity.y, is_climbing, delta)
+
+
+## On the frame the player touches down after being airborne, jolt the camera by
+## the landing speed — a soft step-off registers nothing, a long fall thumps.
+func _update_landing(impact_speed: float) -> void:
+	var grounded := is_on_floor()
+	if grounded and not _was_on_floor:
+		var trauma := CameraShake.trauma_from_impact(
+			impact_speed, land_shake_min_speed, land_shake_max_speed, land_shake_max_trauma
+		)
+		if trauma > 0.0:
+			_camera_rig.add_shake(trauma)
+	_was_on_floor = grounded
 
 
 ## Bank ground distance and emit `footstep` each time a full stride is covered,

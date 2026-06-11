@@ -25,6 +25,17 @@ static func shake_amount(trauma: float, exponent: float) -> float:
 	return pow(clampf(trauma, 0.0, 1.0), maxf(exponent, 1.0))
 
 
+## Map an impact speed (m/s) — a landing, a collision — to trauma: silent at or
+## below min_speed, ramping linearly to max_trauma at max_speed. A gentle step
+## down stays calm while a long fall jolts the view.
+static func trauma_from_impact(
+	speed: float, min_speed: float, max_speed: float, max_trauma: float
+) -> float:
+	if speed <= min_speed or max_speed <= min_speed:
+		return 0.0
+	return clampf((speed - min_speed) / (max_speed - min_speed), 0.0, 1.0) * max_trauma
+
+
 ## Angular shake offset (radians) for the camera. Each axis is its own max angle
 ## times the shake magnitude times that axis's noise sample in [-1, 1] — pass
 ## decorrelated noise so pitch/yaw/roll don't move in lockstep.
