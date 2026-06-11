@@ -57,9 +57,12 @@ inline std::vector<TileCoord> desired_tiles(
     const bool moving = speed > 1e-6;
     const double dir_x = moving ? vel_x / speed : 0.0;
     const double dir_z = moving ? vel_z / speed : 0.0;
-    // Clamp the direction weight below 1 so the velocity term can only *discount*
-    // a tile's distance, never invert the ordering — the tile under the camera
-    // (distance 0) must always score lowest and load first.
+    // Clamp the direction weight below 1 so the velocity term only *discounts* a
+    // tile's distance (factor in [1-b, 1+b], always > 0). This guarantees the one
+    // invariant that matters: the tile under the camera (distance 0, score 0)
+    // always sorts first. It deliberately does NOT keep the rest nearest-first —
+    // among non-home tiles a farther tile ahead can outrank a nearer tile behind,
+    // which is the whole point of travel-direction streaming.
     const double b = bias < 0.0 ? 0.0 : (bias > 0.95 ? 0.95 : bias);
 
     for (int dz = -reach; dz <= reach; ++dz) {
@@ -73,9 +76,9 @@ inline std::vector<TileCoord> desired_tiles(
             if (dist > load_radius) {
                 continue;
             }
-            // fdot = +1 directly ahead, -1 directly behind. Discount distance by
-            // up to ±b·dist so ahead-tiles sort earlier without ever beating a
-            // strictly-closer tile.
+            // fdot = +1 directly ahead, -1 directly behind. Scales distance by
+            // (1 - b·fdot) so ahead-tiles sort earlier; a far-ahead tile may beat
+            // a nearer-behind one (intended), but no tile beats the dist-0 home.
             const double fdot = (dist > 1e-6) ? (ox * dir_x + oz * dir_z) / dist : 0.0;
             const double score = moving ? dist * (1.0 - b * fdot) : dist;
             scored.push_back(Scored{t, score});
