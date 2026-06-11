@@ -12,6 +12,7 @@ const DRIVE_FRAMES := 240
 var _frame := 0
 var _phase := "boot"
 var _start_pos := Vector3.ZERO
+var _absolute_target := Vector3.ZERO
 var _idle_engine_pitch := 0.0
 var _failures: PackedStringArray = []
 
@@ -37,8 +38,61 @@ func _process(_delta: float) -> bool:
 		"district_load":
 			if _frame >= 120:
 				_shot("district_downtown")
+				_begin_origin_test()
+		"origin_shift":
+			if _frame >= 10:
+				_check_origin_shift()
 				return _finish()
 	return _phase == "done"
+
+
+## Stride the player 5 km out and let FloatingOrigin pull the world back.
+## The player crosses 5 km of world on purpose; what must NOT change is the
+## relationship between world objects (sun vs ground), and the reconstructed
+## absolute position must reflect the full 5 km.
+func _begin_origin_test() -> void:
+	var player := _player()
+	var sun := current_scene.get_node_or_null("Sun") as Node3D
+	var ground := current_scene.get_node_or_null("Ground") as Node3D
+	if player == null or sun == null or ground == null:
+		_failures.append("origin test: missing player/Sun/Ground reference nodes")
+		_finish()
+		return
+	_start_pos = sun.global_position - ground.global_position
+	_absolute_target = player.global_position + Vector3(5000.0, 0.0, 0.0)
+	player.global_position = _absolute_target
+	_next("origin_shift")
+
+
+func _check_origin_shift() -> void:
+	var player := _player()
+	var sun := current_scene.get_node_or_null("Sun") as Node3D
+	var ground := current_scene.get_node_or_null("Ground") as Node3D
+	var origin := current_scene.get_node_or_null("FloatingOrigin")
+	var planar := Vector3(player.global_position.x, 0.0, player.global_position.z)
+	var world_drift := (sun.global_position - ground.global_position - _start_pos).length()
+	print(
+		(
+			"playtest: after 5 km teleport player sits %.0f m from origin, world drift %.2f m"
+			% [planar.length(), world_drift]
+		)
+	)
+	if planar.length() > 4900.0:
+		_failures.append(
+			"floating origin never shifted (player still %.0f m out)" % planar.length()
+		)
+	if world_drift > 0.01:
+		_failures.append("world geometry tore apart during shift (%.2f m)" % world_drift)
+	if origin != null:
+		var offset: Vector3 = origin.origin_offset
+		var absolute := OriginMath.to_absolute(player.global_position, offset)
+		if absolute.distance_to(_absolute_target) > 1.0:
+			_failures.append(
+				(
+					"absolute position lost: reconstructed %v, expected %v"
+					% [absolute, _absolute_target]
+				)
+			)
 
 
 func _phase_boot() -> void:

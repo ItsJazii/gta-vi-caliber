@@ -51,7 +51,7 @@ Goal: walk or drive 4 km in any direction with no loading screen.
 - [ ] World partitioned into tiles with seam-free LOD terrain
 - [ ] **`engine/`: async tile streamer GDExtension** (load/unload around camera, priority by velocity vector)
 - [ ] **`engine/`: runtime impostor baker** for distant buildings
-- [ ] Floating-origin shift to dodge float precision at distance
+- [x] Floating-origin shift to dodge float precision at distance
 - [ ] Streaming debug HUD (tiles resident, VRAM, frame budget)
 - [ ] Benchmark scene + captured profile checked into `docs/profiles/`
 
