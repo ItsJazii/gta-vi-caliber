@@ -25,6 +25,21 @@ static func steer_limit(speed: float, max_steer: float, falloff_speed: float) ->
 	return max_steer / (1.0 + maxf(speed, 0.0) / maxf(falloff_speed, 0.001))
 
 
+## Steering angle above which a corner would lift the inside wheels: the
+## rollover threshold. Lateral acceleration in a steady corner is
+## v²·tan(steer)/wheelbase; the chassis starts to roll over once that exceeds
+## g·(track/2)/cg_height. Solving for the steer angle (with a safety margin
+## <1 applied to the threshold) gives the largest angle that keeps the
+## vehicle on all wheels at this speed. Unconstrained at low speed.
+static func rollover_steer_limit(
+	speed: float, track: float, cg_height: float, wheelbase: float, margin: float
+) -> float:
+	if speed < 0.001 or cg_height < 0.001:
+		return TAU
+	var max_lateral_accel := 9.81 * (track * 0.5) / cg_height * margin
+	return atan(max_lateral_accel * wheelbase / (speed * speed))
+
+
 ## Target steering angle for an input, respecting the speed-sensitive limit.
 static func steer_target(
 	input: float, speed: float, max_steer: float, falloff_speed: float

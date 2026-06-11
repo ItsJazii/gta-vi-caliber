@@ -61,6 +61,12 @@ const GRAVITY: float = 9.81
 ## the rear under acceleration. A low CG over a long wheelbase transfers least.
 @export var cg_height: float = 0.5
 @export var wheelbase: float = 2.9
+## Distance (m) between left and right wheels; with cg_height it sets the
+## cornering force that would lift the inside wheels.
+@export var track_width: float = 1.7
+## Fraction of the theoretical rollover threshold steering may use. Below 1
+## leaves lateral grip headroom so hard swerves slide instead of flipping.
+@export_range(0.1, 1.0) var rollover_margin: float = 0.8
 
 var health: float = 100.0
 var gear: int = 1
@@ -139,6 +145,10 @@ func _drive(delta: float) -> void:
 	engine_force = force * VehicleDamage.engine_multiplier(health, max_health, limp_floor)
 
 	var target := VehicleMotion.steer_target(steer_input, speed, max_steer, steer_falloff_speed)
+	var safe_steer := VehicleMotion.rollover_steer_limit(
+		speed, track_width, cg_height, wheelbase, rollover_margin
+	)
+	target = clampf(target, -safe_steer, safe_steer)
 	steering = move_toward(steering, target, steer_speed * delta)
 
 	if Input.is_action_pressed("jump"):
