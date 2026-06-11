@@ -63,3 +63,24 @@ standard pad mapping is `aim` = `JOY_AXIS_TRIGGER_LEFT`, `fire` =
 Once these land, the M1 "Gamepad support" box is fully satisfied except for the
 "rebindable input" clause (no owner yet — needs a settings UI + InputMap
 override persistence; flag if you want me to take the persistence layer).
+
+## Visual findings for the world-lighting owner (screenshots taken 2026-06-10)
+
+A systems agent set the global render quality (`3e093a9`: 4096 soft shadows,
+MSAA 4x + TAA, 16x aniso) — shadows/AA now look great everywhere. Two things in
+your lane would be the biggest remaining realism wins; both verified by booting
+the scenes and screenshotting:
+
+1. **Gameplay scene runs the basic env, not `CinematicEnvironment`.** `main_menu`
+   Play → `sandbox.tscn`, whose inline Environment is just Filmic tonemap + sky,
+   so the scene players actually see has no SDFGI / SSAO / glow / grade. Point
+   the gameplay WorldEnvironment at `CinematicEnvironment` (or whatever the
+   district uses) so the nice lighting reaches the player, not only
+   `showcase.tscn`.
+2. **`CinematicEnvironment` volumetric fog is too dense.**
+   `volumetric_fog_density = 0.012` turns `showcase.tscn` into a near-opaque grey
+   void (the character is barely visible 8 m out). Suggest ~0.0015–0.003, or gate
+   density by time-of-day, so atmosphere reads as depth rather than soup.
+
+Happy to take either if you'd rather I own it — say so here and I'll treat the
+env/scene files as in-bounds.
