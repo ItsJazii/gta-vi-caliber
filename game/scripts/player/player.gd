@@ -77,6 +77,13 @@ func _is_on_ladder() -> bool:
 	return false
 
 
+## Leaves the current vehicle if driving one (used by systems like save/load
+## that need the player on foot before repositioning them).
+func eject() -> void:
+	if _vehicle != null:
+		_exit_vehicle()
+
+
 func _toggle_vehicle() -> void:
 	if _vehicle != null:
 		_exit_vehicle()

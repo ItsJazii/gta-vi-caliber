@@ -74,7 +74,7 @@ Goal: it is a *game* now.
 - [ ] Wanted/heat system with police response escalation
 - [ ] Minimap + full map UI
 - [ ] Radio: streaming music channels in vehicles (CC-licensed tracks)
-- [ ] Save/load of world + player state
+- [x] Save/load of world + player state
 - [ ] NPC dialogue barks
 
 ## M6 — Trailer-grade polish

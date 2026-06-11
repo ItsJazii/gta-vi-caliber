@@ -1,9 +1,10 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/car.tscn" id="3_car"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/bike.tscn" id="4_bike"]
+[ext_resource type="Script" path="res://scripts/save/save_manager.gd" id="5_save"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_horizon_color = Color(0.66, 0.67, 0.69, 1)
@@ -96,3 +97,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.6, 5)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
 [node name="DebugHud" parent="." instance=ExtResource("2_hud")]
+
+[node name="SaveManager" type="Node" parent="."]
+script = ExtResource("5_save")
