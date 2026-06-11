@@ -1,0 +1,329 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_horizon_color = Color(0.66, 0.67, 0.69, 1)
+ground_horizon_color = Color(0.66, 0.67, 0.69, 1)
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="ground_mat"]
+albedo_color = Color(0.36, 0.42, 0.31, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="stair_mat"]
+albedo_color = Color(0.55, 0.55, 0.6, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="slope_mat"]
+albedo_color = Color(0.48, 0.52, 0.56, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="gap_mat"]
+albedo_color = Color(0.5, 0.5, 0.55, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="platform_mat"]
+albedo_color = Color(0.42, 0.45, 0.48, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="ladder_mat"]
+albedo_color = Color(0.66, 0.61, 0.5, 1)
+roughness = 0.8
+
+[sub_resource type="BoxShape3D" id="ladder_area_shape"]
+size = Vector3(1.4, 6.6, 1)
+
+[node name="MovementPlayground" type="Node3D" groups=["world"]]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.383022, -0.321394, 0, 0.642788, 0.766044, 0.5, -0.663414, 0.55667, 0, 20, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Ground" type="CSGBox3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(90, 1, 90)
+material = SubResource("ground_mat")
+
+[node name="Stairs" type="Node3D" parent="."]
+
+[node name="LowRiseStep01" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.075, -14)
+use_collision = true
+size = Vector3(3, 0.15, 0.6)
+material = SubResource("stair_mat")
+
+[node name="LowRiseStep02" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.15, -13.4)
+use_collision = true
+size = Vector3(3, 0.3, 0.6)
+material = SubResource("stair_mat")
+
+[node name="LowRiseStep03" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.225, -12.8)
+use_collision = true
+size = Vector3(3, 0.45, 0.6)
+material = SubResource("stair_mat")
+
+[node name="LowRiseStep04" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.3, -12.2)
+use_collision = true
+size = Vector3(3, 0.6, 0.6)
+material = SubResource("stair_mat")
+
+[node name="LowRiseStep05" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.375, -11.6)
+use_collision = true
+size = Vector3(3, 0.75, 0.6)
+material = SubResource("stair_mat")
+
+[node name="LowRiseStep06" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.45, -11)
+use_collision = true
+size = Vector3(3, 0.9, 0.6)
+material = SubResource("stair_mat")
+
+[node name="LowRiseLanding" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.45, -9.7)
+use_collision = true
+size = Vector3(3, 0.9, 2)
+material = SubResource("stair_mat")
+
+[node name="MediumRiseStep01" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.15, -14)
+use_collision = true
+size = Vector3(3, 0.3, 0.6)
+material = SubResource("stair_mat")
+
+[node name="MediumRiseStep02" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.3, -13.4)
+use_collision = true
+size = Vector3(3, 0.6, 0.6)
+material = SubResource("stair_mat")
+
+[node name="MediumRiseStep03" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.45, -12.8)
+use_collision = true
+size = Vector3(3, 0.9, 0.6)
+material = SubResource("stair_mat")
+
+[node name="MediumRiseStep04" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.6, -12.2)
+use_collision = true
+size = Vector3(3, 1.2, 0.6)
+material = SubResource("stair_mat")
+
+[node name="MediumRiseStep05" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.75, -11.6)
+use_collision = true
+size = Vector3(3, 1.5, 0.6)
+material = SubResource("stair_mat")
+
+[node name="MediumRiseLanding" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.75, -10.3)
+use_collision = true
+size = Vector3(3, 1.5, 2)
+material = SubResource("stair_mat")
+
+[node name="HighRiseStep01" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.225, -14)
+use_collision = true
+size = Vector3(3, 0.45, 0.6)
+material = SubResource("stair_mat")
+
+[node name="HighRiseStep02" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.45, -13.4)
+use_collision = true
+size = Vector3(3, 0.9, 0.6)
+material = SubResource("stair_mat")
+
+[node name="HighRiseStep03" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.675, -12.8)
+use_collision = true
+size = Vector3(3, 1.35, 0.6)
+material = SubResource("stair_mat")
+
+[node name="HighRiseStep04" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.9, -12.2)
+use_collision = true
+size = Vector3(3, 1.8, 0.6)
+material = SubResource("stair_mat")
+
+[node name="HighRiseLanding" type="CSGBox3D" parent="Stairs"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.9, -10.9)
+use_collision = true
+size = Vector3(3, 1.8, 2)
+material = SubResource("stair_mat")
+
+[node name="Slopes" type="Node3D" parent="."]
+
+[node name="Slope10Deg" type="CSGBox3D" parent="Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.984808, -0.173648, 0, 0.173648, 0.984808, 0, 0.842, 4)
+use_collision = true
+size = Vector3(3.5, 0.3, 8)
+material = SubResource("slope_mat")
+
+[node name="Slope20Deg" type="CSGBox3D" parent="Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.939693, -0.34202, 0, 0.34202, 0.939693, 6, 1.509, 4)
+use_collision = true
+size = Vector3(3.5, 0.3, 8)
+material = SubResource("slope_mat")
+
+[node name="Slope30Deg" type="CSGBox3D" parent="Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.866025, -0.5, 0, 0.5, 0.866025, 12, 2.13, 4)
+use_collision = true
+size = Vector3(3.5, 0.3, 8)
+material = SubResource("slope_mat")
+
+[node name="Slope45Deg" type="CSGBox3D" parent="Slopes"]
+transform = Transform3D(1, 0, 0, 0, 0.707107, -0.707107, 0, 0.707107, 0.707107, 18, 2.934, 4)
+use_collision = true
+size = Vector3(3.5, 0.3, 8)
+material = SubResource("slope_mat")
+
+[node name="JumpGaps" type="Node3D" parent="."]
+
+[node name="GapPad01" type="CSGBox3D" parent="JumpGaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.25, 8)
+use_collision = true
+size = Vector3(4, 0.5, 3)
+material = SubResource("gap_mat")
+
+[node name="GapPad02_1_5m" type="CSGBox3D" parent="JumpGaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.25, 12.5)
+use_collision = true
+size = Vector3(4, 0.5, 3)
+material = SubResource("gap_mat")
+
+[node name="GapPad03_2_5m" type="CSGBox3D" parent="JumpGaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.25, 18)
+use_collision = true
+size = Vector3(4, 0.5, 3)
+material = SubResource("gap_mat")
+
+[node name="GapPad04_3_5m" type="CSGBox3D" parent="JumpGaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.25, 24.5)
+use_collision = true
+size = Vector3(4, 0.5, 3)
+material = SubResource("gap_mat")
+
+[node name="GapPad05_4_5m" type="CSGBox3D" parent="JumpGaps"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.25, 32)
+use_collision = true
+size = Vector3(4, 0.5, 3)
+material = SubResource("gap_mat")
+
+[node name="HeightPlatforms" type="Node3D" parent="."]
+
+[node name="Platform1m" type="CSGBox3D" parent="HeightPlatforms"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.5, -18)
+use_collision = true
+size = Vector3(4, 1, 4)
+material = SubResource("platform_mat")
+
+[node name="Platform2_5m" type="CSGBox3D" parent="HeightPlatforms"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.25, -18)
+use_collision = true
+size = Vector3(4, 2.5, 4)
+material = SubResource("platform_mat")
+
+[node name="Platform4m" type="CSGBox3D" parent="HeightPlatforms"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 2, -18)
+use_collision = true
+size = Vector3(4, 4, 4)
+material = SubResource("platform_mat")
+
+[node name="Platform6m" type="CSGBox3D" parent="HeightPlatforms"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26, 3, -18)
+use_collision = true
+size = Vector3(4, 6, 4)
+material = SubResource("platform_mat")
+
+[node name="LadderTest" type="Node3D" parent="."]
+
+[node name="LadderWall" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 3, 4)
+use_collision = true
+size = Vector3(4, 6, 0.4)
+material = SubResource("platform_mat")
+
+[node name="LadderTopPlatform" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 6.25, 1.8)
+use_collision = true
+size = Vector3(4, 0.5, 4)
+material = SubResource("platform_mat")
+
+[node name="LeftRail" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.45, 3, 4.35)
+size = Vector3(0.12, 5.8, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="RightRail" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30.55, 3, 4.35)
+size = Vector3(0.12, 5.8, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung01" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0.7, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung02" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1.35, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung03" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 2, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung04" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 2.65, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung05" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 3.3, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung06" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 3.95, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung07" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 4.6, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="Rung08" type="CSGBox3D" parent="LadderTest"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 5.25, 4.4)
+size = Vector3(1.2, 0.08, 0.12)
+material = SubResource("ladder_mat")
+
+[node name="LadderArea" type="Area3D" parent="LadderTest" groups=["ladders"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 3.1, 4.8)
+collision_mask = 2
+
+[node name="LadderAreaCollision" type="CollisionShape3D" parent="LadderTest/LadderArea"]
+shape = SubResource("ladder_area_shape")
+
+[node name="SpawnPoint" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
