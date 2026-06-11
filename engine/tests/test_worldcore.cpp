@@ -323,6 +323,13 @@ static void test_idm_brakes_hard_on_overlap() {
     CHECK(a < 0.0);
 }
 
+static void test_idm_negative_param_stays_finite() {
+    using worldcore_traffic::car_following_accel;
+    // A negative brake param must not sqrt(negative) into NaN (Codex review).
+    double a = car_following_accel(20.0, 50.0, 0.0, 30.0, -1.5, 2.0, 2.0, 1.5);
+    CHECK(std::isfinite(a));
+}
+
 int main() {
     test_version_is_consistent();
     test_sum_of_squares();
@@ -353,6 +360,7 @@ int main() {
     test_idm_cruises_at_desired_speed();
     test_idm_brakes_for_close_slow_leader();
     test_idm_brakes_hard_on_overlap();
+    test_idm_negative_param_stays_finite();
     if (failures > 0) {
         std::fprintf(stderr, "engine tests: %d failure(s)\n", failures);
         return 1;

@@ -31,7 +31,11 @@ inline double car_following_accel(double speed, double gap, double leader_speed,
     // Interaction term: desired dynamic gap s* versus the actual gap.
     double interaction = 0.0;
     if (gap > 1e-6) {
-        const double brake_denom = 2.0 * std::sqrt(max_accel * comfort_decel);
+        // Guard the product before sqrt: a negative param (reachable only via a
+        // raw core call — the class setters reject negatives) would otherwise be
+        // sqrt(negative) = NaN (Codex review).
+        const double brake_product = max_accel * comfort_decel;
+        const double brake_denom = brake_product > 1e-12 ? 2.0 * std::sqrt(brake_product) : 0.0;
         const double approach = brake_denom > 1e-9 ? speed * (speed - leader_speed) / brake_denom : 0.0;
         const double s_star = min_gap + std::max(0.0, speed * time_headway + approach);
         const double ratio = s_star / gap;
