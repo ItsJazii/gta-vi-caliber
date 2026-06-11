@@ -39,6 +39,8 @@ const PITCH_MAX: float = 0.5
 @export var shake_decay: float = 1.4
 @export_range(1.0, 4.0) var shake_exponent: float = 2.0
 @export var shake_frequency: float = 18.0
+## Extra FOV (deg) widened at full trauma so a big shake also punches the view.
+@export var shake_fov_punch: float = 5.0
 ## Cinematic depth of field: geometry past dof_far_distance (easing over
 ## dof_far_transition) blurs gently so the eye reads depth and the distant city
 ## hazes off while the foreground stays sharp. Set dof_blur_amount to 0 to off.
@@ -113,6 +115,7 @@ func _physics_process(delta: float) -> void:
 	if _aiming:
 		target = aim_fov
 		smoothing = aim_smoothing
+	target += shake_fov_punch * CameraShake.shake_amount(_trauma, shake_exponent)
 	_camera.fov = CameraFeel.exp_smoothed(_camera.fov, target, smoothing, delta)
 
 	_apply_stick_look(delta)
