@@ -87,9 +87,6 @@ jobs:
       - name: Build (template_debug)
         working-directory: engine
         run: scons platform=${{ matrix.platform }} target=template_debug
-      - name: Install native manifest
-        if: matrix.platform == 'linux'
-        run: cp engine/gta_native.gdextension.example game/bin/gta_native.gdextension
       - name: Cache Godot
         if: matrix.platform == 'linux'
         id: cache-godot-engine
@@ -106,9 +103,14 @@ jobs:
           unzip -q /tmp/godot.zip -d /tmp/godot
           mv "/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" ~/godot-bin/godot
           chmod +x ~/godot-bin/godot
-      - name: Headless import (with native modules)
+      # Import WITHOUT the manifest installed: `--import` boots the full
+      # editor, whose shutdown path is unrelated to what we are testing.
+      - name: Headless import
         if: matrix.platform == 'linux'
         run: ~/godot-bin/godot --headless --path game --import
+      - name: Install native manifest
+        if: matrix.platform == 'linux'
+        run: cp engine/gta_native.gdextension.example game/bin/gta_native.gdextension
       - name: Native smoke test
         if: matrix.platform == 'linux'
         run: ~/godot-bin/godot --headless --path game --script res://tests/native_smoke_test.gd
