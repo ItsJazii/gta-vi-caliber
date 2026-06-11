@@ -8,7 +8,7 @@ extends Control
 ## player ever reaches gameplay. No gameplay logic lives here.
 
 ## World scene loaded when the player presses Play.
-const PLAY_SCENE: String = "res://scenes/world/sandbox.tscn"
+const PLAY_SCENE: String = "res://scenes/world/los_angeles_streamed.tscn"
 
 ## Seconds for the fade-to-black before the world loads.
 @export var fade_time: float = 0.6
