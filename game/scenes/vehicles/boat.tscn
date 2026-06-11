@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/vehicles/boat.gd" id="1_boat"]
 [ext_resource type="Script" path="res://scripts/camera/chase_camera.gd" id="2_chase"]
+[ext_resource type="Script" path="res://scripts/vehicles/boat_body.gd" id="3_body"]
 
 [sub_resource type="StandardMaterial3D" id="hull_mat"]
 albedo_color = Color(0.9, 0.9, 0.85, 1)
@@ -29,6 +30,9 @@ mass = 400.0
 linear_damp = 1.0
 angular_damp = 2.0
 script = ExtResource("1_boat")
+
+[node name="Body" type="Node3D" parent="."]
+script = ExtResource("3_body")
 
 [node name="Hull" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
