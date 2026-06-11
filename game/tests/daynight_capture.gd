@@ -8,6 +8,7 @@ extends SceneTree
 var _sun: DirectionalLight3D = null
 var _director: CityDirector = null
 var _cycle: DayNightCycle = null
+var _streetlight: OmniLight3D = null
 var _frame := 0
 var _noon := {}
 var _midnight := {}
@@ -21,6 +22,11 @@ func _initialize() -> void:
 	_director = CityDirector.new()
 	_director.name = "CityDirector"
 	root.add_child(_director)
+	_streetlight = OmniLight3D.new()
+	_streetlight.name = "Streetlight"
+	_streetlight.add_to_group("night_lights")
+	_streetlight.visible = false
+	root.add_child(_streetlight)
 	_cycle = DayNightCycle.new()
 	_cycle.name = "DayNightCycle"
 	root.add_child(_cycle)  # resolves Sun via the ../Sun fallback in _ready
@@ -31,11 +37,18 @@ func _process(_delta: float) -> bool:
 	if _frame == 2:
 		_director._clock.hour = 12.0
 		_cycle._process(0.0)
-		_noon = {"energy": _sun.light_energy, "pitch": _sun.rotation.x, "color": _sun.light_color}
+		_noon = {
+			"energy": _sun.light_energy,
+			"pitch": _sun.rotation.x,
+			"color": _sun.light_color,
+			"lights": _streetlight.visible,
+		}
 	elif _frame == 4:
 		_director._clock.hour = 0.0
 		_cycle._process(0.0)
-		_midnight = {"energy": _sun.light_energy, "pitch": _sun.rotation.x}
+		_midnight = {
+			"energy": _sun.light_energy, "pitch": _sun.rotation.x, "lights": _streetlight.visible
+		}
 		_check()
 		return _finish()
 	return false
@@ -58,6 +71,11 @@ func _check() -> void:
 	var c: Color = _noon["color"]
 	if c.r < 0.9:
 		_fail("noon light is not warm-white (r = %.2f)" % c.r)
+	# Streetlights off at noon, on at midnight.
+	if bool(_noon["lights"]):
+		_fail("streetlights are on at noon")
+	if not bool(_midnight["lights"]):
+		_fail("streetlights did not switch on at midnight")
 
 
 func _fail(message: String) -> void:

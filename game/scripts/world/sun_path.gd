@@ -63,3 +63,10 @@ static func light_color(hour: float) -> Color:
 ## and deepen at night without ever crushing to black.
 static func ambient_scale(hour: float) -> float:
 	return lerpf(0.12, 1.0, clampf(solar_height(hour) * 0.5 + 0.5, 0.0, 1.0))
+
+
+## Whether artificial lights (streetlights, lit windows) should be on: they flick
+## on a touch before true dark, as the sun nears the horizon, like real dusk
+## timers — and stay on until well after dawn.
+static func lights_on(hour: float) -> bool:
+	return solar_height(hour) < 0.1

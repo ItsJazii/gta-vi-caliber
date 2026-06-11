@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=20 format=3]
 
 ; Playable living-city demo: walk among a crowd of citizens running their daily
 ; routines (commute, work, lunch, gym, bar, home) and bantering in speech
@@ -61,6 +61,12 @@ roughness = 0.85
 [sub_resource type="StandardMaterial3D" id="bm_park"]
 albedo_color = Color(0.28, 0.45, 0.26, 1)
 roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="window_mat"]
+albedo_color = Color(0.95, 0.85, 0.55, 1)
+emission_enabled = true
+emission = Color(1, 0.85, 0.5, 1)
+emission_energy_multiplier = 2.5
 
 [node name="NpcLifeSandbox" type="Node3D" groups=["world"]]
 
@@ -186,6 +192,46 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 0)
 
 [node name="POI_street" type="Marker3D" parent="." groups=["poi_street"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6)
+
+[node name="Streetlight1" type="OmniLight3D" parent="." groups=["night_lights"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 4, 11)
+light_color = Color(1, 0.86, 0.6, 1)
+light_energy = 3.0
+omni_range = 16.0
+visible = false
+
+[node name="Streetlight2" type="OmniLight3D" parent="." groups=["night_lights"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 4, 11)
+light_color = Color(1, 0.86, 0.6, 1)
+light_energy = 3.0
+omni_range = 16.0
+visible = false
+
+[node name="Streetlight3" type="OmniLight3D" parent="." groups=["night_lights"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 4, -11)
+light_color = Color(1, 0.86, 0.6, 1)
+light_energy = 3.0
+omni_range = 16.0
+visible = false
+
+[node name="Streetlight4" type="OmniLight3D" parent="." groups=["night_lights"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 4, -11)
+light_color = Color(1, 0.86, 0.6, 1)
+light_energy = 3.0
+omni_range = 16.0
+visible = false
+
+[node name="OfficeWindows" type="MeshInstance3D" parent="." groups=["night_lights"]]
+transform = Transform3D(6, 0, 0, 0, 8, 0, 0, 0, 0.2, 20, 8, -15.9)
+mesh = SubResource("unit_box")
+material_override = SubResource("window_mat")
+visible = false
+
+[node name="HomeWindows" type="MeshInstance3D" parent="." groups=["night_lights"]]
+transform = Transform3D(5, 0, 0, 0, 4, 0, 0, 0, 0.2, -20, 3, -16.4)
+mesh = SubResource("unit_box")
+material_override = SubResource("window_mat")
+visible = false
 
 [node name="Crowd" type="Node3D" parent="."]
 

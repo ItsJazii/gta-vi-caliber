@@ -22,6 +22,8 @@ var _sun: DirectionalLight3D = null
 var _env: WorldEnvironment = null
 var _clock: DayClock = null
 var _base_ambient_energy: float = 1.0
+# -1 = unknown, so the first frame always pushes the correct state.
+var _lights_state: int = -1
 
 
 func _ready() -> void:
@@ -50,6 +52,22 @@ func _apply(hour: float) -> void:
 		_sun.light_color = SunPath.light_color(hour)
 	if _env != null and _env.environment != null:
 		_env.environment.ambient_light_energy = _base_ambient_energy * SunPath.ambient_scale(hour)
+	_apply_night_lights(hour)
+
+
+## Flick streetlights and lit windows (group "night_lights") on at dusk, off at
+## dawn. Only touches the group when the state actually changes, so it costs
+## nothing on the vast majority of frames.
+func _apply_night_lights(hour: float) -> void:
+	var want := 1 if SunPath.lights_on(hour) else 0
+	if want == _lights_state:
+		return
+	_lights_state = want
+	var on := want == 1
+	for node in get_tree().get_nodes_in_group("night_lights"):
+		var n3 := node as Node3D
+		if n3 != null:
+			n3.visible = on
 
 
 func _hour() -> float:

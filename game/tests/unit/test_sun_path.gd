@@ -61,6 +61,15 @@ func test_horizon_light_is_warm() -> bool:
 	return c.r > c.b
 
 
+func test_lights_on_at_night_off_at_noon() -> bool:
+	return (
+		SunPath.lights_on(0.0)
+		and SunPath.lights_on(20.0)
+		and not SunPath.lights_on(12.0)
+		and not SunPath.lights_on(9.0)
+	)
+
+
 func test_ambient_scale_bounded() -> bool:
 	var h := 0.0
 	while h < 24.0:
