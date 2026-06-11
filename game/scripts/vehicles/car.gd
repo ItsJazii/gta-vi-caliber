@@ -79,6 +79,7 @@ var _prev_velocity: Vector3 = Vector3.ZERO
 var _long_accel: float = 0.0
 var _prev_forward_speed: float = 0.0
 var _wheels: Array[Node] = []
+var _radio: Radio = null
 
 @onready var _camera: Camera3D = $CameraPivot/SpringArm/Camera
 @onready var _chase: ChaseCamera = $CameraPivot
@@ -92,12 +93,14 @@ func has_driver() -> bool:
 func enter(driver: Node3D) -> void:
 	_driver = driver
 	_camera.current = true
+	_radio.turn_on()
 
 
 ## Releases the driver and returns a safe world position to step out at.
 func exit() -> Vector3:
 	_driver = null
 	_camera.current = false
+	_radio.turn_off()
 	gear = 1
 	rpm = idle_rpm
 	return _exit_point.global_position
@@ -107,6 +110,9 @@ func _ready() -> void:
 	health = max_health
 	rpm = idle_rpm
 	_wheels = find_children("*", "VehicleWheel3D", true, false)
+	# Radio is code-spawned so the feature is self-contained (no car.tscn edit).
+	_radio = Radio.new()
+	add_child(_radio)
 
 
 func _physics_process(delta: float) -> void:
