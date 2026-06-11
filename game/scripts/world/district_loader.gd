@@ -35,6 +35,7 @@ func _ready() -> void:
 	_build_roads(data.get("roads", []), proj)
 	_build_streetlights(data.get("roads", []), proj)
 	_build_trees(data.get("roads", []), proj)
+	_build_street_furniture(data.get("roads", []), proj)
 	_place_actors_on_street(data.get("roads", []), proj)
 
 	var nb: int = (data.get("buildings", []) as Array).size()
@@ -46,6 +47,63 @@ func _ready() -> void:
 		)
 	)
 	district_built.emit(nb, nr)
+
+
+## Sprinkle sidewalk furniture — trash bins and fire hydrants — along the kerb of
+## the wider roads. Orientation-free props (rotationally symmetric), so no road
+## tangent is needed; shared meshes/materials and a hard cap keep it cheap.
+func _build_street_furniture(roads: Array, proj: GeoProjection) -> void:
+	var bin_mat := StandardMaterial3D.new()
+	bin_mat.albedo_color = Color(0.16, 0.28, 0.2)
+	bin_mat.metallic = 0.3
+	bin_mat.roughness = 0.6
+	var hydrant_mat := StandardMaterial3D.new()
+	hydrant_mat.albedo_color = Color(0.7, 0.13, 0.1)
+	hydrant_mat.roughness = 0.5
+	var bin_mesh := CylinderMesh.new()
+	bin_mesh.top_radius = 0.2
+	bin_mesh.bottom_radius = 0.22
+	bin_mesh.height = 0.66
+	var hydrant_mesh := CylinderMesh.new()
+	hydrant_mesh.top_radius = 0.11
+	hydrant_mesh.bottom_radius = 0.12
+	hydrant_mesh.height = 0.42
+	var hydrant_cap := SphereMesh.new()
+	hydrant_cap.radius = 0.12
+	hydrant_cap.height = 0.18
+
+	var container := Node3D.new()
+	container.name = "StreetFurniture"
+	add_child(container)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var placed := 0
+	for r in roads:
+		if placed >= 70:
+			break
+		if float(r.get("width_m", 0.0)) < 8.0:
+			continue
+		var path := _project_ring(r["path"], proj)
+		for p in StreetLight.sample_along(path, 38.0, float(r["width_m"]) * 0.5 + 1.5):
+			if placed >= 70:
+				break
+			var prop := Node3D.new()
+			prop.position = Vector3(p.x, 0.0, p.y)
+			if rng.randf() < 0.5:
+				_add_mesh(prop, bin_mesh, Vector3(0.0, 0.33, 0.0), bin_mat)
+			else:
+				_add_mesh(prop, hydrant_mesh, Vector3(0.0, 0.21, 0.0), hydrant_mat)
+				_add_mesh(prop, hydrant_cap, Vector3(0.0, 0.42, 0.0), hydrant_mat)
+			container.add_child(prop)
+			placed += 1
+
+
+func _add_mesh(parent: Node, mesh: Mesh, pos: Vector3, mat: Material) -> void:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	parent.add_child(mi)
 
 
 ## Scatter street trees on the setback behind the kerb of the wider roads, with
