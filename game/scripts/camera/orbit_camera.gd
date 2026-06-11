@@ -47,14 +47,6 @@ const PITCH_MAX: float = 0.5
 @export var dof_blur_amount: float = 0.06
 @export var dof_far_distance: float = 55.0
 @export var dof_far_transition: float = 45.0
-## Adaptive (auto) exposure: the camera meters scene brightness and eases its
-## exposure between min/max sensitivity, so bright exteriors and dim interiors
-## both read well — a cinematic, trailer-grade touch. Set auto_exposure off to
-## fall back to the environment's fixed exposure.
-@export var auto_exposure: bool = true
-@export var auto_exposure_min: float = 0.4
-@export var auto_exposure_max: float = 4.0
-@export var auto_exposure_speed: float = 0.5
 ## Auto-recenter: after recenter_delay seconds without look input, the camera
 ## eases (recenter_rate rad/s) behind the travel direction while moving faster
 ## than recenter_min_speed — so a gamepad player isn't forced to ride the stick.
@@ -85,19 +77,13 @@ func _ready() -> void:
 ## Attach far-field depth of field to the camera for a cinematic depth cue.
 ## Code-driven (not the scene) so the camera rig stays self-contained.
 func _apply_camera_attributes() -> void:
-	if dof_blur_amount <= 0.0 and not auto_exposure:
+	if dof_blur_amount <= 0.0:
 		return
 	var attrs := CameraAttributesPractical.new()
-	if dof_blur_amount > 0.0:
-		attrs.dof_blur_far_enabled = true
-		attrs.dof_blur_far_distance = dof_far_distance
-		attrs.dof_blur_far_transition = dof_far_transition
-		attrs.dof_blur_amount = dof_blur_amount
-	attrs.auto_exposure_enabled = auto_exposure
-	if auto_exposure:
-		attrs.auto_exposure_min_sensitivity = auto_exposure_min
-		attrs.auto_exposure_max_sensitivity = auto_exposure_max
-		attrs.auto_exposure_speed = auto_exposure_speed
+	attrs.dof_blur_far_enabled = true
+	attrs.dof_blur_far_distance = dof_far_distance
+	attrs.dof_blur_far_transition = dof_far_transition
+	attrs.dof_blur_amount = dof_blur_amount
 	_camera.attributes = attrs
 
 
