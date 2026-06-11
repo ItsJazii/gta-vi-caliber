@@ -15,6 +15,11 @@ const AIR_SHOULDER: float = -0.5
 const AIR_HIP_LEAD: float = -0.35
 const AIR_HIP_TRAIL: float = 0.25
 
+# One-handed phone-to-ear pose for the right arm while the phone is raised:
+# the shoulder swings the arm up and rolls the hand in toward the head.
+const PHONE_SHOULDER_PITCH: float = -2.35
+const PHONE_SHOULDER_ROLL: float = 0.55
+
 ## Speeds must mirror the Player export values so blend/state thresholds agree.
 @export var walk_speed: float = 5.0
 @export var run_speed: float = 8.5
@@ -33,14 +38,22 @@ const AIR_HIP_TRAIL: float = 0.25
 @export var response_rate: float = 10.0
 ## How fast the air pose crossfades in/out (1/s).
 @export var air_rate: float = 8.0
+## How fast the phone-holding pose eases in/out (1/s).
+@export var phone_pose_rate: float = 9.0
 
 var _phase: float = 0.0
 var _facing: float = 0.0
 var _blend: float = 0.0
 var _lean: float = 0.0
 var _air: float = 0.0
+var _phone: float = 0.0
+var _phone_target: float = 0.0
 var _hips_rest_y: float = 0.0
 var _prev_speed: float = 0.0
+# When the owner is the player, face where the weapon aims (not where we move)
+# so strafing reads as a third-person shooter. NPCs keep travel-facing.
+var _aim_facing: bool = false
+var _weapon_controller: Node = null
 
 @onready var _hips: Node3D = $Hips
 @onready var _hip_l: Node3D = $Hips/HipL
@@ -52,6 +65,8 @@ var _prev_speed: float = 0.0
 func _ready() -> void:
 	_hips_rest_y = _hips.position.y
 	_facing = rotation.y
+	var owner_body := get_parent()
+	_aim_facing = owner_body != null and owner_body.is_in_group("player")
 
 
 ## Drive the rig for one physics frame from the character's current motion.
@@ -78,20 +93,57 @@ func animate(
 	_blend = move_toward(_blend, target_blend, response_rate * delta)
 	_lean = lerpf(_lean, Locomotion.lean_angle(accel, accel_reference, max_lean), _ease(delta))
 	_air = move_toward(_air, 1.0 if not on_floor else 0.0, air_rate * delta)
+	_phone = move_toward(_phone, _phone_target, phone_pose_rate * delta)
 
 	if planar_speed > Locomotion.IDLE_SPEED_EPSILON:
 		_phase = Locomotion.advance_phase(_phase, planar_speed, delta)
 
 	_apply_limbs()
+	_apply_phone_pose()
 	_hips.position.y = _hips_rest_y + Locomotion.vertical_bob(_phase, bob_amplitude * _blend)
 	_hips.rotation.x = _lean
 
 
+## Raise (true) or lower (false) the one-handed phone-holding pose; eased in
+## animate() and blended over the right arm after the walk swing is applied.
+func set_phone(raised: bool) -> void:
+	_phone_target = 1.0 if raised else 0.0
+
+
+# Blend the right arm from its swing pose toward holding a phone to the ear.
+# Runs after _apply_limbs so it overrides that frame's shoulder swing.
+func _apply_phone_pose() -> void:
+	_shoulder_r.rotation.x = lerpf(_shoulder_r.rotation.x, PHONE_SHOULDER_PITCH, _phone)
+	_shoulder_r.rotation.z = PHONE_SHOULDER_ROLL * _phone
+
+
 func _update_facing(planar_velocity: Vector3, planar_speed: float, delta: float) -> void:
-	if planar_speed > Locomotion.IDLE_SPEED_EPSILON:
-		var target: float = atan2(planar_velocity.x, planar_velocity.z)
+	var target: float = _facing
+	var has_target: bool = false
+	# While armed, face the aim direction so the character strafes around it.
+	if _aim_facing:
+		var aim: float = _aim_yaw()
+		if not is_nan(aim):
+			target = aim
+			has_target = true
+	if not has_target and planar_speed > Locomotion.IDLE_SPEED_EPSILON:
+		target = atan2(planar_velocity.x, planar_velocity.z)
+		has_target = true
+	if has_target:
 		_facing = _rotate_toward_angle(_facing, target, turn_rate * delta)
 	rotation.y = _facing
+
+
+# Aim yaw from the player's WeaponController (NAN while holstered → travel-facing).
+func _aim_yaw() -> float:
+	if _weapon_controller == null:
+		var found := get_tree().get_nodes_in_group("weapon_controller")
+		if found.is_empty():
+			return NAN
+		_weapon_controller = found[0]
+	if _weapon_controller.has_method("facing_override"):
+		return _weapon_controller.facing_override()
+	return NAN
 
 
 func _apply_limbs() -> void:
