@@ -19,7 +19,8 @@ const LINES: Dictionary = {
 		"Nice weather, huh?",
 		"...so then I told him no.",
 	],
-	Situation.ALARMED: ["What was that?!", "Did you hear that?", "Hey — watch it!", "Everything okay?"],
+	Situation.ALARMED:
+	["What was that?!", "Did you hear that?", "Hey — watch it!", "Everything okay?"],
 	Situation.FLEE: ["He's got a gun!", "Run!", "Somebody help!", "Get down!", "Call the cops!"],
 }
 

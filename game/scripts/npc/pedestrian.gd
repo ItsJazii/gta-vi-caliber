@@ -27,6 +27,7 @@ var _home: Vector3 = Vector3.ZERO
 var _threat_pos: Vector3 = Vector3.ZERO
 var _idle_left: float = 0.0
 var _fear: float = 0.0
+var _greet_left: float = 0.0
 var _dead: bool = false
 var _hp: Damageable
 var _rng := RandomNumberGenerator.new()
@@ -52,6 +53,11 @@ func _physics_process(delta: float) -> void:
 	var threat_active := _fear > 0.0 and player != null
 	if threat_active:
 		_threat_pos = player.global_position
+
+	if _greet_left > 0.0 and not threat_active:
+		_answer_call(delta)
+		return
+	_rig.set_phone(false)
 	var threat_distance := (
 		NpcBrain.planar_distance(global_position, _threat_pos) if threat_active else 1000.0
 	)
@@ -80,6 +86,26 @@ func _physics_process(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, target_v.x, acceleration * delta)
 	velocity.z = move_toward(velocity.z, target_v.z, acceleration * delta)
 	move_and_slide()
+	_rig.animate(Vector3(velocity.x, 0.0, velocity.z), is_on_floor(), velocity.y, false, delta)
+
+
+## Answer a phone call from the player: stop and hold a phone to the ear for
+## `seconds`. Called (duck-typed) by the player when this is the nearest
+## pedestrian as a friend's call connects. Ignored while dead; interrupted by fear.
+func greet(seconds: float) -> void:
+	if not _dead:
+		_greet_left = maxf(_greet_left, seconds)
+
+
+# Stand still with the phone-holding pose while a call is being "answered".
+func _answer_call(delta: float) -> void:
+	_greet_left -= delta
+	velocity.x = move_toward(velocity.x, 0.0, acceleration * delta)
+	velocity.z = move_toward(velocity.z, 0.0, acceleration * delta)
+	if not is_on_floor():
+		velocity += get_gravity() * delta
+	move_and_slide()
+	_rig.set_phone(true)
 	_rig.animate(Vector3(velocity.x, 0.0, velocity.z), is_on_floor(), velocity.y, false, delta)
 
 

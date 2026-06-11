@@ -13,7 +13,9 @@ func test_flee_line_nonempty() -> bool:
 
 func test_index_wraps() -> bool:
 	var count := BarkPool.count(BarkPool.Situation.FLEE)
-	return BarkPool.line(BarkPool.Situation.FLEE, count) == BarkPool.line(BarkPool.Situation.FLEE, 0)
+	return (
+		BarkPool.line(BarkPool.Situation.FLEE, count) == BarkPool.line(BarkPool.Situation.FLEE, 0)
+	)
 
 
 func test_negative_index_safe() -> bool:

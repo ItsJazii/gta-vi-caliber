@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="2_camera"]
 [ext_resource type="Script" path="res://scripts/player/character_animator.gd" id="3_anim"]
 [ext_resource type="Script" path="res://scripts/player/humanoid_body.gd" id="4_body"]
+[ext_resource type="Script" path="res://scripts/weapons/weapon_controller.gd" id="5_weapon"]
 
 [sub_resource type="StandardMaterial3D" id="shirt_mat"]
 albedo_color = Color(0.25, 0.45, 0.8, 1)
@@ -53,6 +54,19 @@ size = Vector3(0.18, 0.12, 0.3)
 radius = 0.4
 height = 1.8
 
+[sub_resource type="StandardMaterial3D" id="gunmetal_mat"]
+albedo_color = Color(0.12, 0.12, 0.14, 1)
+metallic = 0.6
+roughness = 0.45
+
+[sub_resource type="BoxMesh" id="gun_body_mesh"]
+material = SubResource("gunmetal_mat")
+size = Vector3(0.08, 0.16, 0.34)
+
+[sub_resource type="BoxMesh" id="gun_barrel_mesh"]
+material = SubResource("gunmetal_mat")
+size = Vector3(0.05, 0.05, 0.3)
+
 [node name="Player" type="CharacterBody3D" groups=["player"]]
 collision_layer = 2
 collision_mask = 1
@@ -67,6 +81,7 @@ script = ExtResource("3_anim")
 
 [node name="Body" type="Node3D" parent="Rig"]
 script = ExtResource("4_body")
+use_mara_hero_profile = true
 
 [node name="Hips" type="Node3D" parent="Rig"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.92, 0)
@@ -77,6 +92,9 @@ mesh = SubResource("pelvis_mesh")
 [node name="Torso" type="MeshInstance3D" parent="Rig/Hips"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
 mesh = SubResource("torso_mesh")
+
+[node name="Neck" type="MeshInstance3D" parent="Rig/Hips"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
 
 [node name="Head" type="MeshInstance3D" parent="Rig/Hips"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.84, 0)
@@ -126,6 +144,20 @@ mesh = SubResource("leg_mesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.82, 0.06)
 mesh = SubResource("foot_mesh")
 
+[node name="GunMount" type="Node3D" parent="Rig/Hips"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.22, 0.15, -0.28)
+visible = false
+
+[node name="GunBody" type="MeshInstance3D" parent="Rig/Hips/GunMount"]
+mesh = SubResource("gun_body_mesh")
+
+[node name="Barrel" type="MeshInstance3D" parent="Rig/Hips/GunMount"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -0.28)
+mesh = SubResource("gun_barrel_mesh")
+
+[node name="Muzzle" type="Marker3D" parent="Rig/Hips/GunMount"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -0.45)
+
 [node name="CameraRig" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
 script = ExtResource("2_camera")
@@ -137,3 +169,9 @@ spring_length = 4.0
 
 [node name="Camera" type="Camera3D" parent="CameraRig/SpringArm"]
 current = true
+
+[node name="WeaponController" type="Node3D" parent="."]
+script = ExtResource("5_weapon")
+camera_path = NodePath("../CameraRig/SpringArm/Camera")
+muzzle_path = NodePath("../Rig/Hips/GunMount/Muzzle")
+gun_mount_path = NodePath("../Rig/Hips/GunMount")

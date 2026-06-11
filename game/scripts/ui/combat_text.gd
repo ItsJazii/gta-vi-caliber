@@ -45,8 +45,8 @@ func _process(delta: float) -> void:
 				label.queue_free()
 			_active.remove_at(i)
 			continue
-		label.global_position = entry["base"] + Vector3.UP * CombatTextMotion.rise(
-			entry["t"], duration, height
+		label.global_position = (
+			entry["base"] + Vector3.UP * CombatTextMotion.rise(entry["t"], duration, height)
 		)
 		var tint: Color = label.modulate
 		tint.a = CombatTextMotion.alpha(entry["t"], duration)

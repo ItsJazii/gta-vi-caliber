@@ -8,10 +8,10 @@ extends Node
 ## finds everything by group so it needs no edits to the player scene. Player
 ## position, health, and wanted level persist.
 
-const SAVE_PATH: String = "user://savegame.json"
-
 signal saved
 signal loaded
+
+const SAVE_PATH: String = "user://savegame.json"
 
 
 func _unhandled_input(event: InputEvent) -> void:
