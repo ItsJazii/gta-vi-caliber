@@ -1,9 +1,10 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
 [ext_resource type="Script" path="res://scripts/world/district_loader.gd" id="3_loader"]
 [ext_resource type="Script" path="res://scripts/world/floating_origin.gd" id="4_origin"]
+[ext_resource type="Script" path="res://scripts/npc/crowd_director.gd" id="5_crowd"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.38, 0.52, 0.74, 1)
@@ -61,6 +62,10 @@ district_path = "res://assets/world/downtown_la.json"
 
 [node name="SpawnPoint" type="Marker3D" parent="." groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="Crowd" type="Node3D" parent="."]
+script = ExtResource("5_crowd")
+target_count = 20
 
 [node name="Player" parent="." instance=ExtResource("1_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
