@@ -27,6 +27,9 @@ const ACTIVITY_NEED: Dictionary = {
 	"goof_off": "fun",
 	"freshen_up": "hygiene",
 }
+# How long a frightened citizen keeps running, independent of the player. This is
+# Citizen-owned (Pedestrian's own flee only persists while the player is near).
+const PANIC_DURATION: float = 5.0
 
 ## Seconds between proximity-reaction checks (cheap throttle on the O(n) player scan).
 @export var react_interval: float = 0.7
@@ -51,6 +54,9 @@ var _bubble: Label3D = null
 # Nav path to the current destination (world points). Empty = walk straight there.
 var _path: Array = []
 var _wp: int = 0
+# Active fright: seconds left running, and the world point being fled.
+var _panic_left: float = 0.0
+var _panic_from: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
@@ -151,10 +157,15 @@ func _pick_new_target() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	# Walk the nav path: aim at the current waypoint, advancing as each is reached.
-	# The final waypoint stays the destination, so Pedestrian's own arrive→idle
-	# logic still fires there. Skipped while fleeing (the parent steers away then).
-	if not _path.is_empty() and _state != NpcBrain.State.FLEE:
+	# Panic overrides everything: keep walking directly away from the scare until
+	# it wears off. (Player-driven flee, when a player is near, is the parent's.)
+	if _panic_left > 0.0:
+		_panic_left -= delta
+		_flee_step()
+	elif not _path.is_empty() and _state != NpcBrain.State.FLEE:
+		# Walk the nav path: aim at the current waypoint, advancing as each is
+		# reached. The final waypoint stays the destination so Pedestrian's own
+		# arrive→idle logic still fires there.
 		_wp = NpcSteering.advance_waypoint(global_position, _path, _wp, 1.5)
 		_target = _path[_wp]
 	super._physics_process(delta)
@@ -163,6 +174,7 @@ func _physics_process(delta: float) -> void:
 	if _react_left <= 0.0:
 		_react_left = react_interval
 		_maybe_react()
+		_maybe_catch_panic()
 		_maybe_socialize()
 
 
@@ -190,6 +202,54 @@ func _maybe_react() -> void:
 		"gawk":
 			if _bubble.modulate.a <= 0.0:
 				_say(NpcDialogue.bark(_voice, "gawk", _next_seed()))
+
+
+## Is this citizen actively fleeing in fear right now? Neighbours read this to
+## decide whether to catch the panic.
+func is_panicking() -> bool:
+	return _panic_left > 0.0 and not is_dead()
+
+
+## Where the fear is coming from — so a caught panic sends everyone running the
+## same way, not in circles.
+func panic_origin() -> Vector3:
+	return _panic_from
+
+
+## Start fleeing a scare at `from` for PANIC_DURATION seconds, independent of the
+## player (a gunshot, or a neighbour's contagious terror). _flee_step does the
+## moving each frame.
+func _start_panic(from: Vector3) -> void:
+	_panic_left = PANIC_DURATION
+	_panic_from = from
+	if _bubble != null and _bubble.modulate.a <= 0.0:
+		_say(NpcDialogue.bark(_voice, "flee", _next_seed()))
+
+
+## One frame of fleeing: steer directly away from the scare. Reuses Pedestrian's
+## WANDER locomotion (which doesn't need a player), just aimed outward.
+func _flee_step() -> void:
+	var away := NpcSteering.ground(global_position - _panic_from)
+	if away.length() < 0.1:
+		away = Vector3(cos(float(_voice_seed)), 0.0, sin(float(_voice_seed)))
+	_state = NpcBrain.State.WANDER
+	_target = global_position + away.normalized() * 4.0
+	_path = []
+
+
+## Catch a panicking neighbour's terror: one gunshot empties a street as fear
+## ripples outward, citizen to citizen, the timid going first. Already-panicking
+## or dead citizens skip it.
+func _maybe_catch_panic() -> void:
+	if is_dead() or is_panicking():
+		return
+	for node in get_tree().get_nodes_in_group("citizens"):
+		var other := node as Citizen
+		if other == null or other == self or not other.is_panicking():
+			continue
+		if NpcReaction.catches_panic(global_position.distance_to(other.global_position), _bravery):
+			_start_panic(other.panic_origin())
+			return
 
 
 ## Strike up a (one-sided) conversation with a neighbour while loitering. Only
@@ -235,7 +295,7 @@ func _nearest_citizen(radius: float) -> Citizen:
 ## Bark a fright line when shot, on top of Pedestrian's flee response.
 func take_damage(amount: float, point: Vector3, normal: Vector3) -> void:
 	super.take_damage(amount, point, normal)
-	_say(NpcDialogue.bark(_voice, "flee", _next_seed()))
+	_start_panic(point)
 
 
 # --- helpers ----------------------------------------------------------------

@@ -42,3 +42,15 @@ func test_threat_extends_flee_range() -> bool:
 	var calm := NpcReaction.decide(10.0, 0.1, 0.0, 0.0)
 	var armed := NpcReaction.decide(10.0, 1.0, 0.0, 0.0)
 	return calm != "flee" and armed == "flee"
+
+
+func test_panic_spreads_to_close_timid_neighbours() -> bool:
+	return NpcReaction.catches_panic(4.0, 0.3)
+
+
+func test_panic_does_not_reach_far_neighbours() -> bool:
+	return not NpcReaction.catches_panic(20.0, 0.3)
+
+
+func test_brave_neighbours_resist_panic() -> bool:
+	return not NpcReaction.catches_panic(2.0, 0.95)

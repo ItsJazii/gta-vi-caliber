@@ -13,6 +13,10 @@ extends RefCounted
 const NOTICE_RADIUS: float = 14.0
 ## Inside this the NPC feels crowded even by a harmless passer-by.
 const PERSONAL_RADIUS: float = 3.5
+## A panicking citizen this close is contagious — terror spreads through a crowd.
+const PANIC_RADIUS: float = 6.0
+## Bravery at/above this shrugs off a neighbour's panic (the steady ones hold).
+const PANIC_NERVE: float = 0.85
 
 
 ## Build a 0..1 threat score from the player's state. Brandishing a weapon is the
@@ -46,3 +50,10 @@ static func decide(distance: float, threat: float, bravery: float, curiosity: fl
 		return "gawk"
 
 	return "ignore"
+
+
+## Does this NPC catch a nearby citizen's panic? Close terror is contagious, but
+## the steady-nerved (bravery >= PANIC_NERVE) hold their ground. This is what
+## turns one gunshot into a whole street emptying.
+static func catches_panic(distance: float, bravery: float) -> bool:
+	return distance <= PANIC_RADIUS and bravery < PANIC_NERVE
