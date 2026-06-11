@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 ; South Beach, Miami — Vice City heart. Now on the physical sky + SkyController
 ; day/night cycle (sun, ambient, world_night_amount window-glow + streetlights all
@@ -11,6 +11,7 @@
 [ext_resource type="Shader" path="res://assets/shaders/sky.gdshader" id="4_sky"]
 [ext_resource type="Script" path="res://scripts/world/sky_controller.gd" id="5_daynight"]
 [ext_resource type="Script" path="res://scripts/world/ocean.gd" id="6_ocean"]
+[ext_resource type="Script" path="res://scripts/npc/crowd_director.gd" id="7_crowd"]
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("4_sky")
@@ -105,5 +106,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 
 [node name="Player" parent="." instance=ExtResource("1_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="Crowd" type="Node3D" parent="."]
+script = ExtResource("7_crowd")
+target_count = 26
 
 [node name="DebugHud" parent="." instance=ExtResource("2_hud")]
