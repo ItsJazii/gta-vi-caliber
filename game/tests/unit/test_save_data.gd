@@ -46,3 +46,35 @@ func test_version_of_garbage_is_zero() -> bool:
 
 func test_empty_snapshot_round_trips() -> bool:
 	return SaveData.decode(SaveData.encode({})).is_empty()
+
+
+func test_vec3_round_trips() -> bool:
+	var value := Vector3(1.5, -2.25, 38.0)
+	return SaveData.array_to_vec3(SaveData.vec3_to_array(value), Vector3.ZERO) == value
+
+
+func test_vec3_rejects_malformed_values() -> bool:
+	return (
+		SaveData.array_to_vec3("nope", Vector3.ONE) == Vector3.ONE
+		and SaveData.array_to_vec3([1.0, 2.0], Vector3.ONE) == Vector3.ONE
+		and SaveData.array_to_vec3([1.0, "two", 3.0], Vector3.ONE) == Vector3.ONE
+	)
+
+
+func test_transform_round_trips() -> bool:
+	var value := Transform3D(Basis().rotated(Vector3.UP, 0.7), Vector3(4.0, 0.6, -5.0))
+	var restored := SaveData.dict_to_transform(SaveData.transform_to_dict(value), Transform3D())
+	return restored.is_equal_approx(value)
+
+
+func test_transform_rejects_garbage() -> bool:
+	var fallback := Transform3D(Basis(), Vector3(9.0, 0.6, 5.0))
+	return SaveData.dict_to_transform(42, fallback) == fallback
+
+
+func test_number_or_accepts_int_and_float() -> bool:
+	return SaveData.number_or(3, 0.0) == 3.0 and SaveData.number_or(2.5, 0.0) == 2.5
+
+
+func test_number_or_rejects_non_numeric() -> bool:
+	return SaveData.number_or(null, 7.0) == 7.0 and SaveData.number_or("90", 7.0) == 7.0

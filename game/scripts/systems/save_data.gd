@@ -10,6 +10,54 @@ extends RefCounted
 const VERSION: int = 1
 
 
+## Vector3 -> JSON-safe [x, y, z].
+static func vec3_to_array(value: Vector3) -> Array:
+	return [value.x, value.y, value.z]
+
+
+## [x, y, z] -> Vector3, or `fallback` when the value is malformed.
+static func array_to_vec3(value: Variant, fallback: Vector3) -> Vector3:
+	if not value is Array:
+		return fallback
+	var values: Array = value
+	if values.size() != 3:
+		return fallback
+	for item in values:
+		if not (item is float or item is int):
+			return fallback
+	return Vector3(values[0], values[1], values[2])
+
+
+## Transform3D -> JSON-safe dictionary (origin + basis columns).
+static func transform_to_dict(value: Transform3D) -> Dictionary:
+	return {
+		"origin": vec3_to_array(value.origin),
+		"basis_x": vec3_to_array(value.basis.x),
+		"basis_y": vec3_to_array(value.basis.y),
+		"basis_z": vec3_to_array(value.basis.z),
+	}
+
+
+## Dictionary -> Transform3D, or `fallback` when the value is malformed.
+static func dict_to_transform(value: Variant, fallback: Transform3D) -> Transform3D:
+	if not value is Dictionary:
+		return fallback
+	var data: Dictionary = value
+	var basis := Basis(
+		array_to_vec3(data.get("basis_x"), fallback.basis.x),
+		array_to_vec3(data.get("basis_y"), fallback.basis.y),
+		array_to_vec3(data.get("basis_z"), fallback.basis.z)
+	)
+	return Transform3D(basis, array_to_vec3(data.get("origin"), fallback.origin))
+
+
+## Numeric Variant -> float, or `fallback` for anything non-numeric.
+static func number_or(value: Variant, fallback: float) -> float:
+	if value is float or value is int:
+		return value
+	return fallback
+
+
 ## Wrap a state snapshot with a version header and serialise to JSON text.
 static func encode(snapshot: Dictionary) -> String:
 	return JSON.stringify({"version": VERSION, "data": snapshot})

@@ -6,7 +6,7 @@ extends Node
 ## wanted) by group, serialises it via SaveData (pure, tested), and writes it to
 ## user://savegame.json. Uses raw key input so it adds no input actions, and
 ## finds everything by group so it needs no edits to the player scene. Player
-## position, health, and wanted level persist.
+## position, health, wanted level, and vehicle transform/health persist.
 
 signal saved
 signal loaded
@@ -46,8 +46,8 @@ func _gather() -> Dictionary:
 	var snapshot: Dictionary = {}
 	var player := _player()
 	if player != null:
-		var pos := player.global_position
-		snapshot["player_pos"] = [pos.x, pos.y, pos.z]
+		snapshot["player_pos"] = SaveData.vec3_to_array(player.global_position)
+	snapshot["vehicles"] = _gather_vehicles()
 	var health := _first("player_health")
 	if health != null and health.has_method("serialize"):
 		snapshot["health"] = health.serialize()
@@ -61,12 +61,15 @@ func _apply(snapshot: Dictionary) -> void:
 	if snapshot.is_empty():
 		return
 	var player := _player()
+	if player != null and player.has_method("eject"):
+		player.eject()
+	_apply_vehicles(snapshot.get("vehicles", {}))
 	if player != null and snapshot.has("player_pos"):
-		var values: Array = snapshot["player_pos"]
-		if values.size() == 3:
-			player.global_position = Vector3(values[0], values[1], values[2])
-			if player is CharacterBody3D:
-				(player as CharacterBody3D).velocity = Vector3.ZERO
+		player.global_position = SaveData.array_to_vec3(
+			snapshot["player_pos"], player.global_position
+		)
+		if player is CharacterBody3D:
+			(player as CharacterBody3D).velocity = Vector3.ZERO
 	var health := _first("player_health")
 	if health != null and health.has_method("restore"):
 		health.restore(snapshot.get("health", {}))
@@ -77,6 +80,41 @@ func _apply(snapshot: Dictionary) -> void:
 
 func _player() -> Node3D:
 	return _first("player") as Node3D
+
+
+func _gather_vehicles() -> Dictionary:
+	var vehicles: Dictionary = {}
+	for node in get_tree().get_nodes_in_group("vehicles"):
+		var car := node as Car
+		if car == null:
+			continue
+		vehicles[car.name] = {
+			"transform": SaveData.transform_to_dict(car.global_transform),
+			"health": car.health,
+		}
+	return vehicles
+
+
+func _apply_vehicles(snapshot: Variant) -> void:
+	if not snapshot is Dictionary:
+		return
+	var vehicles: Dictionary = snapshot
+	for node in get_tree().get_nodes_in_group("vehicles"):
+		var car := node as Car
+		if car == null or not vehicles.has(car.name):
+			continue
+		var data: Variant = vehicles[car.name]
+		if not data is Dictionary:
+			continue
+		var vehicle_data: Dictionary = data
+		car.global_transform = SaveData.dict_to_transform(
+			vehicle_data.get("transform"), car.global_transform
+		)
+		car.linear_velocity = Vector3.ZERO
+		car.angular_velocity = Vector3.ZERO
+		car.health = clampf(
+			SaveData.number_or(vehicle_data.get("health"), car.health), 0.0, car.max_health
+		)
 
 
 func _first(group: String) -> Node:

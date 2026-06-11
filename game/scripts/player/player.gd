@@ -138,6 +138,11 @@ func _is_on_ladder() -> bool:
 	return false
 
 
+func eject() -> void:
+	if _vehicle != null:
+		_exit_vehicle()
+
+
 func _toggle_vehicle() -> void:
 	if _vehicle != null:
 		_exit_vehicle()

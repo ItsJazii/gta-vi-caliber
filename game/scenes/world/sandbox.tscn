@@ -1,10 +1,11 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_hud.tscn" id="2_hud"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/car.tscn" id="3_car"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/bike.tscn" id="4_bike"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/boat.tscn" id="5_boat"]
+[ext_resource type="Script" path="res://scripts/systems/save_manager.gd" id="6_save"]
 
 [sub_resource type="StandardMaterial3D" id="water_mat"]
 transparency = 1
@@ -114,3 +115,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0.6, 45)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
 [node name="DebugHud" parent="." instance=ExtResource("2_hud")]
+
+[node name="SaveManager" type="Node" parent="."]
+script = ExtResource("6_save")
