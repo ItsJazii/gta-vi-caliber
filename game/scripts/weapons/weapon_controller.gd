@@ -29,6 +29,9 @@ const AIM_SPREAD_SCALE: float = 0.4
 ## Visible rearward kick (m) of the held gun on each shot, eased back each frame.
 @export var recoil_gun_kick: float = 0.10
 @export var recoil_recover: float = 1.4
+## Camera-shake trauma added per shot (on top of the directed recoil kick) via
+## the shared CameraShake system, for a punchier muzzle feel.
+@export_range(0.0, 1.0) var fire_shake_trauma: float = 0.12
 
 var _weapons: Array[Weapon] = []
 var _index: int = 0
@@ -200,6 +203,7 @@ func _try_fire(weapon: Weapon) -> void:
 	_gun_recoil = recoil_gun_kick
 	if _camera_rig != null:
 		_camera_rig.add_recoil(weapon.stats.recoil_kick)
+		_camera_rig.add_shake(fire_shake_trauma)
 	_emit_state()
 
 
