@@ -38,6 +38,7 @@
 [ext_resource type="Script" path="res://scripts/systems/arrest_controller.gd" id="32_arrest"]
 [ext_resource type="Script" path="res://scripts/npc/police_helicopter.gd" id="33_heli"]
 [ext_resource type="Script" path="res://scripts/world/causeways.gd" id="34_causeways"]
+[ext_resource type="Script" path="res://scripts/world/bay_island_builder.gd" id="35_islands"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -116,6 +117,11 @@ script = ExtResource("4_florida")
 ; mainland districts to the beaches into one continuous Florida landmass.
 [node name="Causeways" type="Node3D" parent="."]
 script = ExtResource("34_causeways")
+
+; Biscayne Bay residential islands (Star/Palm/Hibiscus, Venetian chain) that the
+; causeways thread between — iconic Miami/Vice City landmarks.
+[node name="BayIslands" type="Node3D" parent="."]
+script = ExtResource("35_islands")
 
 [node name="Streamer" type="Node3D" parent="."]
 script = ExtResource("3_streamer")
