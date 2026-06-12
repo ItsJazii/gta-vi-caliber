@@ -71,6 +71,37 @@ static func count_witnesses(
 	return count
 
 
+## Partition `observers` into the ones who actually saw a crime. Each entry is
+## a dictionary {pos: Vector3, facing: Vector3, is_police: bool} plus any
+## caller payload (e.g. the scene node), carried through untouched so the
+## caller can track the witnesses afterwards. Police get their own (wider,
+## longer) cone than civilians — trained spotters. Returns
+## {"witnesses": Array of seeing entries, "police_saw": bool}.
+static func collect_witnesses(
+	crime_pos: Vector3,
+	observers: Array,
+	ped_range: float,
+	ped_fov: float,
+	police_range: float,
+	police_fov: float
+) -> Dictionary:
+	var witnesses: Array = []
+	var police_saw := false
+	for entry in observers:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var observer: Dictionary = entry
+		var is_police: bool = bool(observer.get("is_police", false))
+		var pos: Vector3 = observer.get("pos", Vector3.ZERO)
+		var facing: Vector3 = observer.get("facing", Vector3.ZERO)
+		var sight := police_range if is_police else ped_range
+		var fov := police_fov if is_police else ped_fov
+		if can_witness(pos, facing, crime_pos, sight, fov):
+			witnesses.append(observer)
+			police_saw = police_saw or is_police
+	return {"witnesses": witnesses, "police_saw": police_saw}
+
+
 ## Heat a crime generates given how many people saw it. Zero witnesses -> 0 heat
 ## (it goes unreported, no matter how bad the crime). The first witness carries
 ## most of the weight; extra witnesses add diminishing returns via a saturating

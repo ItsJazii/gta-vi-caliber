@@ -70,6 +70,8 @@ func _damage_player(here: Vector3) -> void:
 
 
 func _report_crime() -> void:
+	# Explosions are heard, not just seen — they bypass the CrimeWitness gate
+	# that quiet gun/melee crimes go through and always land heat.
 	for tracker in get_tree().get_nodes_in_group("wanted"):
 		if tracker.has_method("report_crime"):
 			tracker.report_crime(true)

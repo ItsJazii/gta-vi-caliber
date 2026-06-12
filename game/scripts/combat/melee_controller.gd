@@ -59,13 +59,13 @@ func _strike() -> void:
 	var node := collider as Node
 	if node != null and (node.is_in_group("pedestrians") or node.is_in_group("police")):
 		var killed: bool = collider.has_method("is_dead") and collider.is_dead()
-		_report_crime(killed)
+		_report_crime(killed, hit.position)
 
 
-func _report_crime(killed: bool) -> void:
+func _report_crime(killed: bool, crime_pos: Vector3) -> void:
 	for tracker in get_tree().get_nodes_in_group("wanted"):
-		if tracker.has_method("report_crime"):
-			tracker.report_crime(killed)
+		if tracker.has_method("report_witnessed_crime"):
+			tracker.report_witnessed_crime(killed, crime_pos)
 
 
 func _armed() -> bool:
