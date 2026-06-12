@@ -93,17 +93,22 @@ func step(delta: float) -> void:
 		return
 
 	var circ := circumference()
+	# Each car's leader = the next car ahead by actual arc position, recomputed
+	# every tick so the follow relationship stays correct even if speeds reorder
+	# cars (no fragile fixed-index assumption — Codex review).
+	var leader_of := _leaders_by_arc_order()
+
 	var new_arc := PackedFloat32Array()
 	var new_speed := PackedFloat32Array()
 	new_arc.resize(car_count)
 	new_speed.resize(car_count)
 
 	for i in car_count:
-		var leader := (i + 1) % car_count
-		# Bumper-to-bumper gap to the leader, wrapped around the ring.
-		var raw := fposmod(arc[leader] - arc[i], circ)
-		var gap: float = maxf(raw - car_length, 0.01)
-		_min_gap_seen = minf(_min_gap_seen, gap)
+		var leader: int = leader_of[i]
+		# True bumper-to-bumper gap (can be negative on overlap); clamp only the
+		# value fed to the model, so the safety metric below stays honest.
+		var true_gap := fposmod(arc[leader] - arc[i], circ) - car_length
+		var gap: float = maxf(true_gap, 0.01)
 
 		var accel: float = _model.call("acceleration", speed[i], gap, speed[leader])
 		var v: float = maxf(speed[i] + accel * delta, 0.0)  # no reversing
@@ -112,6 +117,40 @@ func step(delta: float) -> void:
 
 	arc = new_arc
 	speed = new_speed
+
+	# Record the smallest TRUE (unclamped) bumper gap after integration — this
+	# goes negative if any car overlaps another, so the probe's no-collision
+	# assertion is actually meaningful (Codex review).
+	var order := _arc_order()
+	for p in car_count:
+		var i: int = order[p]
+		var leader: int = order[(p + 1) % car_count]
+		var g := fposmod(arc[leader] - arc[i], circ) - car_length
+		_min_gap_seen = minf(_min_gap_seen, g)
+
+
+## Indices 0..n-1 sorted ascending by arc position.
+func _arc_order() -> PackedInt32Array:
+	var idx: Array = []
+	idx.resize(car_count)
+	for i in car_count:
+		idx[i] = i
+	idx.sort_custom(_compare_arc)
+	return PackedInt32Array(idx)
+
+
+func _compare_arc(a: int, b: int) -> bool:
+	return arc[a] < arc[b]
+
+
+## Map each car index -> the index of the next car ahead of it on the ring.
+func _leaders_by_arc_order() -> PackedInt32Array:
+	var order := _arc_order()
+	var leader_of := PackedInt32Array()
+	leader_of.resize(car_count)
+	for p in car_count:
+		leader_of[order[p]] = order[(p + 1) % car_count]
+	return leader_of
 
 
 func _sync_multimesh() -> void:
