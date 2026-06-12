@@ -5,10 +5,10 @@ extends Node3D
 ## a target headcount — so a district feels inhabited without ever paying for
 ## people the player can't see (roadmap M4: "spawn/despawn invisible to player").
 ##
-## All placement uses CrowdDistribution (pure, tested); the peds themselves are
-## the premium HumanoidBody pedestrians (randomize_palette), so the crowd reads
-## as distinct people. Ground height is taken from the player's Y — flat-world
-## assumption for now; a navmesh/raycast sample is a later refinement.
+## All placement uses CrowdDistribution (pure, tested); the peds themselves use
+## the imported coastal-resident character variants. Ground height is taken
+## from the player's Y — flat-world assumption for now; a navmesh/raycast
+## sample is a later refinement.
 
 ## Pedestrian scene to populate the crowd with. Defaults to the standard one so
 ## the director works the moment it is dropped into a scene.

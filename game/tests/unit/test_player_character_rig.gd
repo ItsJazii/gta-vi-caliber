@@ -1,14 +1,11 @@
 extends RefCounted
 ## Guards the playable hero scene wiring: the player must boot with the
-## skeletal character rig (AnimatedRig on the Quaternius base character,
-## issue #1) and keep the contracts its siblings rely on — the phone pose
-## hook, the foot-plant footstep signal, and the weapon gun mount.
-##
-## Successor to test_player_mara_character.gd: the Mara proxy rode the
-## procedural HumanoidBody, which the player scene no longer instantiates.
+## imported coastal character driven by AnimatedRig, while keeping the phone
+## pose hook, foot-plant signal, and weapon gun-mount contracts.
 
 const PLAYER_SCENE := "res://scenes/player/player.tscn"
 const RIG_SCENE := "res://scenes/player/character_rig.tscn"
+const PLAYER_VISUAL := "res://assets/characters/coastal_residents/player.glb"
 const LEATHER_TEX := "res://assets/textures/leather.png"
 
 
@@ -18,6 +15,21 @@ func test_player_uses_animated_rig() -> bool:
 		return false
 	var rig := player.get_node_or_null("Rig")
 	var ok: bool = rig is AnimatedRig and rig.scene_file_path == RIG_SCENE
+	player.free()
+	return ok
+
+
+func test_player_uses_imported_coastal_visual() -> bool:
+	var player := _player_instance()
+	if player == null:
+		return false
+	var rig := player.get_node_or_null("Rig") as AnimatedRig
+	var ok: bool = (
+		rig != null
+		and rig.visual_scene != null
+		and rig.visual_scene.resource_path == PLAYER_VISUAL
+		and rig.visual_scene_options.is_empty()
+	)
 	player.free()
 	return ok
 

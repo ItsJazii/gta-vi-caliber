@@ -70,10 +70,12 @@ Goal: one city district that feels inhabited.
     Still TODO: a true OSM road-graph (cars currently route a baked walkability grid).
 - [ ] Pedestrian crowds: navmesh flows, reactions (flee/gawk), spawn/despawn invisible to player
   - landed: `npc/crowd_director.gd` streams palette/stature/gait-varied premium
-    humans, spawn/despawn around the player, ground-snapped, kept out of buildings
-    via the baked navmesh. Reactions (flee) in `Pedestrian`. TODO: route peds
-    *through* `NavGrid.find_path` (now that buildings are solid) instead of straight
-    wander; gawk reaction. Demo: `scenes/world/living_city.tscn` (crowd + traffic).
+    humans using imported rigged man/woman visuals with shared runtime animation
+    retargeting; spawn/despawn around the player, ground-snapped, kept out of
+    buildings via the baked navmesh. Reactions (flee) in `Pedestrian`. TODO:
+    route peds *through* `NavGrid.find_path` (now that buildings are solid)
+    instead of straight wander; gawk reaction. Demo:
+    `scenes/world/living_city.tscn` (crowd + traffic).
 - [x] Time-of-day cycle driving sun, streetlights, building windows
 - [ ] Weather fronts: clear → overcast → rain, wet-surface materials
 - [x] Ocean v1: Gerstner/FFT water with shoreline blend (**`engine/` candidate**)

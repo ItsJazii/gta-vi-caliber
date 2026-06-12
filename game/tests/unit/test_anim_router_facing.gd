@@ -29,6 +29,13 @@ func test_facing_follows_travel_direction() -> bool:
 	return is_equal_approx(yaw, atan2(5.0, 0.0))
 
 
+func test_facing_points_local_positive_z_along_velocity() -> bool:
+	var velocity := Vector3(2.0, 0.0, -3.0).normalized()
+	var yaw := AnimRouter.facing_target(velocity, NAN)
+	var world_facing := Basis(Vector3.UP, yaw) * Vector3.BACK
+	return world_facing.dot(velocity) > 0.999
+
+
 func test_facing_keeps_current_when_still_and_unaimed() -> bool:
 	return is_nan(AnimRouter.facing_target(Vector3.ZERO, NAN))
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=45 format=3]
+[gd_scene load_steps=46 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -43,6 +43,7 @@
 [ext_resource type="Script" path="res://scripts/world/armor_shop.gd" id="37_armorshop"]
 [ext_resource type="Shader" path="res://assets/shaders/sky.gdshader" id="38_sky"]
 [ext_resource type="Script" path="res://scripts/world/sky_controller.gd" id="39_skyctl"]
+[ext_resource type="Script" path="res://scripts/world/coastal_prop_placements.gd" id="40_coastal_props"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -142,6 +143,9 @@ day_length_seconds = 1200.0
 
 [node name="FloridaBackdrop" type="Node3D" parent="."]
 script = ExtResource("4_florida")
+
+[node name="CoastalProps" type="Node3D" parent="."]
+script = ExtResource("40_coastal_props")
 
 ; Drivable bay crossings (MacArthur / Julia Tuttle / Venetian) that connect the
 ; mainland districts to the beaches into one continuous Florida landmass.

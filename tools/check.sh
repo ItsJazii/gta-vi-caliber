@@ -82,6 +82,8 @@ step "vehicle visual probe"
 "$GODOT_BIN" --headless --path game --script res://tests/vehicle_visual_probe.gd
 step "player ground probe"
 "$GODOT_BIN" --headless --path game --script res://tests/player_ground_probe.gd
+step "coastal asset probe"
+"$GODOT_BIN" --headless --path game --script res://tests/coastal_asset_probe.gd
 step "miami loop probe"
 "$GODOT_BIN" --headless --path game --script res://tests/miami_loop_probe.gd
 step "miami mission probe"

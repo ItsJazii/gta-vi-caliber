@@ -1,52 +1,7 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/npc/pedestrian.gd" id="1_ped"]
-[ext_resource type="Script" path="res://scripts/player/character_animator.gd" id="2_anim"]
-[ext_resource type="Script" path="res://scripts/player/humanoid_body.gd" id="3_body"]
-
-[sub_resource type="StandardMaterial3D" id="shirt_mat"]
-albedo_color = Color(0.22, 0.5, 0.3, 1)
-roughness = 0.7
-
-[sub_resource type="StandardMaterial3D" id="pants_mat"]
-albedo_color = Color(0.2, 0.18, 0.16, 1)
-roughness = 0.8
-
-[sub_resource type="StandardMaterial3D" id="skin_mat"]
-albedo_color = Color(0.78, 0.58, 0.46, 1)
-roughness = 0.6
-
-[sub_resource type="StandardMaterial3D" id="shoe_mat"]
-albedo_color = Color(0.1, 0.09, 0.08, 1)
-roughness = 0.9
-
-[sub_resource type="BoxMesh" id="torso_mesh"]
-material = SubResource("shirt_mat")
-size = Vector3(0.5, 0.6, 0.27)
-
-[sub_resource type="BoxMesh" id="pelvis_mesh"]
-material = SubResource("pants_mat")
-size = Vector3(0.42, 0.22, 0.25)
-
-[sub_resource type="BoxMesh" id="head_mesh"]
-material = SubResource("skin_mat")
-size = Vector3(0.26, 0.28, 0.26)
-
-[sub_resource type="BoxMesh" id="arm_mesh"]
-material = SubResource("shirt_mat")
-size = Vector3(0.13, 0.6, 0.14)
-
-[sub_resource type="BoxMesh" id="hand_mesh"]
-material = SubResource("skin_mat")
-size = Vector3(0.13, 0.12, 0.14)
-
-[sub_resource type="BoxMesh" id="leg_mesh"]
-material = SubResource("pants_mat")
-size = Vector3(0.18, 0.82, 0.2)
-
-[sub_resource type="BoxMesh" id="foot_mesh"]
-material = SubResource("shoe_mat")
-size = Vector3(0.18, 0.12, 0.3)
+[ext_resource type="PackedScene" path="res://scenes/npc/civilian_rig.tscn" id="2_rig"]
 
 [sub_resource type="CapsuleShape3D" id="body_shape"]
 radius = 0.4
@@ -61,70 +16,4 @@ script = ExtResource("1_ped")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 shape = SubResource("body_shape")
 
-[node name="Rig" type="Node3D" parent="."]
-script = ExtResource("2_anim")
-
-[node name="Body" type="Node3D" parent="Rig"]
-script = ExtResource("3_body")
-randomize_palette = true
-
-[node name="Hips" type="Node3D" parent="Rig"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.92, 0)
-
-[node name="Pelvis" type="MeshInstance3D" parent="Rig/Hips"]
-mesh = SubResource("pelvis_mesh")
-
-[node name="Torso" type="MeshInstance3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
-mesh = SubResource("torso_mesh")
-
-[node name="Neck" type="MeshInstance3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
-
-[node name="Head" type="MeshInstance3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.84, 0)
-mesh = SubResource("head_mesh")
-
-[node name="ShoulderL" type="Node3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.32, 0.6, 0)
-
-[node name="ArmL" type="MeshInstance3D" parent="Rig/Hips/ShoulderL"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0)
-mesh = SubResource("arm_mesh")
-
-[node name="HandL" type="MeshInstance3D" parent="Rig/Hips/ShoulderL"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.66, 0)
-mesh = SubResource("hand_mesh")
-
-[node name="ShoulderR" type="Node3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.32, 0.6, 0)
-
-[node name="ArmR" type="MeshInstance3D" parent="Rig/Hips/ShoulderR"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0)
-mesh = SubResource("arm_mesh")
-
-[node name="HandR" type="MeshInstance3D" parent="Rig/Hips/ShoulderR"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.66, 0)
-mesh = SubResource("hand_mesh")
-
-[node name="HipL" type="Node3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11, 0, 0)
-
-[node name="LegL" type="MeshInstance3D" parent="Rig/Hips/HipL"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.41, 0)
-mesh = SubResource("leg_mesh")
-
-[node name="FootL" type="MeshInstance3D" parent="Rig/Hips/HipL"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.82, 0.06)
-mesh = SubResource("foot_mesh")
-
-[node name="HipR" type="Node3D" parent="Rig/Hips"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.11, 0, 0)
-
-[node name="LegR" type="MeshInstance3D" parent="Rig/Hips/HipR"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.41, 0)
-mesh = SubResource("leg_mesh")
-
-[node name="FootR" type="MeshInstance3D" parent="Rig/Hips/HipR"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.82, 0.06)
-mesh = SubResource("foot_mesh")
+[node name="Rig" parent="." instance=ExtResource("2_rig")]

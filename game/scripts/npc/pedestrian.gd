@@ -2,10 +2,10 @@ class_name Pedestrian
 extends CharacterBody3D
 ## A wandering, shootable street pedestrian.
 ##
-## Reuses CharacterAnimator for procedural walking and Damageable for health;
-## NpcBrain (pure, tested) drives the wander/idle/flee behaviour. Duck-typed
-## take_damage makes it a valid weapon target, so the same gun that hits a dummy
-## drops a pedestrian — and scares the rest into fleeing.
+## Reuses AnimatedRig for imported-character locomotion and Damageable for
+## health; NpcBrain (pure, tested) drives the wander/idle/flee behaviour.
+## Duck-typed take_damage makes it a valid weapon target, so the same gun that
+## hits a dummy drops a pedestrian — and scares the rest into fleeing.
 
 @export var walk_speed: float = 2.4
 @export var run_speed: float = 6.0
@@ -32,7 +32,7 @@ var _dead: bool = false
 var _hp: Damageable
 var _rng := RandomNumberGenerator.new()
 
-@onready var _rig: CharacterAnimator = $Rig
+@onready var _rig: AnimatedRig = $Rig
 
 
 func _ready() -> void:
