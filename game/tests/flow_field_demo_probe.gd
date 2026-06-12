@@ -32,29 +32,33 @@ func _run() -> bool:
 	var goal: Vector2 = demo.goal()
 	var initial := _mean_goal_dist(demo, goal)
 
+	# Check walls EVERY frame (the whole path, not just the final pose) so a
+	# transient clip through a wall can't slip past the assertion (Codex review).
+	var path_clean := true
 	for _f in 700:  # ~12 s at 60 Hz — enough to route across the field
 		demo.step(1.0 / 60.0)
+		if path_clean:
+			for i in demo.agent_count:
+				if demo.is_wall_at(demo.positions[i]):
+					path_clean = false
+					break
 
 	var final := _mean_goal_dist(demo, goal)
-	var in_wall := 0
-	for i in demo.agent_count:
-		if demo.is_wall_at(demo.positions[i]):
-			in_wall += 1
 
 	# Routing worked if the crowd collapsed toward the goal AND the field kept
-	# them out of the walls along the way.
-	if final >= initial * 0.5 or in_wall > 0:
+	# every agent out of the walls for the entire path.
+	if final >= initial * 0.5 or not path_clean:
 		print(
 			(
-				"  FAIL: routing weak (mean goal-dist %.1f -> %.1f, %d in walls)"
-				% [initial, final, in_wall]
+				"  FAIL: routing weak (mean goal-dist %.1f -> %.1f, path_clean=%s)"
+				% [initial, final, str(path_clean)]
 			)
 		)
 		return false
 
 	print(
 		(
-			"  OK: %d agents routed to goal (mean dist %.1f -> %.1f), 0 in walls"
+			"  OK: %d agents routed to goal (mean dist %.1f -> %.1f), never entered a wall"
 			% [demo.agent_count, initial, final]
 		)
 	)

@@ -97,7 +97,15 @@ func _spawn_agents() -> void:
 		positions[i] = p
 
 
-## One tick: each agent steps along the flow direction toward the goal.
+func _physics_process(delta: float) -> void:
+	if _flow != null:
+		step(delta)
+		_sync_multimesh()
+
+
+## One tick: each agent steps along the flow direction toward the goal. The move
+## is capped at one cell so a large delta spike can't tunnel an agent across a
+## thin wall (Codex review).
 func step(delta: float) -> void:
 	if _flow == null:
 		return
@@ -105,7 +113,10 @@ func step(delta: float) -> void:
 		var dir: Vector2 = _flow.call("direction_at", positions[i])
 		if dir.length() < 0.01:
 			continue  # at the goal or on an unreachable cell
-		positions[i] += dir * agent_speed * delta
+		var move := dir * agent_speed * delta
+		if move.length() > cell_size:
+			move = move.normalized() * cell_size
+		positions[i] += move
 
 
 func _setup_multimesh() -> void:
