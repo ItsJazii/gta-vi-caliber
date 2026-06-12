@@ -57,6 +57,33 @@ require gdlint
 step "gdlint"
 gdlint "${GD_DIRS[@]}"
 
+# --- 2.5 git-lfs materialization guard ---------------------------------------
+# Binary assets (*.png, *.glb, ...) are stored via git-lfs. On a checkout where
+# the LFS objects were never pulled, each asset is a ~130-byte text *pointer*.
+# Importing a pointer makes Godot rewrite the committed *.import sidecars to
+# describe a broken asset, which then surfaces downstream as a cascade of
+# confusing "Failed loading resource" unit-test failures — and the corrupted
+# sidecars survive a `.godot/` cache wipe. Fail fast here with the real fix.
+step "git-lfs materialization"
+if [[ -f .gitattributes ]] && grep -q 'filter=lfs' .gitattributes; then
+    LFS_POINTER=""
+    while IFS= read -r asset; do
+        [[ -f "$asset" ]] || continue
+        IFS= read -r first_line <"$asset" || true
+        if [[ "$first_line" == "version https://git-lfs.github.com/spec/v1" ]]; then
+            LFS_POINTER="$asset"
+            break
+        fi
+    done < <(git ls-files game/assets | grep -iE '\.(png|jpg|jpeg|webp|glb|gltf|fbx|exr|hdr|ktx2|ogg|wav|mp3|ttf|otf)$' | head -60)
+    if [[ -n "$LFS_POINTER" ]]; then
+        echo "error: git-lfs assets are not materialized (e.g. '$LFS_POINTER' is still a pointer)." >&2
+        echo "       Run:  git lfs install && git lfs pull   then re-run this gate." >&2
+        echo "       (Importing un-pulled pointers corrupts the committed *.import sidecars;" >&2
+        echo "        if you already ran an import, also: git checkout -- game/assets && rm -rf game/.godot)" >&2
+        exit 1
+    fi
+fi
+
 # --- 3. headless import (validates project.godot, scenes, resources) ---------
 step "headless import"
 "$GODOT_BIN" --headless --path game --import
