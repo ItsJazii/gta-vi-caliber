@@ -75,6 +75,7 @@ func _ready() -> void:
 	_build_billboards()
 	_build_pier()
 	_build_lifeguard_towers()
+	_build_neon_sign()
 	_build_swim_volume()
 
 
@@ -739,6 +740,15 @@ func _build_coastal_palms() -> void:
 	palms.map_scale = map_scale
 	palms.ground_y = land_y + 0.05
 	add_child(palms)
+
+
+func _build_neon_sign() -> void:
+	# A glowing neon gateway at the pier approach — the Vice City night signature.
+	var sign := NeonSign.new()
+	sign.name = "NeonSign"
+	sign.position = Vector3(1350.0, land_y, 470.0)
+	sign.rotation.y = -PI * 0.5
+	add_child(sign)
 
 
 func _build_lifeguard_towers() -> void:

@@ -5,6 +5,21 @@ bar (trailer-fidelity coastal open world). Updated by whoever runs a
 playtest/capture pass; newest entry first. Captures referenced live in
 `/tmp/gta6_playtest/` locally — judge from a fresh run, not memory.
 
+## 2026-06-12 (cont. 12) — neon: the Vice City night signature
+
+Track Q (lighting/atmosphere — finally a *night* pass, reached without touching
+the shared env). Added `NeonSign`: a glowing gateway at the pier approach — a
+dark hoarding on posts, framed by emissive "neon tube" borders, hot-pink
+"VICE BEACH" headline over a cyan "· THE PIER ·" tagline. Pure emissive, so it
+carries itself at night and blooms where glow is on — no dependency on the
+locked WorldEnvironment. The best-looking element yet (`/tmp/neon.png` — reads
+exactly as a real neon sign). Added via FloridaBackdrop near the pier; verified
+in a NIGHT isolation capture (dark env + glow) + 4 unit tests. This is the first
+toe into the iconic Vice City neon-night aesthetic; a full night pass (neon
+storefronts, boardwalk strips, reflections) is the natural follow-on — most of
+it still wants the env owner for the grade/glow, but standalone emissive signage
+like this is reachable in-lane.
+
 ## 2026-06-12 (cont. 11) — pastel lifeguard stands: the Vice City motif
 
 Track Q (detail/landmark). Added `LifeguardTowers`: a row of the candy-coloured
