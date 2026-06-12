@@ -1,7 +1,8 @@
 extends SceneTree
 ## Headed QA capture for the animated player rig (issue #1): boots the
-## sandbox, simulates walk/sprint/jump input, asserts the AnimationTree is in
-## the expected state at each phase, and saves screenshots for visual review.
+## playable map (miami — the repo's single world scene), simulates
+## walk/sprint/jump input, asserts the AnimationTree is in the expected state
+## at each phase, and saves screenshots for visual review.
 ## Needs a renderer — run WITHOUT --headless:
 ##   godot --path game --script res://tests/player_anim_capture.gd
 ## Screenshots land in /tmp/gta6_player_anim/. Not part of check.sh.
@@ -23,7 +24,7 @@ var _failures: PackedStringArray = []
 
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(OUT_DIR)
-	change_scene_to_file("res://scenes/world/sandbox.tscn")
+	change_scene_to_file("res://scenes/world/miami.tscn")
 
 
 func _process(_delta: float) -> bool:
@@ -58,7 +59,7 @@ func _phase_boot() -> void:
 	if _frame < SETTLE_FRAMES:
 		return
 	if _player() == null:
-		_failures.append("no node in 'player' group after sandbox boot")
+		_failures.append("no node in 'player' group after world boot")
 		_finish()
 		return
 	_shot("01_idle")
@@ -210,7 +211,7 @@ func _phase_drive() -> void:
 	if _frame == 1:
 		var car := _car()
 		if car == null:
-			_failures.append("no Car in sandbox for the drive check")
+			_failures.append("no vehicle in the world for the drive check")
 			_finish()
 			return
 		_player().global_position = car.global_position + Vector3(2.0, 0.2, 0.0)
