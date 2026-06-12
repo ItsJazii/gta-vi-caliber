@@ -17,6 +17,8 @@ const WAYPOINTS: Array = [Vector3(7, 1, 5), Vector3(72, 1, -48), Vector3(0, 1, 0
 var _scene: Node = null
 var _player: Node3D = null
 var _mission: Node = null
+var _stats: Node = null
+var _money_at_start: int = 0
 var _frames: int = 0
 var _stop: int = 0
 var _phase: int = 0
@@ -66,6 +68,10 @@ func _resolve_nodes() -> bool:
 		return _fail("no MissionController in group 'mission'")
 	if not _mission.has_method("hud_text"):
 		return _fail("mission node missing hud_text()")
+	_stats = get_first_node_in_group("player_stats")
+	if _stats == null or not ("money" in _stats):
+		return _fail("no PlayerStats with money in group 'player_stats'")
+	_money_at_start = int(_stats.money)
 	return false
 
 
@@ -73,7 +79,18 @@ func _finish() -> bool:
 	if _failed:
 		return true
 	if _mission.is_complete():
-		print("miami mission probe: OK (mission completed across %d objectives)" % WAYPOINTS.size())
+		var earned := int(_stats.money) - _money_at_start
+		if earned <= 0:
+			push_error("miami mission probe FAIL :: mission complete but economy paid nothing")
+			print("miami mission probe: FAIL — money unchanged at %d" % int(_stats.money))
+			quit(1)
+			return true
+		print(
+			(
+				"miami mission probe: OK (mission complete across %d objectives, earned $%d)"
+				% [WAYPOINTS.size(), earned]
+			)
+		)
 		quit(0)
 	else:
 		push_error("miami mission probe FAIL :: mission not complete after visiting all triggers")
