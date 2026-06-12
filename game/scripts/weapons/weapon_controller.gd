@@ -67,7 +67,7 @@ func facing_override() -> float:
 	if not _armed or _camera == null:
 		return NAN
 	var fwd := -_camera.global_transform.basis.z
-	return atan2(fwd.x, fwd.z)
+	return PlayerMotion.yaw_from_forward(fwd)
 
 
 func is_armed() -> bool:

@@ -83,9 +83,29 @@ func test_head_is_taller_than_wide() -> bool:
 
 
 func test_foot_is_longest_along_z() -> bool:
-	# The shoe is lofted along +Z, so its longest extent must be depth, not width.
+	# The shoe is lofted along Z, so its longest extent must be depth, not width.
 	var box := _aabb(HumanoidMesh.foot(0.3, 0.09, 0.06))
 	return box.size.z > box.size.x and box.size.z > box.size.y
+
+
+func test_foot_toe_points_minus_z() -> bool:
+	var geo := HumanoidMesh.foot(0.3, 0.09, 0.06)
+	var verts: PackedVector3Array = geo["vertices"]
+	var min_z := INF
+	var max_z := -INF
+	var min_z_width := 0.0
+	var max_z_width := 0.0
+	for v in verts:
+		if v.z < min_z:
+			min_z = v.z
+		if v.z > max_z:
+			max_z = v.z
+	for v in verts:
+		if absf(v.z - min_z) < 0.0001:
+			min_z_width = maxf(min_z_width, absf(v.x))
+		if absf(v.z - max_z) < 0.0001:
+			max_z_width = maxf(max_z_width, absf(v.x))
+	return min_z_width < max_z_width
 
 
 func test_neck_height_matches() -> bool:

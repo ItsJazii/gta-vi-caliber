@@ -23,6 +23,26 @@ func test_yaw_rotates_direction() -> bool:
 	return direction.is_equal_approx(Vector3(-1, 0, 0))
 
 
+func test_forward_yaw_faces_minus_z() -> bool:
+	return absf(PlayerMotion.yaw_from_forward(Vector3(0, 0, -1))) < 0.0001
+
+
+func test_back_yaw_faces_plus_z() -> bool:
+	return absf(absf(PlayerMotion.yaw_from_forward(Vector3(0, 0, 1))) - PI) < 0.0001
+
+
+func test_right_yaw_faces_plus_x() -> bool:
+	return absf(PlayerMotion.yaw_from_forward(Vector3(1, 0, 0)) + PI / 2) < 0.0001
+
+
+func test_left_yaw_faces_minus_x() -> bool:
+	return absf(PlayerMotion.yaw_from_forward(Vector3(-1, 0, 0)) - PI / 2) < 0.0001
+
+
+func test_zero_forward_yaw_is_nan() -> bool:
+	return is_nan(PlayerMotion.yaw_from_forward(Vector3.ZERO))
+
+
 func test_horizontal_velocity_scales_by_speed() -> bool:
 	var target := PlayerMotion.horizontal_velocity(Vector3(0, 0, -1), 5.0)
 	return target.is_equal_approx(Vector3(0, 0, -5))

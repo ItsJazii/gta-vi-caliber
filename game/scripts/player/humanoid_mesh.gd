@@ -250,16 +250,16 @@ static func hand() -> Dictionary:
 	return lofted(rings, 12)
 
 
-## A shoe: a rounded, forward-pointing form (spine along +Z, toe forward) with a
+## A shoe: a rounded, forward-pointing form (spine along Z, toe forward/-Z) with a
 ## flat-ish sole implied by the squashed vertical radius.
 static func foot(length: float = 0.3, width: float = 0.1, height: float = 0.06) -> Dictionary:
 	var h: float = length * 0.5
 	var rings: Array = [
-		Vector3(-h, width * 0.7, height * 0.7),  # heel
-		Vector3(-h * 0.5, width, height),
-		Vector3(h * 0.1, width * 1.04, height * 1.05),
-		Vector3(h * 0.7, width * 0.86, height * 0.78),
-		Vector3(h, width * 0.5, height * 0.5),  # toe
+		Vector3(h, width * 0.7, height * 0.7),  # heel
+		Vector3(h * 0.5, width, height),
+		Vector3(-h * 0.1, width * 1.04, height * 1.05),
+		Vector3(-h * 0.7, width * 0.86, height * 0.78),
+		Vector3(-h, width * 0.5, height * 0.5),  # toe
 	]
 	return lofted(rings, 14, true)
 

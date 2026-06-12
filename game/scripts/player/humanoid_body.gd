@@ -262,7 +262,7 @@ func _articulate_leg(
 	knee.add_child(
 		_seg(HumanoidMesh.limb(0.42, 0.058, 0.056, 0.045, 14, 16), _pants, Vector3(0, -0.205, 0))
 	)
-	knee.add_child(_seg(HumanoidMesh.foot(), _shoe, Vector3(0, -0.41, 0.06)))
+	knee.add_child(_seg(HumanoidMesh.foot(), _shoe, Vector3(0, -0.41, -0.06)))
 	_legs.append({"hip": hip, "knee": knee, "amp": amp})
 
 

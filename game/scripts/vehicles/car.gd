@@ -120,6 +120,8 @@ func _physics_process(delta: float) -> void:
 
 func _drive(delta: float) -> void:
 	var throttle := Input.get_axis("move_back", "move_forward")
+	# Godot VehicleBody3D uses positive steering for left, so A maps positive
+	# and D maps negative while the car still turns in the expected direction.
 	var steer_input := Input.get_axis("move_right", "move_left")
 	var speed := linear_velocity.length()
 	var forward_speed := linear_velocity.dot(-global_transform.basis.z)

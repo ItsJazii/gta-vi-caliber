@@ -127,7 +127,7 @@ func _update_facing(planar_velocity: Vector3, planar_speed: float, delta: float)
 			target = aim
 			has_target = true
 	if not has_target and planar_speed > Locomotion.IDLE_SPEED_EPSILON:
-		target = atan2(planar_velocity.x, planar_velocity.z)
+		target = PlayerMotion.yaw_from_forward(planar_velocity)
 		has_target = true
 	if has_target:
 		_facing = _rotate_toward_angle(_facing, target, turn_rate * delta)

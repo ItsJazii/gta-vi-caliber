@@ -16,6 +16,14 @@ static func direction_from_input(input_dir: Vector2, camera_yaw: float) -> Vecto
 	return local.rotated(Vector3.UP, camera_yaw).normalized()
 
 
+## Yaw for a Node3D whose visual forward is Godot/project forward (-Z).
+static func yaw_from_forward(direction: Vector3) -> float:
+	var planar := Vector3(direction.x, 0.0, direction.z)
+	if planar.is_zero_approx():
+		return NAN
+	return atan2(-planar.x, -planar.z)
+
+
 ## Target horizontal velocity for a direction and speed (y is always 0).
 static func horizontal_velocity(direction: Vector3, speed: float) -> Vector3:
 	return Vector3(direction.x * speed, 0.0, direction.z * speed)
