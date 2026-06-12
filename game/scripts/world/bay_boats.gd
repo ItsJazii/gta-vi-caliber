@@ -23,6 +23,7 @@ var _hull_mats: Array[StandardMaterial3D] = []
 var _cabin_mat: StandardMaterial3D
 var _sail_mat: StandardMaterial3D
 var _hull_mesh: BoxMesh
+var _bow_mesh: PrismMesh
 var _cabin_mesh: BoxMesh
 var _mast_mesh: BoxMesh
 var _sail_mesh: PrismMesh
@@ -99,6 +100,10 @@ func _build_shared() -> void:
 	_mast_mesh.size = Vector3(0.12, 5.2, 0.12)
 	_sail_mesh = PrismMesh.new()
 	_sail_mesh.size = Vector3(2.6, 4.0, 0.06)
+	# Pointed bow wedge: a prism rotated so its apex points forward (+z), giving
+	# the hull a real prow instead of a blunt box front.
+	_bow_mesh = PrismMesh.new()
+	_bow_mesh.size = Vector3(3.0, 2.6, 1.1)
 
 	for c in [Color(0.93, 0.91, 0.87), Color(0.11, 0.16, 0.32), Color(0.62, 0.13, 0.13)]:
 		var m := StandardMaterial3D.new()
@@ -119,11 +124,20 @@ func _make_boat(is_sail: bool, rng: RandomNumberGenerator) -> Node3D:
 	var s := rng.randf_range(0.8, 1.5)
 	boat.scale = Vector3(s, s, s)
 
+	var hull_mat := _hull_mats[rng.randi() % _hull_mats.size()]
 	var hull := MeshInstance3D.new()
 	hull.mesh = _hull_mesh
-	hull.material_override = _hull_mats[rng.randi() % _hull_mats.size()]
+	hull.material_override = hull_mat
 	hull.position.y = 0.15
 	boat.add_child(hull)
+
+	# Pointed bow at the front of the hull (apex forward via -90° about X).
+	var bow := MeshInstance3D.new()
+	bow.mesh = _bow_mesh
+	bow.material_override = hull_mat
+	bow.rotation.x = -PI * 0.5
+	bow.position = Vector3(0.0, 0.15, 4.5)
+	boat.add_child(bow)
 
 	if is_sail:
 		var mast := MeshInstance3D.new()

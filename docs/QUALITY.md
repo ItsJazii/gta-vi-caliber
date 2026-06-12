@@ -5,6 +5,24 @@ bar (trailer-fidelity coastal open world). Updated by whoever runs a
 playtest/capture pass; newest entry first. Captures referenced live in
 `/tmp/gta6_playtest/` locally — judge from a fresh run, not memory.
 
+## 2026-06-12 (cont. 5) — boat hulls get a prow; capture myth busted
+
+Two small things. (1) The BayBoats hulls were blunt boxes; added a pointed bow
+wedge (a prism rotated apex-forward) so the fleet reads as real hulls up close
+(`/tmp/bow.png`). (2) Capture-method correction worth recording: the "flat tan
+ground" I kept seeing in every hand-framed miami shot (hero_capture / a pinned
+street cam) was NOT a material or render bug — it was the free camera clipping
+into nearby geometry (a building, the car body — see playtest sandbox_driving:
+the tan mass is the CAR). The city renders fine (beauty_capture waypoints prove
+dense lit sprawl). Lesson: judge the real map only from the tuned beauty/bay
+waypoints or from isolated element captures, never an ad-hoc street free-cam.
+
+Deferred: boat **wakes** (the last M6 "Ocean v2: wakes" piece). A naive flat
+trail quad at a fixed low y is occluded by the Gerstner crests (±0.6 m) and
+camouflaged by the whitecaps; doing it right needs a world-space,
+wave-conforming wake mesh decoupled from the boat's tilt — a real task, parked
+rather than shipped half-working.
+
 ## 2026-06-12 (cont. 4) — the bay comes alive: ambient boat fleet
 
 Track Q (detail/life). The open bay was an empty plane — only crude box boats
