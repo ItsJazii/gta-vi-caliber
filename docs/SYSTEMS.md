@@ -102,6 +102,7 @@ Groups the live scene already publishes: `player`, `player_health`,
 | `NewsBulletin` | player deeds -> reactive radio/TV headlines | `report`, `next_bulletin`, `has_pending`, `recent` | `report` on crimes/heists/escapes (severity-tiered); when `RadioScheduler` yields a NEWS segment, read `next_bulletin()` for the anchor line |
 | `SwimStamina` | oxygen/stamina/drowning | `update`, `is_drowning`, `swim_speed`, `drown_damage` | the meter layer above the swim motion node |
 | `LootTable` | weighted seeded drops | `roll`, `roll_many`, `drop_chance_satisfied` | on enemy death / crate smash -> pickups |
+| `CharacterRoster` | dual-protagonist switching + per-lead state | `switch_to`, `can_switch`, `active`, `money_of`, `position_of`, `to_dict` | load the active lead's wallet/wanted/position into PlayerStats + world on `switch_to`; write it back before switching away |
 
 ---
 
