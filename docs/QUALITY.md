@@ -5,6 +5,25 @@ bar (trailer-fidelity coastal open world). Updated by whoever runs a
 playtest/capture pass; newest entry first. Captures referenced live in
 `/tmp/gta6_playtest/` locally — judge from a fresh run, not memory.
 
+## 2026-06-12 (cont. 4) — the bay comes alive: ambient boat fleet
+
+Track Q (detail/life). The open bay was an empty plane — only crude box boats
+moored at the marina docks, nothing on the water. Added `BayBoats`: a fleet of
+sailboats (mast + triangular mainsail) and motor yachts (cabin) that bob AND
+tilt on the Gerstner ocean and drift slowly along their heading, wrapping inside
+the bay rectangle. Motion rides on `OceanMath` (the pure CPU twin of the water
+shader), so the fleet rocks in agreement with the rendered waves, needs no Ocean
+node reference, and is fully headless-testable. 30 boats reading as a living
+waterway with the whitecaps (`/tmp/boats.png`). Added via FloridaBackdrop.
+
+Verified in isolation (`bay_boats_capture.gd`) + 4 functional unit tests
+(`test_bay_boats.gd`: count, sit-on-surface, drift, stay-in-bounds). Process
+note: the tests first passed *vacuously* over an empty fleet because `_ready`
+doesn't fire synchronously in headless run_tests before the first frame —
+extracted a public `populate()` so the build is driven explicitly, not on engine
+lifecycle timing. Honest limit: simple box hulls (fine at bay distance, not a
+close-up dock model) and no wakes yet (the remaining M6 "Ocean v2: wakes" item).
+
 ## 2026-06-12 (cont. 3) — sky gets clouds: flat gradient → broken cumulus
 
 Track Q (lighting/atmosphere — the biggest perceived lever). The playable map's

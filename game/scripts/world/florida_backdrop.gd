@@ -68,6 +68,7 @@ func _ready() -> void:
 	_build_map_markers()
 	_build_wetlands()
 	_build_clouds()
+	_build_bay_boats()
 	_build_swim_volume()
 
 
@@ -721,6 +722,20 @@ func _add_city_label(parent: Node, text: String, centre: Vector2, height: float)
 	label.outline_modulate = Color(0.02, 0.02, 0.025)
 	label.position = Vector3(centre.x, land_y + height + 18.0, centre.y)
 	parent.add_child(label)
+
+
+func _build_bay_boats() -> void:
+	# Ambient fleet drifting/bobbing on the open bay so the water reads as a
+	# living waterway, not an empty plane. Matches the StateOcean wave clock
+	# (same ocean_y/amplitude_scale as _build_water) via OceanMath.
+	var boats := BayBoats.new()
+	boats.name = "BayBoats"
+	boats.ocean_y = ocean_y
+	boats.amplitude_scale = 0.75
+	boats.count = 30
+	boats.area_min = Vector2(1500.0, -2300.0)
+	boats.area_max = Vector2(5000.0, 1600.0)
+	add_child(boats)
 
 
 func _build_clouds() -> void:
