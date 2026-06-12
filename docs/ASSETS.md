@@ -130,6 +130,12 @@ needs a ledger row and must be original (not an imitation of a specific work).
 | `game/addons/gdUnit4/src/update/assets/dot2.png` | Vendored gdUnit4 editor-plugin UI image | godot-gdunit-labs | https://github.com/godot-gdunit-labs/gdUnit4/tree/v6.1.3/addons/gdUnit4 | MIT |
 | `game/addons/gdUnit4/src/update/assets/embedded.png` | Vendored gdUnit4 editor-plugin UI image | godot-gdunit-labs | https://github.com/godot-gdunit-labs/gdUnit4/tree/v6.1.3/addons/gdUnit4 | MIT |
 | `game/addons/gdUnit4/src/update/assets/horizontal-line2.png` | Vendored gdUnit4 editor-plugin UI image | godot-gdunit-labs | https://github.com/godot-gdunit-labs/gdUnit4/tree/v6.1.3/addons/gdUnit4 | MIT |
+| `game/assets/materials/asphalt_street_01/` (4 maps) | Light grey sun-bleached street asphalt — 2K PBR set, `PbrMaterial.from_set` layout, pulled via `tools/pull-material.sh` | ambientCG | https://ambientcg.com/a/Asphalt031 | CC0 1.0 (https://docs.ambientcg.com/license/) |
+| `game/assets/materials/asphalt_cracked_01/` (4 maps) | Cracked, worn asphalt for side streets and lots — 2K PBR set, same layout/tool | ambientCG | https://ambientcg.com/a/Asphalt026C | CC0 1.0 (https://docs.ambientcg.com/license/) |
+| `game/assets/materials/concrete_sidewalk_01/` (5 maps) | Clean beige concrete for sidewalks — 2K PBR set, same layout/tool | ambientCG | https://ambientcg.com/a/Concrete048 | CC0 1.0 (https://docs.ambientcg.com/license/) |
+| `game/assets/materials/pavement_pavers_01/` (4 maps) | Modern random-pattern paver pavement for plazas/promenades — 2K PBR set, same layout/tool | ambientCG | https://ambientcg.com/a/PavingStones146 | CC0 1.0 (https://docs.ambientcg.com/license/) |
+| `game/assets/materials/facade_stucco_01/` (3 maps) | White painted plaster/stucco for low-rise Miami facades — 2K PBR set, same layout/tool | ambientCG | https://ambientcg.com/a/PaintedPlaster017 | CC0 1.0 (https://docs.ambientcg.com/license/) |
+| `game/assets/materials/facade_tower_01/` (6 maps, incl. emission) | Glass skyscraper curtain-wall facade with lit-window emission mask, downtown towers — 2K PBR set, same layout/tool | ambientCG | https://ambientcg.com/a/Facade018A | CC0 1.0 (https://docs.ambientcg.com/license/) |
 
 *(Append one row per asset. Path relative to repo root. "Source" is `original`
 or a URL. License must be CC0, CC-BY-4.0, or CC-BY-4.0-compatible. Exception:

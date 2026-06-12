@@ -17,6 +17,9 @@ collectively to the project contributors)*
 
 Format: `Asset — Author — Source URL — CC0 1.0`
 
+- PBR material scans (asphalt, concrete, pavers, facades; per-asset URLs
+  in the `docs/ASSETS.md` ledger) — ambientCG / Lennart Demes —
+  https://ambientcg.com — CC0 1.0
 - Universal Base Characters (player + NPC base meshes) — Quaternius —
   https://quaternius.com/packs/universalbasecharacters.html — CC0 1.0
   *(lands with PR #31)*
