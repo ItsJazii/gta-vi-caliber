@@ -46,14 +46,15 @@ const ROOFLINE_VAN: Array[Vector2] = [
 	Vector2(0.95, 1.42),
 	Vector2(1.0, 1.12),
 ]
-# The greenhouse window band: faces whose centroid sits at cabin height and
-# within the cabin length become the glass surface; everything else is paint —
-# carving a windshield/side/rear-window belt with no extra geometry (painted
-# roof above it, body below).
-const GLASS_Y_LOW: float = 0.80
-const GLASS_Y_HIGH: float = 1.26
-const GLASS_Z_FRONT: float = -1.05
-const GLASS_Z_REAR: float = 0.95
+# The greenhouse glass belt is classified on the loft GRID, not in world space:
+# by length fraction u (cabin between windshield and rear window) and by the
+# cross-section height fraction f (above the beltline, below the painted roof).
+# Both seams fall on constant-u / constant-f grid lines, so the paint/glass
+# boundary is clean — a world-space centroid box staircases on a round hull.
+const GLASS_U_FRONT: float = 0.30
+const GLASS_U_REAR: float = 0.78
+const GLASS_F_LOW: float = 0.34
+const GLASS_F_HIGH: float = 0.88
 
 
 ## Build the car body. length/width are the overall hull bounds (metres); the
@@ -124,10 +125,12 @@ static func _loft(prof: Array, segments: int) -> Dictionary:
 	for i in range(prof.size() - 1):
 		var s0: int = ring_start[i]
 		var s1: int = ring_start[i + 1]
+		var u: float = (float(i) + 0.5) / float(prof.size() - 1)
 		for k in segments:
 			var k2: int = (k + 1) % segments
-			_tri(verts, paint, glass, s0 + k, s0 + k2, s1 + k)
-			_tri(verts, paint, glass, s0 + k2, s1 + k2, s1 + k)
+			var is_glass: bool = _is_glass_quad(u, k, segments)
+			_tri(paint, glass, is_glass, s0 + k, s0 + k2, s1 + k)
+			_tri(paint, glass, is_glass, s0 + k2, s1 + k2, s1 + k)
 
 	_cap(verts, paint, glass, ring_start[0], segments, prof[0], true)
 	var last: int = prof.size() - 1
@@ -144,26 +147,27 @@ static func _loft(prof: Array, segments: int) -> Dictionary:
 	}
 
 
-## Route a triangle to the paint or glass index list by its centroid.
+## Route a triangle to the paint or glass index list (the caller classifies the
+## whole quad/cap on the grid, so both of a quad's triangles share one surface).
 static func _tri(
-	verts: PackedVector3Array,
-	paint: PackedInt32Array,
-	glass: PackedInt32Array,
-	a: int,
-	b: int,
-	c: int
+	paint: PackedInt32Array, glass: PackedInt32Array, is_glass: bool, a: int, b: int, c: int
 ) -> void:
-	var centroid := (verts[a] + verts[b] + verts[c]) / 3.0
-	var is_glass: bool = (
-		centroid.y > GLASS_Y_LOW
-		and centroid.y < GLASS_Y_HIGH
-		and centroid.z > GLASS_Z_FRONT
-		and centroid.z < GLASS_Z_REAR
-	)
 	if is_glass:
 		glass.append_array([a, b, c])
 	else:
 		paint.append_array([a, b, c])
+
+
+## Classify a side quad as greenhouse glass by its grid cell: within the cabin
+## length (u) and between the beltline and the painted roof. f is the cross-section
+## height fraction (-1 floor .. +1 roof), matching _se's vertical term exactly.
+static func _is_glass_quad(u: float, k: int, segments: int) -> bool:
+	if u < GLASS_U_FRONT or u > GLASS_U_REAR:
+		return false
+	var angle: float = (float(k) + 0.5) / float(segments) * TAU
+	var s: float = sin(angle)
+	var f: float = signf(s) * pow(absf(s), 2.0 / SE_POWER)
+	return f > GLASS_F_LOW and f < GLASS_F_HIGH
 
 
 static func _cap(
@@ -181,9 +185,9 @@ static func _cap(
 	for k in segments:
 		var k2: int = (k + 1) % segments
 		if min_end:
-			_tri(verts, paint, glass, c, ring_start + k, ring_start + k2)
+			_tri(paint, glass, false, c, ring_start + k, ring_start + k2)
 		else:
-			_tri(verts, paint, glass, c, ring_start + k2, ring_start + k)
+			_tri(paint, glass, false, c, ring_start + k2, ring_start + k)
 
 
 static func _smooth_normals(
