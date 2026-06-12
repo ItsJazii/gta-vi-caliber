@@ -38,21 +38,28 @@ func test_miami_keeps_cinematic_quality_floor() -> bool:
 	return ok
 
 
-func test_miami_render_grade_keeps_geometry_readable() -> bool:
+func test_miami_render_grade_matches_day_night_sky() -> bool:
+	# The grade and the sky are a pair. The old darkened grade (exposure 0.56,
+	# brightness 0.82) compensated for the bright static ProceduralSkyMaterial;
+	# against the physical day/night sky it rendered noon as dusk. The scene
+	# must ship the day/night ShaderMaterial sky together with the neutral
+	# grade that sky was tuned for, and a live clock to drive it.
 	var packed := MIAMI_SCENE
 	if packed == null:
 		return false
 	var scene := packed.instantiate()
 	var world_quality := scene.get_node("WorldEnvironment") as WorldQuality
-	var sun := scene.get_node("Sun") as DirectionalLight3D
 	var env := world_quality.environment if world_quality != null else null
+	var sky_is_day_night := (
+		env != null and env.sky != null and env.sky.sky_material is ShaderMaterial
+	)
+	var clock := scene.get_node_or_null("SkyController")
 	var ok := (
-		env != null
-		and env.tonemap_exposure <= 0.65
-		and env.ambient_light_energy <= 0.55
-		and env.adjustment_brightness <= 0.9
-		and sun != null
-		and sun.light_energy <= 1.0
+		sky_is_day_night
+		and env.tonemap_exposure >= 1.0
+		and env.adjustment_brightness >= 0.95
+		and clock != null
+		and clock.is_in_group("sky")
 	)
 	scene.free()
 	return ok
