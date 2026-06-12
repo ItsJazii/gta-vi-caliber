@@ -30,6 +30,31 @@ licensed radio, online services. We are not pretending to match that headcount.
   the real GTA VI trailer — see [[godot-fidelity-ceiling]]). The gap that
   remains is content volume and hardware ray-tracing, not a missing system.
 
+### The realistic target, stated plainly
+
+This plan **cannot and does not aim to clone GTA VI.** Rockstar spent ~$1–2B and
+1000+ people over ~7 years on bespoke content *volume* — hundreds of unique
+interiors, thousands of voiced lines, mocap, a 50-hour story, a full licensed
+map. No multi-agent loop out-produces that, and no software renderer without
+hardware ray-tracing matches that look in a side-by-side.
+
+What is **actually achievable by following this plan** — and what we hold
+ourselves to — is a top-tier *indie-AAA, GTA-inspired* game:
+
+- **Systems feel: 8–9/10.** Heat/police, traffic, reactive crowds, economy,
+  missions, driving — this is where the parts bin already puts us in the game's
+  league. This is our strongest card; lean on it.
+- **Visual fidelity: 6–7/10 vs the trailer.** Reachable with art direction and
+  density, not a renderer miracle. We close the *perceived* gap, not the
+  hardware one.
+- **Content scale: a fraction of Rockstar's, by design.** One city, a 6–10 hr
+  critical path, a small bespoke cast — finished and coherent, not vast.
+
+The bet is: **win on systems and a tight, polished slice; concede on raw scale
+and last-percent fidelity.** A finished, fun, original open-world game that
+genuinely plays like its inspiration is a rare outcome almost no open-source
+project reaches. That is the prize — not a 1:1 replica.
+
 The acceptance test is unchanged from [`docs/VISION.md`](docs/VISION.md): **a
 90-second in-engine trailer captured from a release build that looks like the
 game it claims to be**, plus a player completing the campaign start to finish
@@ -90,11 +115,17 @@ predecessor's gate is green.
 
 ```
 A. Stabilize & consolidate ──┐
-B. Streaming world at scale ─┼─→ D. Content volume ──→ F. Narrative & play loop ──┐
+B. Streaming world at scale ─┼─→ D. Content volume ─────→ F. Play-loop framework ──┐
 C. Wire the parts bin ───────┘    E. Life & atmosphere ─┘                          ├─→ G. Polish ──→ H. Ship 1.0
                                                                                     │
+   Track N. Narrative/voice/audio ─── slow production track, fills F's skeleton ────┤
    Engine track (worldcore) ───────────── runs throughout ──────────────────────────┘
 ```
+
+Two **long poles** dominate the schedule and run as their own parallel
+production tracks, not checkboxes: **Phase D (content volume)** and **Track N
+(narrative/voice/audio)**. Everything else is faster than these two combined —
+plan staffing and time around them.
 
 Each phase below lists: **Goal**, **Tasks**, **Exit criteria** (the gate). Map
 tasks back to roadmap milestones (M0–M6) where they correspond.
@@ -226,25 +257,61 @@ Runs in parallel with D (different agents, different files).
 
 *Goal: it has a story, a start, and an ending — a player can finish it.*
 
-Systems give replayability; a **spine** gives it a reason to exist.
+Systems give replayability; a **spine** gives it a reason to exist. This phase
+hardens the *machinery*; the authored content that fills it is **Track N**
+below — budget it as a separate, slow production track, not a checkbox here.
 
 - [ ] **Mission framework hardened**: triggers, objectives, fail/retry,
       checkpoints, cutscene hooks (the 5-mission campaign is the seed —
       `MissionChain`/`MissionCampaign`).
-- [ ] **The campaign**: a 15–30 mission story arc with a protagonist, a small
-      cast, an opening and a finale (a heist, wiring `HeistCrew`). Scripted
-      barks/dialogue; mocap is out of scope — use procedural + keyframe.
+- [ ] **The campaign skeleton**: a 15–30 mission arc *wired and playable* with
+      placeholder dialogue/audio, an opening and a finale (a heist, wiring
+      `HeistCrew`). Mocap is out of scope — procedural + keyframe.
 - [ ] Side content: taxi/delivery/vigilante (`SideJob`), street races
       (`StreetRace`), properties, collectibles — the open-world filler.
-- [ ] **Radio**: streaming music channels in vehicles (`RadioScheduler` +
-      CC-licensed tracks), DJ/ad/news programming.
 - [ ] **Save/load** of world + player + mission state, durable across versions.
 - [ ] Full UI/UX shell: title, settings, pause, map, phone
       ([[phone-system]]), HUD ([[game-hud-system]]) — coherent and complete.
 
-**Exit gate:** a fresh player starts a new game, plays the campaign to the
-credits, saves/reloads mid-way without corruption, and the wanted/economy
-systems work throughout.
+**Exit gate:** a fresh player starts a new game, plays the campaign skeleton to
+the credits (placeholder narrative OK), saves/reloads mid-way without
+corruption, and the wanted/economy systems work throughout.
+
+---
+
+## Track N — Narrative, voice & audio content  *(a production track, not a feature)*
+
+*Goal: the city has a soul — a story and voices worth caring about.*
+
+**This is the second long pole, alongside Phase D — and the plan's biggest
+honesty risk if treated as a feature.** GTA's *soul* is its writing, characters,
+and radio, and that is enormous **authored** work that no system generates for
+free. It runs as its own slow track in parallel with D/E/F and **fills the
+campaign skeleton** once the framework (Phase F) holds it.
+
+Scope it realistically — small and bespoke beats vast and hollow:
+
+- [ ] **Story bible + cast**: a protagonist, 4–6 named characters, a Vice-City
+      arc with a real ending. Write it before building missions around it.
+- [ ] **Mission scripts**: scene-by-scene beats, objectives, and dialogue per
+      campaign mission — authored, then dropped into the Phase F skeleton.
+- [ ] **Voice**: realistically, synthesized/TTS or a tiny volunteer cast for
+      v1.0 — *not* a full union cast. Pick the pipeline early; it gates timing.
+- [ ] **Ambient barks**: pedestrian/cop/radio one-liners (the `bark` system
+      exists) — a library, reactive to context.
+- [ ] **Radio**: streaming channels with DJ/ad/news programming
+      (`RadioScheduler`) on **CC-licensed or original** tracks only — licensing
+      is a hard provenance rule, not an afterthought.
+- [ ] **Audio mix as content**: music, SFX, and VO are authored assets with
+      their own review pass, not engine settings.
+
+**Exit gate:** the campaign skeleton from Phase F is filled with real authored
+story, dialogue, and at least one fully-programmed radio channel; a playthrough
+reads as *a story*, not a sequence of objectives.
+
+> Reality note: if voice/writing capacity is the constraint (it usually is),
+> **cut mission count before cutting quality** — 12 great authored missions beat
+> 30 hollow ones. Scale the arc to the writing you can actually produce.
 
 ---
 
@@ -322,11 +389,24 @@ Anything generically useful gets a Godot upstream PR the same week, logged in
 
 ## 5. Reality check / known limits
 
-- **Fidelity ceiling ~6–7/10 vs the real GTA VI trailer** without hardware RT
-  ([[godot-fidelity-ceiling]]). Plan for art direction and density to close the
-  *perceived* gap, not a renderer miracle.
-- **Content volume is the true long pole**, not systems. Phase D will take
-  longer than B, C, E combined. Parallelize it hard.
+The whole point of this section: **this plan is achievable only because it
+concedes the things it cannot win.** Hold the line on every one of these.
+
+- **Not a GTA VI clone — an indie-AAA game in its spirit.** Target ~6–7/10
+  fidelity and a fraction of the scale (see §0, "The realistic target"). The
+  win condition is *systems feel + a polished slice*, not parity.
+- **Fidelity ceiling ~6–7/10 vs the trailer** without hardware RT
+  ([[godot-fidelity-ceiling]]). Close the *perceived* gap with art direction and
+  density, not a renderer miracle.
+- **Two long poles, both production tracks, both slow:** Phase D (content
+  volume) and Track N (narrative/voice/audio). Each takes longer than the
+  engineering phases combined. The most common way this plan *fails* is
+  underestimating one of them and shipping a hollow city or a hollow story.
+- **Cut scope before cutting quality.** Fewer districts, fewer missions, a
+  smaller cast — but each one finished. 12 great missions over 30 hollow ones;
+  one stunning district over four placeholder ones.
+- **Pick the voice/audio pipeline early** (TTS/synth or tiny volunteer cast for
+  v1.0 — not a union cast). It gates mission timing and can't be bolted on late.
 - **Scope discipline:** online/multiplayer, character creator, a second city,
   and a 50-hour narrative are **Post-launch**, not v1.0. Say no on the record.
 

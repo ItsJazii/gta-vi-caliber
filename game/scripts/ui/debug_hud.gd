@@ -14,9 +14,11 @@ const HINTS: String = (
 
 func _process(_delta: float) -> void:
 	var text := "%d FPS\n%s" % [Engine.get_frames_per_second(), HINTS]
-	var streamer := get_tree().get_first_node_in_group("tile_streamer") as TileStreamer
-	if streamer != null:
-		var stats := streamer.stats()
+	# Duck-typed: the streamer is optional and its class may not be registered
+	# in every headless boot order, so probe for the method instead of casting.
+	var streamer := get_tree().get_first_node_in_group("tile_streamer")
+	if streamer != null and streamer.has_method("stats"):
+		var stats: Dictionary = streamer.stats()
 		text += (
 			"\ntiles: %d resident · %d loading · VRAM %.0f MB · frame %.1f ms"
 			% [
