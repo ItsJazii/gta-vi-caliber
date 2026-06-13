@@ -16,13 +16,6 @@ extends SceneTree
 const GAUNTLET_SCENE := "res://tests/asset_gauntlet.tscn"
 const DEFAULT_ASSET := "res://assets/buildings/poc_bayfront_tower.glb"
 const GROUND_SET := "res://assets/materials/asphalt_street_01"
-## The fog density authored in asset_gauntlet.tscn (= miami.tscn's value).
-## Until PR #32 lands, CinematicEnvironment.apply_quality preserves the engine
-## fog_mode-setter clobber (density -> 1.0) instead of this authored value,
-## which drowns every asset in fog color. The gauntlet's very first run caught
-## that by eye. _repair_known_fog_clobber() below restores the authored value
-## loudly; DELETE it once PR #32 is merged.
-const AUTHORED_FOG_DENSITY := 0.00008
 const SETTLE_TIME := 40
 const SETTLE_POSE := 12
 const FOV := 65.0
@@ -81,7 +74,6 @@ func _initialize() -> void:
 
 func _process(_delta: float) -> bool:
 	if not _built:
-		_repair_known_fog_clobber()
 		_build_steps()
 		_built = true
 	if _pair_name != "":
@@ -112,27 +104,6 @@ func _process(_delta: float) -> bool:
 			_pair_lumas = _sample_lumas(_pair_image)
 			_wait = 1
 	return false
-
-
-## KNOWN-BUG SHIM, delete when PR #32 lands: WorldQuality._ready ran
-## apply_quality, which (unfixed) hands back the engine's fog_mode-setter
-## clobber (fog_density = 1.0) instead of the authored density, fogging out
-## the whole stage. Restore the authored value so assets are judged against
-## the intended live stack, and say so loudly in the log.
-func _repair_known_fog_clobber() -> void:
-	var we := root.find_child("WorldEnvironment", true, false) as WorldEnvironment
-	var env := we.environment
-	if absf(env.fog_density - AUTHORED_FOG_DENSITY) > AUTHORED_FOG_DENSITY:
-		push_warning(
-			(
-				(
-					"gauntlet: fog_density was %f, not the authored %f — "
-					+ "the PR #32 fog clobber; restoring authored value"
-				)
-				% [env.fog_density, AUTHORED_FOG_DENSITY]
-			)
-		)
-		env.fog_density = AUTHORED_FOG_DENSITY
 
 
 ## Build the whole battery once the asset is in the tree (AABB needs that).

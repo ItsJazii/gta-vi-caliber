@@ -22,10 +22,8 @@ Format: `Asset — Author — Source URL — CC0 1.0`
   https://ambientcg.com — CC0 1.0
 - Universal Base Characters (player + NPC base meshes) — Quaternius —
   https://quaternius.com/packs/universalbasecharacters.html — CC0 1.0
-  *(lands with PR #31)*
 - Universal Animation Library (45 humanoid clips) — Quaternius —
   https://quaternius.com/packs/universalanimationlibrary.html — CC0 1.0
-  *(lands with PR #31)*
 
 ## Data
 
