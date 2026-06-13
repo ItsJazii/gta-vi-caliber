@@ -74,7 +74,7 @@ AI agents are welcome contributors too: the repo contract for agents lives in
 | --- | --- |
 | `game/` | The Godot 4.6 project — scenes, scripts, assets, tests |
 | `engine/` | Custom C++ engine modules (GDExtension) for performance-critical systems |
-| `docs/` | Roadmap, architecture, asset policy, vision, build guide |
+| `docs/` | Roadmap, architecture, asset policy + pipeline, vision, build guide |
 | `tools/` | `check.sh` (the local CI gate) and helper scripts |
 | `reference/` | Local-only art-direction study footage — never committed |
 

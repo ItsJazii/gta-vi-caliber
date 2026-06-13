@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+; The shippable form of the asset-pipeline POC building: the Buildify-generated
+; GLB plus the night-window driver, so its emissive glass rides the shared
+; day/night clock instead of glowing at noon (asset gauntlet finding, see
+; docs/ASSET_PIPELINE.md §12). Place THIS scene, never the bare GLB.
+
+[ext_resource type="PackedScene" path="res://assets/buildings/poc_bayfront_tower.glb" id="1_glb"]
+[ext_resource type="Script" path="res://scripts/props/night_window_emission.gd" id="2_night"]
+
+[node name="PocBayfrontTower" type="Node3D"]
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+
+[node name="NightWindows" type="Node" parent="."]
+script = ExtResource("2_night")
