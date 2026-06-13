@@ -1,14 +1,16 @@
 class_name SaveManager
 extends Node
-## Quick-save (F5) / quick-load (F9) of game state.
+## Quick-save ("quick_save", F5) / quick-load ("quick_load", F9) of game state.
 ##
 ## Gathers a snapshot from the player and the systems that own state (health,
-## wanted) by group, serialises it via SaveData (pure, tested), and writes it to
-## user://savegame.json. Uses raw key input so it adds no input actions, and
-## finds everything by group so it needs no edits to the player scene. Player
-## position, health, wanted level, and every vehicle's transform + health
-## persist. Vehicles are found through the "vehicles" group and matched by node
-## name (unique within a scene), so this stays streaming-ready.
+## wanted, stats, progression, properties) by group, serialises it via SaveData
+## (pure, tested, versioned with migration), and writes it to
+## user://savegame.json. Finds everything by group so it needs no edits to the
+## player scene. Player position, health, wanted level, money/armor, respect
+## XP, property ownership, and every vehicle's transform (+health where the
+## vehicle has one — cars and bikes; boats are transform-only) persist.
+## Vehicles are found through the "vehicles" group and matched by node name
+## (unique within a scene), so this stays streaming-ready.
 
 signal saved
 signal loaded
@@ -17,12 +19,9 @@ const SAVE_PATH: String = "user://savegame.json"
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
-		return
-	if key.keycode == KEY_F5:
+	if event.is_action_pressed("quick_save"):
 		save_game()
-	elif key.keycode == KEY_F9:
+	elif event.is_action_pressed("quick_load"):
 		load_game()
 
 
@@ -40,7 +39,8 @@ func load_game() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file == null:
 		return
-	_apply(SaveData.decode(file.get_as_text()))
+	var text := file.get_as_text()
+	_apply(SaveData.migrate(SaveData.decode(text), SaveData.version_of(text)))
 	loaded.emit()
 
 
@@ -50,26 +50,39 @@ func _gather() -> Dictionary:
 	if player != null:
 		var pos := player.global_position
 		snapshot["player_pos"] = [pos.x, pos.y, pos.z]
-	var health := _first("player_health")
-	if health != null and health.has_method("serialize"):
-		snapshot["health"] = health.serialize()
-	var wanted := _first("wanted")
-	if wanted != null and wanted.has_method("serialize"):
-		snapshot["wanted"] = wanted.serialize()
+	for entry in [
+		["health", "player_health"],
+		["wanted", "wanted"],
+		["stats", "player_stats"],
+		["progression", "progression"],
+	]:
+		var holder := _first(entry[1])
+		if holder != null and holder.has_method("serialize"):
+			snapshot[entry[0]] = holder.serialize()
+	snapshot["properties"] = _gather_properties()
 	snapshot["vehicles"] = _gather_vehicles()
 	return snapshot
+
+
+## One entry per PropertyHub, keyed by node name (unique within the scene).
+func _gather_properties() -> Dictionary:
+	var hubs: Dictionary = {}
+	for hub in get_tree().get_nodes_in_group("property_hub"):
+		if hub.has_method("serialize"):
+			hubs[String(hub.name)] = hub.serialize()
+	return hubs
 
 
 func _gather_vehicles() -> Dictionary:
 	var vehicles: Dictionary = {}
 	for node in get_tree().get_nodes_in_group("vehicles"):
-		var car := node as Car
-		if car == null:
+		var vehicle := node as Node3D
+		if vehicle == null:
 			continue
-		vehicles[String(car.name)] = {
-			"transform": SaveData.transform_to_dict(car.global_transform),
-			"health": car.health,
-		}
+		var entry := {"transform": SaveData.transform_to_dict(vehicle.global_transform)}
+		if "health" in vehicle:
+			entry["health"] = vehicle.health
+		vehicles[String(vehicle.name)] = entry
 	return vehicles
 
 
@@ -85,30 +98,43 @@ func _apply(snapshot: Dictionary) -> void:
 			player.global_position = Vector3(values[0], values[1], values[2])
 			if player is CharacterBody3D:
 				(player as CharacterBody3D).velocity = Vector3.ZERO
-	var health := _first("player_health")
-	if health != null and health.has_method("restore"):
-		health.restore(snapshot.get("health", {}))
-	var wanted := _first("wanted")
-	if wanted != null and wanted.has_method("restore"):
-		wanted.restore(snapshot.get("wanted", {}))
+	for entry in [
+		["health", "player_health"],
+		["wanted", "wanted"],
+		["stats", "player_stats"],
+		["progression", "progression"],
+	]:
+		var holder := _first(entry[1])
+		if holder != null and holder.has_method("restore"):
+			holder.restore(snapshot.get(entry[0], {}))
+	if snapshot.get("properties") is Dictionary:
+		_apply_properties(snapshot["properties"])
 	if snapshot.get("vehicles") is Dictionary:
 		_apply_vehicles(snapshot["vehicles"])
 
 
+func _apply_properties(data: Dictionary) -> void:
+	for hub in get_tree().get_nodes_in_group("property_hub"):
+		if hub.has_method("restore") and data.get(String(hub.name)) is Dictionary:
+			hub.restore(data[String(hub.name)])
+
+
 func _apply_vehicles(data: Dictionary) -> void:
 	for node in get_tree().get_nodes_in_group("vehicles"):
-		var car := node as Car
-		if car == null or not data.get(String(car.name)) is Dictionary:
+		var vehicle := node as Node3D
+		if vehicle == null or not data.get(String(vehicle.name)) is Dictionary:
 			continue
-		var saved: Dictionary = data[String(car.name)]
-		car.global_transform = SaveData.dict_to_transform(
-			saved.get("transform"), car.global_transform
+		var saved: Dictionary = data[String(vehicle.name)]
+		vehicle.global_transform = SaveData.dict_to_transform(
+			saved.get("transform"), vehicle.global_transform
 		)
-		car.linear_velocity = Vector3.ZERO
-		car.angular_velocity = Vector3.ZERO
-		car.health = clampf(
-			SaveData.number_or(saved.get("health"), car.max_health), 0.0, car.max_health
-		)
+		if vehicle is RigidBody3D:
+			(vehicle as RigidBody3D).linear_velocity = Vector3.ZERO
+			(vehicle as RigidBody3D).angular_velocity = Vector3.ZERO
+		if "health" in vehicle and "max_health" in vehicle:
+			vehicle.health = clampf(
+				SaveData.number_or(saved.get("health"), vehicle.max_health), 0.0, vehicle.max_health
+			)
 
 
 func _player() -> Node3D:

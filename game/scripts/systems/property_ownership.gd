@@ -174,7 +174,10 @@ func buy(id: String, balance: int) -> Dictionary:
 ## Accumulate income from all owned businesses over `delta_days` into the pending
 ## bank. Negative or zero spans are ignored.
 func accrue(delta_days: float) -> void:
-	if delta_days <= 0.0:
+	# `<= 0.0` lets NaN through (every NaN comparison is false), and NaN would
+	# permanently poison the bank — collect() then returns int(NaN)=0 and wipes
+	# all accrued income. Reject any non-finite span.
+	if not is_finite(delta_days) or delta_days <= 0.0:
 		return
 	_pending += float(daily_income()) * delta_days
 
@@ -188,7 +191,7 @@ func pending_income() -> float:
 ## returns the whole-money amount and zeroes the bank. The caller credits it
 ## (PlayerStats.add_money).
 func collect() -> int:
-	var amount := int(_pending)
+	var amount := int(_pending) if is_finite(_pending) else 0
 	_pending = 0.0
 	return amount
 

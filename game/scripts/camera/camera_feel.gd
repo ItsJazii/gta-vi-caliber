@@ -41,3 +41,11 @@ static func recenter_yaw(velocity_x: float, velocity_z: float) -> float:
 static func approach_angle(current: float, target: float, max_step: float) -> float:
 	var diff := wrapf(target - current, -PI, PI)
 	return current + clampf(diff, -max_step, max_step)
+
+
+## Camera roll (radians) banking into a turn for the driving chase cam:
+## proportional to the car's yaw rate, scaled by the speed blend (so it only
+## kicks in at speed), and capped at `max_roll`. Sign is negated so a left turn
+## (positive yaw rate) tilts the horizon into the corner.
+static func turn_roll(yaw_rate: float, blend: float, roll_gain: float, max_roll: float) -> float:
+	return clampf(-yaw_rate * roll_gain, -max_roll, max_roll) * clampf(blend, 0.0, 1.0)

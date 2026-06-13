@@ -25,6 +25,7 @@ extends Node
 @export var world_environment: WorldEnvironment
 
 var _sky_material: ShaderMaterial
+var _weather: Node = null
 
 
 func _ready() -> void:
@@ -42,6 +43,12 @@ func _resolve_refs() -> void:
 		scope = self
 	if sun_light == null:
 		sun_light = _find_node_of_type(scope, "DirectionalLight3D") as DirectionalLight3D
+	if moon_light == null:
+		# A sibling DirectionalLight3D named "Moon" is the night key; resolved by
+		# name so it never gets confused with the sun in the type search above.
+		var moon := scope.get_node_or_null("Moon")
+		if moon is DirectionalLight3D:
+			moon_light = moon
 	if world_environment == null:
 		world_environment = _find_node_of_type(scope, "WorldEnvironment") as WorldEnvironment
 
@@ -85,19 +92,31 @@ func _apply(tod: float) -> void:
 
 
 func _orient_sun(sun_dir: Vector3, tod: float) -> void:
+	# Weather scales the key light: overcast drops the sun to ~35% so streets
+	# go flat and grey under a storm deck, then brighten as the front clears.
+	var dim := _weather_dim()
 	if sun_light != null:
 		# A DirectionalLight emits along its local -Z; aim that down the ray the
 		# sunlight travels, i.e. away from the sun position (-sun_dir).
 		_aim_light(sun_light, -sun_dir)
 		sun_light.light_color = SkyModel.light_color(tod)
-		sun_light.light_energy = SkyModel.light_energy(tod)
+		sun_light.light_energy = SkyModel.light_energy(tod) * dim
 		sun_light.shadow_enabled = SkyModel.is_sun_up(tod)
 	if moon_light != null:
 		var moon_dir := SkyModel.moon_direction(tod)
 		_aim_light(moon_light, -moon_dir)
 		var night := SkyModel.night_amount(tod)
-		moon_light.light_energy = SkyModel.MOON_ENERGY * night
+		moon_light.light_energy = SkyModel.MOON_LIGHT_ENERGY * night * dim
 		moon_light.shadow_enabled = night > 0.5 and moon_dir.y > 0.0
+
+
+## The weather layer's key-light scale (1.0 with no weather in the scene).
+func _weather_dim() -> float:
+	if _weather == null or not is_instance_valid(_weather):
+		_weather = get_tree().get_first_node_in_group("weather")
+	if _weather != null and _weather.has_method("sun_dim_factor"):
+		return clampf(float(_weather.sun_dim_factor()), 0.0, 1.0)
+	return 1.0
 
 
 ## Point a light's -Z down `forward`, keeping a stable up vector unless `forward`
@@ -118,6 +137,10 @@ func _update_environment(tod: float) -> void:
 		return
 	var env := world_environment.environment
 	env.ambient_light_energy = SkyModel.ambient_energy(tod)
+	# Warm sky fill by day, cool moonlit blue by night — keeps night shadows from
+	# staying the warm daytime tint. (WeatherController may scale the energy down
+	# afterwards for overcast; it runs later in the tree.)
+	env.ambient_light_color = SkyModel.ambient_color(tod)
 	# Tie any distance fog to the warm/cool key-light colour so aerial
 	# perspective matches the sky.
 	if env.fog_enabled:

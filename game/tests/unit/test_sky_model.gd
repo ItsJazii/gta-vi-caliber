@@ -90,6 +90,26 @@ func test_ambient_brighter_by_day() -> bool:
 	return a > SkyModel.ambient_energy(0.0) and a <= SkyModel.MAX_AMBIENT + 1e-6
 
 
+func test_ambient_color_warm_by_day_cool_by_night() -> bool:
+	# Noon fill is warm (red >= blue); midnight fill is cool (blue > red), so
+	# night shadows pick up moonlight rather than the daytime golden tint.
+	var noon := SkyModel.ambient_color(12.0)
+	var night := SkyModel.ambient_color(0.0)
+	return noon.r >= noon.b and night.b > night.r
+
+
+func test_ambient_color_matches_authored_day_tint() -> bool:
+	# Daytime must stay the colour the scene was authored against.
+	var noon := SkyModel.ambient_color(12.0)
+	return noon.is_equal_approx(SkyModel.DAY_AMBIENT_COLOR)
+
+
+func test_moon_light_energy_brighter_than_sun_floor() -> bool:
+	# The dedicated moon key is brighter than the sun's residual night floor so a
+	# moonlit night actually reads.
+	return SkyModel.MOON_LIGHT_ENERGY > SkyModel.MOON_ENERGY
+
+
 func test_sky_sun_energy_clamped() -> bool:
 	for h in [0.0, 6.0, 12.0, 18.0, 23.0]:
 		var e := SkyModel.sky_sun_energy(h)

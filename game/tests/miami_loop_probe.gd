@@ -57,6 +57,13 @@ func _commit_crimes() -> void:
 	if _spawner == null:
 		_fail("no PoliceSpawner node found")
 		return
+	# Witness gate sanity first: a kill miles from every observer goes
+	# unreported — no heat, no stars.
+	if _tracker.has_method("report_witnessed_crime"):
+		_tracker.report_witnessed_crime(true, Vector3(40000.0, 0.0, 40000.0))
+		if bool(_tracker.is_wanted()):
+			_fail("unseen crime raised heat — witness gate is not filtering")
+			return
 	for _i in CRIME_COUNT:
 		_tracker.report_crime(true)
 	_crime_reported = true

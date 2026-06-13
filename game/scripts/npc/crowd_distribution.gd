@@ -40,3 +40,13 @@ static func spawn_count(current: int, target: int, per_tick_budget: int) -> int:
 	if deficit <= 0:
 		return 0
 	return mini(deficit, maxi(per_tick_budget, 0))
+
+
+## True when the `slot`-th spawn (a monotonically increasing counter) should be
+## a Citizen rather than a plain pedestrian, for a target citizen `fraction` of
+## the crowd. Bresenham-style spread: floor((slot+1)*f) > floor(slot*f), so
+## citizens are interleaved evenly through the spawn order — deterministic for
+## tests, no RNG clumping.
+static func is_citizen_slot(slot: int, fraction: float) -> bool:
+	var f: float = clampf(fraction, 0.0, 1.0)
+	return floorf(float(slot + 1) * f) > floorf(float(slot) * f)

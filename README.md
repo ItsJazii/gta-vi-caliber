@@ -39,10 +39,22 @@ streaming Vice City world, ready to walk, drive, and trigger the wanted system.
 | `WASD` | Move |
 | `Shift` | Sprint |
 | `Space` | Jump / brake |
+| `Ctrl` | Dive |
 | `E` | Enter / exit nearest car |
 | `C` | Look behind |
 | Mouse | Look around |
-| `Esc` | Release mouse cursor |
+| `LMB` / `RMB` | Fire / aim |
+| `R` | Reload |
+| `Q` / `V` | Next weapon / weapon wheel |
+| `X` | Holster |
+| `F` | Melee (unarmed) |
+| `Tab` or `P` | Phone |
+| `F5` / `F9` | Quick-save / quick-load |
+| `Esc` | Pause / release mouse cursor |
+
+A gamepad works too: left stick moves, right trigger fires, left trigger
+aims, `A` jumps, `B` dives, `X` interacts, `Y` reloads, shoulders holster
+(`LB`) and melee (`RB`), stick clicks sprint (`L3`) and look behind (`R3`).
 
 More detail in [docs/BUILDING.md](docs/BUILDING.md).
 

@@ -73,6 +73,15 @@ static func lateral_grip(
 	return clampf(grip * (1.0 - brake * cut * moving), 0.0, 1.0)
 
 
+## Map a 0..1 lateral-grip factor onto a VehicleWheel3D friction slip, between a
+## `min_slip` floor (full handbrake slide — the rear barely resists sideways) and
+## the wheel's authored `base_slip` (full grip). This is how the abstract grip
+## cut from `lateral_grip` becomes a concrete rear-wheel setting on the engine's
+## VehicleBody3D, so the pure layer drives the slide without owning the physics.
+static func slip_for_grip(grip: float, min_slip: float, base_slip: float) -> float:
+	return lerpf(min_slip, base_slip, clampf(grip, 0.0, 1.0))
+
+
 ## The core "tyres bite" step. Split velocity into the component along `forward`
 ## and the component perpendicular to it (the slide), then bleed the lateral
 ## component by `grip * delta` — more grip removes more slide per second, so the

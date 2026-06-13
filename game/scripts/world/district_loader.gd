@@ -17,9 +17,23 @@ signal district_built(building_count: int, road_count: int)
 const STREETLIGHT_SPACING_M: float = 45.0
 const MAX_STREETLIGHTS: int = 60
 const STREETLIGHT_RADIUS_M: float = 250.0
+## Real warm OmniLight3D pools hung under the lamp heads, faded in at night by
+## the StreetlightSwitch. Capped below the pole count and shadowless so the
+## streets actually glow without paying a shadow map per lamp; range/energy tuned
+## for a soft on-ground pool cast from the ~5 m head.
+const MAX_STREETLIGHT_LIGHTS: int = 100
+const STREETLIGHT_LIGHT_RANGE_M: float = 13.0
+const STREETLIGHT_LIGHT_ENERGY: float = 4.0
+## Visual walking surfaces sit just under the ground collider top
+## (GROUND_SURFACE_Y) so the player rests flush on the street; the spawn vista's
+## hero road aligns to STREET_VISUAL_Y (see DistrictSpawnVista).
 const STREET_VISUAL_Y: float = 0.32
 const SIDEWALK_VISUAL_Y: float = 0.28
 const GROUND_SURFACE_Y: float = 0.4
+## Footprints extruded per build slice. Sized so one slice stays a small
+## fraction of a 60 Hz frame; a 1500-building district pages in across ~7
+## slices instead of one giant hitch.
+const BUILDINGS_PER_SLICE: int = 220
 
 ## res:// path to the district JSON (OSM-derived, ODbL).
 @export_file("*.json") var district_path: String = "res://assets/world/downtown_miami.json"
@@ -55,39 +69,95 @@ func _ready() -> void:
 	if data.is_empty():
 		push_error("district_loader: could not load %s" % district_path)
 		return
+	_build_timesliced(data)
 
+
+## Assemble the district one stage per frame: ground, building slices, the
+## welded building mesh + collider, then each road/prop pass. Paging a district
+## in mid-drive costs many small frames instead of one long stall. Every stage
+## re-checks the loader is still in the tree, so a district unloaded mid-build
+## stops cleanly instead of building into a freed branch.
+func _build_timesliced(data: Dictionary) -> void:
 	var origin: Dictionary = data["origin"]
 	var proj := GeoProjection.new(origin["lat"], origin["lon"])
+	var buildings: Array = data.get("buildings", [])
+	var roads: Array = data.get("roads", [])
+	var tree := get_tree()
 
 	if spawn_ground:
 		_build_ground(data, proj)
-	var built_buildings := _build_buildings(data.get("buildings", []), proj)
-	DistrictFacadePanels.build(self, data.get("buildings", []), proj)
-	if build_doors:
-		BuildingDoors.build(self, data.get("buildings", []), proj)
-	_build_rooftops(data.get("buildings", []), proj)
-	_build_roads(data.get("roads", []), proj)
-	_build_sidewalks(data.get("roads", []), proj)
-	if build_streetlights:
-		_build_streetlights(data.get("roads", []), proj)
-	_build_palms(data.get("roads", []), proj)
-	_build_parked_cars(data.get("roads", []), proj)
-	_build_trees(data.get("roads", []), proj)
-	_build_street_furniture(data.get("roads", []), proj)
-	if place_player:
-		var centre_geo: Dictionary = data.get("centroid", origin)
-		var centre := proj.to_local(centre_geo["lat"], centre_geo["lon"])
-		_place_actors_on_street(data.get("roads", []), data.get("buildings", []), proj, centre)
 
-	var nb: int = (data.get("buildings", []) as Array).size()
-	var nr: int = (data.get("roads", []) as Array).size()
-	print(
-		(
-			"district_loader: built %s — %d buildings (%d meshed), %d roads"
-			% [data.get("name", "district"), nb, built_buildings, nr]
-		)
-	)
-	district_built.emit(nb, nr)
+	# Buildings: extrude footprints a slice per frame, then weld once into a
+	# single MeshInstance3D + trimesh collider (one draw call, as before).
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var colors := PackedColorArray()
+	var meshed := 0
+	var cursor := 0
+	while cursor < buildings.size():
+		if not await _next_stage(tree):
+			return
+		var slice_end := mini(cursor + BUILDINGS_PER_SLICE, buildings.size())
+		while cursor < slice_end:
+			var b: Dictionary = buildings[cursor]
+			cursor += 1
+			var ring := _project_ring(b["footprint"], proj)
+			var geo := CityBuilder.extrude_prism(ring, 0.0, float(b["height_m"]))
+			if geo.is_empty():
+				continue
+			_append_geo(verts, norms, idx, geo)
+			# Per-building wall tint, read by the facade shader as vertex COLOR.
+			var bid := int(b.get("id", meshed))
+			var tint := CityBuilder.building_color(bid)
+			# Glassiness seed packed into vertex-colour alpha: tall buildings
+			# bias toward reflective glass curtain-wall, short toward masonry.
+			tint.a = CityBuilder.building_glass_seed(bid, float(b["height_m"]))
+			for _i in (geo["vertices"] as PackedVector3Array).size():
+				colors.append(tint)
+			meshed += 1
+	if not await _next_stage(tree):
+		return
+	_commit_buildings(verts, norms, idx, colors)
+
+	# Remaining passes, one per frame.
+	var stages: Array[Callable] = [
+		func() -> void: DistrictFacadePanels.build(self, buildings, proj),
+		func() -> void: _build_rooftops(buildings, proj),
+		func() -> void: _build_roads(roads, proj),
+		func() -> void: _build_sidewalks(roads, proj),
+	]
+	if build_doors:
+		stages.append(func() -> void: BuildingDoors.build(self, buildings, proj))
+		stages.append(func() -> void: BuildingShops.build(self, buildings, proj))
+	if build_streetlights:
+		stages.append(func() -> void: _build_streetlights(roads, proj))
+	stages.append(func() -> void: _build_palms(roads, proj))
+	stages.append(func() -> void: _build_parked_cars(roads, proj))
+	stages.append(func() -> void: _build_trees(roads, proj))
+	stages.append(func() -> void: _build_street_furniture(roads, proj))
+	if place_player:
+		stages.append(func() -> void: _place_player_stage(data, proj))
+	for stage in stages:
+		if not await _next_stage(tree):
+			return
+		stage.call()
+
+	district_built.emit(buildings.size(), roads.size())
+
+
+func _place_player_stage(data: Dictionary, proj: GeoProjection) -> void:
+	var origin: Dictionary = data["origin"]
+	var centre_geo: Dictionary = data.get("centroid", origin)
+	var centre := proj.to_local(centre_geo["lat"], centre_geo["lon"])
+	_place_actors_on_street(data.get("roads", []), data.get("buildings", []), proj, centre)
+
+
+# One frame boundary between build stages; false once the loader has left the
+# tree (district unloaded mid-build) so the rest of the build must not run.
+func _next_stage(tree: SceneTree) -> bool:
+	await tree.process_frame
+	return is_inside_tree()
 
 
 ## Break up the flat-topped skyline with rooftop superstructure: mechanical
@@ -266,8 +336,6 @@ func _build_street_furniture(roads: Array, proj: GeoProjection) -> void:
 	var container := Node3D.new()
 	container.name = "StreetFurniture"
 	container.position.y = 0.15  # sit props on the raised sidewalk, not the gutter
-	container.visibility_range_end = 120.0
-	container.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(container)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
@@ -290,6 +358,7 @@ func _build_street_furniture(roads: Array, proj: GeoProjection) -> void:
 				_add_mesh(prop, hydrant_cap, Vector3(0.0, 0.42, 0.0), hydrant_mat)
 			container.add_child(prop)
 			placed += 1
+	LodUtil.apply_range(container, 120.0)
 
 
 func _add_mesh(parent: Node, mesh: Mesh, pos: Vector3, mat: Material) -> void:
@@ -318,8 +387,6 @@ func _build_trees(roads: Array, proj: GeoProjection) -> void:
 	rng.seed = 1337
 	var container := Node3D.new()
 	container.name = "Trees"
-	container.visibility_range_end = 300.0
-	container.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(container)
 
 	var placed := 0
@@ -348,6 +415,7 @@ func _build_trees(roads: Array, proj: GeoProjection) -> void:
 			tree.add_child(crown)
 			container.add_child(tree)
 			placed += 1
+	LodUtil.apply_range(container, 300.0)
 
 
 ## Palm-lined avenues — the signature Miami streetscape. Trunks and frond crowns
@@ -510,8 +578,6 @@ func _build_streetlights(roads: Array, proj: GeoProjection) -> void:
 	var container := Node3D.new()
 	container.name = "StreetLights"
 	container.position.y = 0.15  # poles rise from the raised sidewalk
-	container.visibility_range_end = 200.0
-	container.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(container)
 	# All lamp heads share lamp_mat, so one switch fades them all with day/night.
 	var switch := StreetlightSwitch.new()
@@ -519,6 +585,7 @@ func _build_streetlights(roads: Array, proj: GeoProjection) -> void:
 	container.add_child(switch)
 
 	var placed := 0
+	var lights: Array[OmniLight3D] = []
 	for r in roads:
 		if placed >= 180:
 			break
@@ -540,8 +607,25 @@ func _build_streetlights(roads: Array, proj: GeoProjection) -> void:
 			head.material_override = lamp_mat
 			head.position = Vector3(0.0, 5.0, 0.0)
 			lamp.add_child(head)
+			# A real warm pool under the first N heads turns the dark street into
+			# lit asphalt at night; the rest stay emissive-only to keep the count
+			# in budget. Shadowless and out of the volumetric pass for cheapness.
+			if lights.size() < MAX_STREETLIGHT_LIGHTS:
+				var glow := OmniLight3D.new()
+				glow.omni_range = STREETLIGHT_LIGHT_RANGE_M
+				glow.omni_attenuation = 1.5
+				glow.light_color = Color(1.0, 0.85, 0.55)
+				glow.light_energy = 0.0
+				glow.light_volumetric_fog_energy = 0.0
+				glow.shadow_enabled = false
+				glow.visible = false
+				glow.position = Vector3(0.0, 4.7, 0.0)
+				lamp.add_child(glow)
+				lights.append(glow)
 			container.add_child(lamp)
 			placed += 1
+	switch.bind_lights(lights, STREETLIGHT_LIGHT_ENERGY)
+	LodUtil.apply_range(container, 200.0)
 
 
 func _load_district(path: String) -> Dictionary:
@@ -572,32 +656,17 @@ func _project_ring(raw: Array, proj: GeoProjection) -> PackedVector2Array:
 	return ring
 
 
-func _build_buildings(buildings: Array, proj: GeoProjection) -> int:
-	var verts := PackedVector3Array()
-	var norms := PackedVector3Array()
-	var idx := PackedInt32Array()
-	var colors := PackedColorArray()
-	var meshed := 0
-
-	for b in buildings:
-		var ring := _project_ring(b["footprint"], proj)
-		var geo := CityBuilder.extrude_prism(ring, 0.0, float(b["height_m"]))
-		if geo.is_empty():
-			continue
-		_append_geo(verts, norms, idx, geo)
-		# Per-building wall tint, read by the facade shader as vertex COLOR.
-		var bid := int(b.get("id", meshed))
-		var tint := CityBuilder.building_color(bid)
-		# Glassiness seed packed into vertex-colour alpha: tall buildings bias
-		# toward reflective glass curtain-wall, short ones toward masonry.
-		tint.a = CityBuilder.building_glass_seed(bid, float(b["height_m"]))
-		for _i in (geo["vertices"] as PackedVector3Array).size():
-			colors.append(tint)
-		meshed += 1
-
+## Weld the accumulated building geometry into the single "Buildings" mesh and
+## its trimesh collider — the one deliberately chunky stage of the time-sliced
+## build (collision cooking can't be split without splitting the mesh).
+func _commit_buildings(
+	verts: PackedVector3Array,
+	norms: PackedVector3Array,
+	idx: PackedInt32Array,
+	colors: PackedColorArray
+) -> void:
 	if verts.is_empty():
-		return 0
-
+		return
 	var mesh := CityBuilder.arrays_to_mesh(
 		{"vertices": verts, "normals": norms, "indices": idx, "colors": colors}
 	)
@@ -608,7 +677,6 @@ func _build_buildings(buildings: Array, proj: GeoProjection) -> int:
 	add_child(mi)
 	if build_collision:
 		mi.create_trimesh_collision()
-	return meshed
 
 
 func _build_roads(roads: Array, proj: GeoProjection) -> void:
@@ -709,7 +777,9 @@ func _build_ground(data: Dictionary, proj: GeoProjection) -> void:
 	body.position = centre
 	var mi := MeshInstance3D.new()
 	mi.mesh = ground_mesh
-	mi.position.y = 0.36
+	# Sit the tile top just under the collider top (y=0) so the player rests on
+	# the visible ground; the 0.08-thick slab is centred at -0.08 → top -0.04.
+	mi.position.y = -0.08
 	body.add_child(mi)
 	var col := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -790,8 +860,8 @@ func _place_actors_on_street(
 			var camera_rig := (player as Node).get_node_or_null("CameraRig") as Node3D
 			if camera_rig != null:
 				camera_rig.rotation.y = best_yaw
+	DistrictSpawnVista.build(self, best, best_yaw, STREET_VISUAL_Y)
 	_place_starter_vehicles(best, best_yaw)
-	_build_spawn_vista(best, best_yaw)
 
 
 func _place_starter_vehicles(spawn: Vector3, yaw: float) -> void:
@@ -806,97 +876,6 @@ func _place_starter_vehicles(spawn: Vector3, yaw: float) -> void:
 		if vehicle is RigidBody3D:
 			(vehicle as RigidBody3D).linear_velocity = Vector3.ZERO
 			(vehicle as RigidBody3D).angular_velocity = Vector3.ZERO
-
-
-func _build_spawn_vista(spawn: Vector3, yaw: float) -> void:
-	var root := Node3D.new()
-	root.name = "SpawnVistaStreet"
-	var forward := Vector3(-sin(yaw), 0.0, -cos(yaw))
-	root.position = Vector3(spawn.x, STREET_VISUAL_Y + 0.12, spawn.z) + forward * 4.0
-	root.rotation.y = yaw
-	add_child(root)
-
-	var asphalt_mat := StandardMaterial3D.new()
-	asphalt_mat.albedo_color = Color(0.025, 0.028, 0.03)
-	asphalt_mat.roughness = 0.94
-	asphalt_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var road_mesh := BoxMesh.new()
-	road_mesh.size = Vector3(18.0, 0.12, 160.0)
-	_add_surface(root, "HeroRoad", road_mesh, asphalt_mat, Vector3.ZERO)
-
-	var sidewalk_mat := StandardMaterial3D.new()
-	sidewalk_mat.albedo_color = Color(0.30, 0.30, 0.28)
-	sidewalk_mat.roughness = 0.88
-	sidewalk_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var sidewalk_mesh := BoxMesh.new()
-	sidewalk_mesh.size = Vector3(4.0, 0.12, 160.0)
-	_add_surface(root, "LeftSidewalk", sidewalk_mesh, sidewalk_mat, Vector3(11.0, 0.04, 0.0))
-	_add_surface(root, "RightSidewalk", sidewalk_mesh, sidewalk_mat, Vector3(-11.0, 0.04, 0.0))
-
-	var paint_mat := StandardMaterial3D.new()
-	paint_mat.albedo_color = Color(0.86, 0.82, 0.68)
-	paint_mat.roughness = 0.82
-	var dash_mesh := BoxMesh.new()
-	dash_mesh.size = Vector3(0.22, 0.025, 4.8)
-	for z in [-60.0, -48.0, -36.0, -24.0, -12.0, 0.0, 12.0, 24.0, 36.0, 48.0, 60.0]:
-		_add_surface(root, "LaneDash", dash_mesh, paint_mat, Vector3(0.0, 0.07, z))
-
-	var crosswalk_mesh := BoxMesh.new()
-	crosswalk_mesh.size = Vector3(13.5, 0.025, 0.48)
-	for z in [-70.0, -69.1, -68.2, 68.2, 69.1, 70.0]:
-		_add_surface(root, "CrosswalkBar", crosswalk_mesh, paint_mat, Vector3(0.0, 0.075, z))
-
-	_build_spawn_palms(root)
-	_build_spawn_cones(root)
-
-
-func _add_surface(parent: Node, node_name: String, mesh: Mesh, mat: Material, pos: Vector3) -> void:
-	var mi := MeshInstance3D.new()
-	mi.name = node_name
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	parent.add_child(mi)
-
-
-func _build_spawn_palms(parent: Node3D) -> void:
-	var trunk_mesh := TreeMesh.to_mesh(TreeMesh.palm_trunk(8.0))
-	var crown_mesh := TreeMesh.to_mesh(TreeMesh.palm_crown(11, 2.7, 8.0))
-	if trunk_mesh == null or crown_mesh == null:
-		return
-	var bark := StandardMaterial3D.new()
-	bark.albedo_color = Color(0.52, 0.44, 0.34)
-	bark.roughness = 0.92
-	var frond := StandardMaterial3D.new()
-	frond.albedo_color = Color(0.24, 0.45, 0.18)
-	frond.roughness = 0.86
-	frond.cull_mode = BaseMaterial3D.CULL_DISABLED
-
-	for side in [-1.0, 1.0]:
-		for i in 6:
-			var z := -48.0 + float(i) * 19.0
-			var palm := Node3D.new()
-			palm.name = "SpawnPalm"
-			palm.position = Vector3(side * 13.2, 0.0, z)
-			palm.rotation.y = side * 0.25 + float(i) * 0.31
-			var s := 0.86 + float(i % 3) * 0.08
-			palm.scale = Vector3(s, s, s)
-			parent.add_child(palm)
-			_add_surface(palm, "Trunk", trunk_mesh, bark, Vector3.ZERO)
-			_add_surface(palm, "Crown", crown_mesh, frond, Vector3.ZERO)
-
-
-func _build_spawn_cones(parent: Node3D) -> void:
-	var cone_mat := StandardMaterial3D.new()
-	cone_mat.albedo_color = Color(1.0, 0.36, 0.08)
-	cone_mat.roughness = 0.72
-	var cone_mesh := CylinderMesh.new()
-	cone_mesh.top_radius = 0.08
-	cone_mesh.bottom_radius = 0.28
-	cone_mesh.height = 0.72
-	cone_mesh.radial_segments = 10
-	for z in [-34.0, -18.0, 18.0, 34.0]:
-		_add_surface(parent, "TrafficCone", cone_mesh, cone_mat, Vector3(7.4, 0.36, z))
 
 
 static func _project_building_rings(
@@ -957,8 +936,10 @@ func _make_materials() -> void:
 	_building_mat = _shader_or_fallback("res://shaders/facade.gdshader", Color(0.62, 0.63, 0.66))
 	_road_mat = _shader_or_fallback("res://shaders/road.gdshader", Color(0.33, 0.32, 0.31))
 	_sidewalk_mat = _shader_or_fallback("res://shaders/sidewalk.gdshader", Color(0.62, 0.60, 0.56))
-	# Photoreal asphalt grain from the Codex-generated tileable albedo.
+	# Photoreal grain from the Codex-generated tileable albedos: asphalt on the
+	# roads, troweled stucco breaking up the masonry facade fills.
 	_set_detail_texture(_road_mat, "res://assets/textures/asphalt_albedo.png")
+	_set_detail_texture(_building_mat, "res://assets/textures/stucco_albedo.png")
 
 	_facade_glass_mat = StandardMaterial3D.new()
 	_facade_glass_mat.albedo_color = Color(0.045, 0.065, 0.085, 0.92)

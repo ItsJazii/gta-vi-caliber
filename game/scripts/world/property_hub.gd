@@ -72,3 +72,15 @@ func owns_property() -> bool:
 ## Pending uncollected income, for a HUD readout.
 func pending_income() -> float:
 	return _props.pending_income() if _props != null else 0.0
+
+
+# --- Persistence (SaveManager) ---------------------------------------------
+
+
+func serialize() -> Dictionary:
+	return _props.serialize() if _props != null else {}
+
+
+func restore(data: Dictionary) -> void:
+	if _props != null:
+		_props.restore(data)

@@ -68,6 +68,11 @@ func _camera_xz() -> Vector2:
 	for p in get_tree().get_nodes_in_group("player"):
 		if p is Node3D:
 			var pos := (p as Node3D).global_position
+			# District offsets are absolute world coordinates; under a
+			# FloatingOrigin the engine-local position must be converted back.
+			var origin := get_tree().get_first_node_in_group("floating_origin") as FloatingOrigin
+			if origin != null:
+				pos = OriginMath.to_absolute(pos, origin.origin_offset)
 			return Vector2(pos.x, pos.z)
 	return Vector2.ZERO
 

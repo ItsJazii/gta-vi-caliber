@@ -44,11 +44,14 @@ var nav: NavGrid = null
 var _cars: Array[TrafficCar] = []
 var _rng := RandomNumberGenerator.new()
 var _accum: float = 0.0
+var _flow_grid: NeighborGrid = null
 var _base_target_count: int = -1
 
 
 func _ready() -> void:
 	_rng.randomize()
+	# Native worldcore SpatialHash when built, GDScript buckets otherwise.
+	_flow_grid = NeighborGrid.new(flow_range * 0.5)
 	add_to_group("density_aware")
 	apply_graphics_setting(int(SettingsPanel.load_settings().get("graphics", 1)))
 
@@ -83,18 +86,31 @@ func _physics_process(delta: float) -> void:
 
 
 ## Cap each car's speed for the vehicle ahead in its lane, so the fleet queues
-## and brakes instead of driving through itself. One pass over the live cars per
-## tick; each car's own position is naturally ignored (zero forward distance).
+## and brakes instead of driving through itself. Neighbour candidates come from
+## a spatial grid rebuilt per tick (NeighborGrid: native SpatialHash or GDScript
+## buckets) so the pass scales with local density instead of all pairs; the
+## tested TrafficFlow lane math then runs on just the nearby cars. Each car's
+## own position is naturally ignored (zero forward distance).
 func _apply_flow() -> void:
+	var live: Array[TrafficCar] = []
 	var positions := PackedVector3Array()
-	for car in _cars:
-		if is_instance_valid(car):
-			positions.append(car.global_position)
+	_flow_grid.clear()
 	for car in _cars:
 		if not is_instance_valid(car):
 			continue
+		var pos := car.global_position
+		_flow_grid.insert(live.size(), Vector2(pos.x, pos.z))
+		live.append(car)
+		positions.append(pos)
+	for i in live.size():
+		var car := live[i]
+		var pos := positions[i]
+		var near := _flow_grid.query_radius(Vector2(pos.x, pos.z), flow_range)
+		var candidates := PackedVector3Array()
+		for id in near:
+			candidates.append(positions[id])
 		var gap := TrafficFlow.gap_ahead(
-			car.global_position, car.heading(), positions, flow_range, flow_lane_half_width
+			pos, car.heading(), candidates, flow_range, flow_lane_half_width
 		)
 		car.speed_limit = TrafficFlow.follow_speed(car.speed, gap, flow_stop_gap, flow_safe_gap)
 

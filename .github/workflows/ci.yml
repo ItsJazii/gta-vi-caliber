@@ -52,6 +52,19 @@ jobs:
         run: ~/godot-bin/godot --headless --path game --script res://tests/smoke_test.gd
       - name: gdUnit4 unit tests
         run: ~/godot-bin/godot --headless --path game --script res://tests/run_tests.gd
+      - name: Legacy unit tests
+        run: ~/godot-bin/godot --headless --path game --script res://tests/run_legacy_tests.gd
+      # The same playable-map probes tools/check.sh gates on locally: the main
+      # map's gameplay stack stays wired and the GTA core loops keep firing.
+      - name: Miami integration probes
+        run: |
+          for probe in miami_wiring_probe miami_facade_probe miami_loop_probe \
+            miami_mission_probe miami_payspray_probe miami_arrest_probe \
+            miami_helicopter_probe miami_day_night_probe miami_evade_probe \
+            miami_property_probe miami_citizen_probe; do
+            echo "== ${probe} =="
+            ~/godot-bin/godot --headless --path game --script "res://tests/${probe}.gd"
+          done
 
   engine:
     name: Engine modules (${{ matrix.platform }})

@@ -76,16 +76,32 @@ const GRAVITY: float = 9.81
 ## Fraction of the theoretical rollover threshold steering may use. Below 1
 ## leaves lateral grip headroom so hard swerves slide instead of flipping.
 @export_range(0.1, 1.0) var rollover_margin: float = 0.8
+## Handbrake power-slide (Space): instead of a dead-stop full brake, pulling the
+## handbrake cuts the rear tyres' lateral grip so the back steps out into a
+## controllable slide. The grip cut is decided by the pure VehicleHandling layer
+## and throttle stays live so you can hold the drift. `handbrake_cut` is how hard
+## grip drops, `handbrake_min_slip` the rear wheel_friction_slip at a full slide,
+## and `handbrake_brake_scale` the gentle brake blended in only when you lift off.
+@export_range(0.0, 1.0) var handbrake_cut: float = 0.85
+@export var handbrake_min_slip: float = 0.4
+@export_range(0.0, 1.0) var handbrake_brake_scale: float = 0.35
 
 var health: float = 100.0
 var gear: int = 1
 var rpm: float = 0.0
+## Live drift telemetry (read by FX / score): slip amount in [0,1] and the
+## accumulating drift score from the VehicleHandling.DriftScorer.
+var drift_amount: float = 0.0
+var drift_score: float = 0.0
 
 var _driver: Node3D = null
 var _prev_velocity: Vector3 = Vector3.ZERO
 var _long_accel: float = 0.0
 var _prev_forward_speed: float = 0.0
 var _wheels: Array[Node] = []
+var _rear_wheels: Array[VehicleWheel3D] = []
+var _rear_base_slip: float = 0.0
+var _drift_scorer: VehicleHandling.DriftScorer = null
 var _radio: Radio = null
 
 @onready var _camera: Camera3D = $CameraPivot/SpringArm/Camera
@@ -110,6 +126,9 @@ func exit() -> Vector3:
 	_radio.turn_off()
 	gear = 1
 	rpm = idle_rpm
+	_restore_rear_grip()
+	if _drift_scorer != null:
+		_drift_scorer.cash_out()
 	return _exit_point.global_position
 
 
@@ -117,6 +136,15 @@ func _ready() -> void:
 	health = max_health
 	rpm = idle_rpm
 	_wheels = find_children("*", "VehicleWheel3D", true, false)
+	# The driven (rear) wheels are the ones whose lateral grip the handbrake cuts;
+	# cache their authored slip so the slide can be released back to baseline.
+	for wheel in _wheels:
+		var driven := wheel as VehicleWheel3D
+		if driven != null and driven.use_as_traction:
+			_rear_wheels.append(driven)
+	if not _rear_wheels.is_empty():
+		_rear_base_slip = _rear_wheels[0].wheel_friction_slip
+	_drift_scorer = VehicleHandling.DriftScorer.new()
 	# Radio is code-spawned so every visual variant gets the same feature.
 	_radio = Radio.new()
 	add_child(_radio)
@@ -133,6 +161,7 @@ func _physics_process(delta: float) -> void:
 		steering = move_toward(steering, 0.0, steer_speed * delta)
 		gear = 1
 		rpm = idle_rpm
+		_restore_rear_grip()
 		return
 	_drive(delta)
 
@@ -176,8 +205,13 @@ func _drive(delta: float) -> void:
 	target = clampf(target, -safe_steer, safe_steer)
 	steering = move_toward(steering, target, steer_speed * delta)
 
-	if Input.is_action_pressed("jump"):
-		brake = max_brake
+	var handbrake := Input.get_action_strength("jump")
+	_apply_handbrake(handbrake, delta)
+	if handbrake > 0.0:
+		# Handbrake slide: only a light brake, scaled down by throttle so full
+		# throttle keeps the power-slide alive while lifting off scrubs speed and
+		# rotates the car. The rear grip-cut (above) does the actual sliding.
+		brake = max_brake * handbrake_brake_scale * handbrake * (1.0 - pedal)
 	elif throttle < 0.0 and forward_speed >= REVERSE_SPEED_THRESHOLD:
 		# "Back" while still rolling forward = service brake, not reverse yet.
 		brake = max_brake * 0.7
@@ -188,6 +222,30 @@ func _drive(delta: float) -> void:
 		)
 	else:
 		brake = 0.0
+
+
+## Cut rear-tyre lateral grip for a handbrake slide and advance the drift score.
+## The 0..1 grip factor comes from the pure VehicleHandling layer (the handbrake
+## ramps in with speed, so a parked car can't snap loose); it maps each driven
+## wheel's friction slip between handbrake_min_slip (full slide) and its authored
+## baseline. Slip telemetry feeds the DriftScorer so a sustained drift rewards.
+func _apply_handbrake(handbrake: float, delta: float) -> void:
+	var forward := -global_transform.basis.z
+	var grip := VehicleHandling.lateral_grip(
+		linear_velocity, forward, 1.0, handbrake, handbrake_cut
+	)
+	var slip := VehicleHandling.slip_for_grip(grip, handbrake_min_slip, _rear_base_slip)
+	for wheel in _rear_wheels:
+		wheel.wheel_friction_slip = slip
+	drift_amount = VehicleHandling.drift_factor(linear_velocity, forward)
+	if _drift_scorer != null:
+		drift_score = _drift_scorer.tick(drift_amount, delta)
+
+
+## Restore the driven wheels to their authored grip (handbrake released / idle).
+func _restore_rear_grip() -> void:
+	for wheel in _rear_wheels:
+		wheel.wheel_friction_slip = _rear_base_slip
 
 
 ## Lagged longitudinal acceleration (m/s²) from the change in forward speed. Used

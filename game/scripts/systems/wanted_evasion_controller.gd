@@ -17,10 +17,12 @@ extends Node
 var _evasion: WantedEvasion
 var _tracker: Node = null
 var _player: Node3D = null
+var _police: GroupCache = null
 
 
 func _ready() -> void:
 	_evasion = WantedEvasion.new(search_duration)
+	_police = GroupCache.for_group(get_tree(), "police")
 	add_to_group("wanted_evasion")
 
 
@@ -32,7 +34,7 @@ func _physics_process(delta: float) -> void:
 		# Not wanted: nothing to evade, keep the timer primed for next time.
 		_evasion.reset()
 		return
-	_evasion.update(_seen_by_police(), delta)
+	_evasion.update(_seen_by_police(delta), delta)
 	if _evasion.is_cold() and _tracker.has_method("clear"):
 		_tracker.clear()
 		_evasion.reset()
@@ -56,12 +58,13 @@ func _bind() -> void:
 
 ## True if any living officer is within range and has an unobstructed sightline
 ## (a ray masked to world geometry that reaches the player without being blocked).
-func _seen_by_police() -> bool:
+## The officer list comes from the GroupCache, not a per-frame group scan.
+func _seen_by_police(delta: float) -> bool:
 	if _player == null:
 		return false
 	var eye := _player.global_position + Vector3.UP * eye_height
 	var space := _player.get_world_3d().direct_space_state
-	for cop in get_tree().get_nodes_in_group("police"):
+	for cop in _police.nodes(delta):
 		var officer := cop as Node3D
 		if officer == null:
 			continue

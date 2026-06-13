@@ -41,6 +41,28 @@ static func front_targets(cycle_pos: float) -> Dictionary:
 	return {"cloud": clampf(cloud, 0.0, 1.0), "rain": clampf(rn, 0.0, 1.0)}
 
 
+## Sky-shader cloud coverage for a given cloudiness: a clear day keeps a few
+## fair-weather clouds (so the sky never reads sterile) and a storm stops just
+## short of a solid slab (so sun glow still breaks the edges).
+static func sky_cloud_coverage(cloud_amount: float) -> float:
+	return lerpf(0.22, 0.95, clampf(cloud_amount, 0.0, 1.0))
+
+
+## How storm-dark the sky shader should render (0 bright .. 0.85 charcoal).
+## Fair-weather cloud (< ~0.35) keeps the sky bright; the slab only darkens as
+## real overcast builds, so the front visibly *weighs* on the city.
+static func sky_storm_darkness(cloud_amount: float) -> float:
+	return smoothstep(0.35, 1.0, clampf(cloud_amount, 0.0, 1.0)) * 0.85
+
+
+## Key-light (sun/moon) energy scale under cloud: full strength in clear air,
+## dropping to ~35% under a solid storm deck — the "sun dims" half of the
+## weather-reactive atmosphere. The curve matches sky_storm_darkness so the
+## light fades in step with the sky it lights.
+static func sun_dim_factor(cloud_amount: float) -> float:
+	return lerpf(1.0, 0.35, smoothstep(0.35, 1.0, clampf(cloud_amount, 0.0, 1.0)))
+
+
 ## Ease toward a target sky and integrate surface wetness for `dt` seconds.
 func step(dt: float, cloud_target: float, rain_target: float) -> void:
 	cloudiness = move_toward(cloudiness, clampf(cloud_target, 0.0, 1.0), EASE_RATE * dt)

@@ -21,6 +21,10 @@ const PLACES: PackedStringArray = [
 @export_range(0.0, 24.0) var start_hour: float = 8.0
 ## Real seconds for one in-game day (1440 = a 24-minute day).
 @export var day_length_sec: float = 1440.0
+## Follow the SkyController's time_of_day (group "sky") when one exists, so
+## citizens commute on the same clock the HUD and lighting show. Without a sky
+## (or with this off) the internal DayClock ticks at day_length_sec.
+@export var follow_sky: bool = true
 
 ## Optional walkability map shared with the crowd. Assign in code (same NavGrid a
 ## CrowdDirector uses, with building/water footprints stamped) and citizens route
@@ -29,6 +33,7 @@ var nav: NavGrid = null
 
 # Exists before _ready so citizens reading hour() during their own _ready are safe.
 var _clock := DayClock.new()
+var _sky: Node = null
 
 
 func _ready() -> void:
@@ -37,6 +42,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if follow_sky:
+		if _sky == null or not is_instance_valid(_sky):
+			_sky = get_tree().get_first_node_in_group("sky")
+		if _sky != null and "time_of_day" in _sky:
+			_clock.hour = fposmod(float(_sky.time_of_day), 24.0)
+			return
 	_clock.advance(delta)
 
 

@@ -59,6 +59,23 @@ func _init(max_stamina: float = 100.0) -> void:
 	_stamina = _max_stamina
 
 
+## Which strike a fighter throws at a given point in the combo, escalating the
+## chain jab → cross → kick → heavy and then holding on heavy for the rest of the
+## chain. combo_count is the 1-based hit number (the first landed hit is 1). A
+## non-positive count maps to the opening jab, so a fresh swing always reads as
+## the lightest strike.
+static func strike_for_combo(combo_count: int) -> int:
+	match combo_count:
+		1:
+			return Strike.JAB
+		2:
+			return Strike.CROSS
+		3:
+			return Strike.KICK
+		_:
+			return Strike.JAB if combo_count < 1 else Strike.HEAVY
+
+
 ## Base damage for a strike scaled by where it falls in the combo. The first hit
 ## is base; each chained hit adds COMBO_SCALING, capping at MAX_COMBO_BONUS_STEPS
 ## so a long combo can't run away. combo_count is clamped non-negative.

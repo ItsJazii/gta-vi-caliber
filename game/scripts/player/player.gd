@@ -76,6 +76,11 @@ var _phone_ui: Phone = null
 var _interact_prompt: InteractPrompt = null
 var _was_on_floor: bool = true
 var _oxygen: float = 1.0
+# Per-physics-frame group probes (water overlap, ladder overlap, damage sink)
+# read these caches instead of re-scanning the SceneTree groups every frame.
+var _water_cache: GroupCache = null
+var _ladder_cache: GroupCache = null
+var _health_cache: GroupCache = null
 
 @onready var _camera_rig: OrbitCamera = $CameraRig
 @onready var _rig: AnimatedRig = $Rig
@@ -95,6 +100,9 @@ func _ready() -> void:
 	add_child(_phone_ui)
 	_phone_ui.active_changed.connect(_on_phone_active)
 	_phone_ui.friend_called.connect(_on_friend_called)
+	_water_cache = GroupCache.for_group(get_tree(), "water")
+	_ladder_cache = GroupCache.for_group(get_tree(), "ladders")
+	_health_cache = GroupCache.for_group(get_tree(), "player_health")
 	# The interact-prompt overlay is likewise code-spawned so the feature stays
 	# self-contained and doesn't touch player.tscn.
 	_interact_prompt = InteractPrompt.new()
@@ -160,7 +168,7 @@ func _physics_process(delta: float) -> void:
 	var input_dir := _move_input()
 	var direction := PlayerMotion.direction_from_input(input_dir, _camera_rig.gameplay_yaw())
 
-	if _is_on_ladder() and (input_dir.y < 0.0 or not is_on_floor()):
+	if _is_on_ladder(delta) and (input_dir.y < 0.0 or not is_on_floor()):
 		velocity = PlayerMotion.climb_velocity(input_dir, direction, climb_speed)
 		move_and_slide()
 		_drive_rig(delta, true)
@@ -209,7 +217,7 @@ func _move_input() -> Vector2:
 ## the water surface by overlap and applies the result. Surface = jump, dive =
 ## the dive action; with no vertical key the body bobs at the waterline.
 func _update_swimming(delta: float) -> bool:
-	var water := _current_water()
+	var water := _current_water(delta)
 	if water == null:
 		_swimming = false
 		_update_breath(0.0, delta)
@@ -237,9 +245,10 @@ func _update_swimming(delta: float) -> bool:
 
 
 ## The water volume the body is currently inside, if any — Area3D nodes in group
-## "water" (WaterVolume), found by overlap like ladders. First match wins.
-func _current_water() -> WaterVolume:
-	for node in get_tree().get_nodes_in_group("water"):
+## "water" (WaterVolume), found by overlap like ladders. First match wins. The
+## candidate list is cached (GroupCache) since volumes only change on streaming.
+func _current_water(delta: float) -> WaterVolume:
+	for node in _water_cache.nodes(delta):
 		var water := node as WaterVolume
 		if water != null and water.overlaps_body(self):
 			return water
@@ -273,8 +282,9 @@ func _update_landing(impact_speed: float) -> void:
 
 ## Route damage (falls, drowning) through PlayerHealth (group "player_health"),
 ## the same public API pickups and weapons use — keeps Player decoupled from it.
+## Drowning calls this every frame, so the sink list is cached.
 func _hurt(amount: float) -> void:
-	for health in get_tree().get_nodes_in_group("player_health"):
+	for health in _health_cache.nodes(get_physics_process_delta_time()):
 		if health.has_method("take_damage"):
 			health.take_damage(amount)
 
@@ -309,8 +319,8 @@ func _floor_surface() -> String:
 	return Footsteps.DEFAULT_SURFACE
 
 
-func _is_on_ladder() -> bool:
-	for ladder in get_tree().get_nodes_in_group("ladders"):
+func _is_on_ladder(delta: float) -> bool:
+	for ladder in _ladder_cache.nodes(delta):
 		var area := ladder as Area3D
 		if area != null and area.overlaps_body(self):
 			return true

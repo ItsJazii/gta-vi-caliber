@@ -31,6 +31,7 @@ var _greet_left: float = 0.0
 var _dead: bool = false
 var _hp: Damageable
 var _rng := RandomNumberGenerator.new()
+var _flinch_until: float = 0.0
 
 @onready var _rig: AnimatedRig = $Rig
 
@@ -122,6 +123,22 @@ func take_damage(amount: float, point: Vector3, _normal: Vector3) -> void:
 
 func is_dead() -> bool:
 	return _dead
+
+
+## A quick recoil jolt of the rig when hit — the visible "ow" that sells a bullet
+## or punch landing. Pitches the body back briefly, then settles. Self-limiting so
+## a burst of fire can't stack tweens into a seizure, and inert once dead (the
+## death topple owns the rig then). `_dir` is reserved for a directional flinch.
+func flinch(_dir: Vector3) -> void:
+	if _dead or _rig == null:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _flinch_until:
+		return
+	_flinch_until = now + 0.22
+	var tween := create_tween()
+	tween.tween_property(_rig, "rotation:x", deg_to_rad(-13.0), 0.05)
+	tween.tween_property(_rig, "rotation:x", 0.0, 0.17)
 
 
 func _fall(delta: float) -> void:

@@ -7,7 +7,9 @@ extends RefCounted
 ## round-trip + malformed-input handling is unit-tested (tests/unit/
 ## test_save_data.gd). Decode never throws: bad input yields an empty snapshot.
 
-const VERSION: int = 1
+## v2 added stats (money/armor), progression XP, property ownership and
+## boat/bike vehicle entries on top of v1's position/health/wanted/cars.
+const VERSION: int = 2
 
 
 ## Wrap a state snapshot with a version header and serialise to JSON text.
@@ -15,11 +17,25 @@ static func encode(snapshot: Dictionary) -> String:
 	return JSON.stringify({"version": VERSION, "data": snapshot})
 
 
+## Bring an older snapshot up to the current shape. v1 saves predate the
+## stats/progression/properties keys — they're normalised to empty dictionaries
+## (every restore() treats {} as "keep scene defaults"), so a v1 save loads
+## cleanly instead of being rejected. Unknown future versions pass through
+## untouched (best effort). Pure: returns a new Dictionary.
+static func migrate(snapshot: Dictionary, from_version: int) -> Dictionary:
+	var out := snapshot.duplicate(true)
+	if from_version < 2:
+		for key in ["stats", "progression", "properties"]:
+			if not out.get(key) is Dictionary:
+				out[key] = {}
+	return out
+
+
 ## Parse save text back to the inner snapshot. Returns {} for anything that
 ## isn't a versioned object with a Dictionary payload, so callers can trust the
 ## shape without try/catch.
 static func decode(text: String) -> Dictionary:
-	var parsed: Variant = JSON.parse_string(text)
+	var parsed: Variant = _parse(text)
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {}
 	var data: Variant = (parsed as Dictionary).get("data")
@@ -31,10 +47,20 @@ static func decode(text: String) -> Dictionary:
 ## The format version embedded in save text, or 0 if absent/unparseable. Lets a
 ## loader migrate or reject old saves.
 static func version_of(text: String) -> int:
-	var parsed: Variant = JSON.parse_string(text)
+	var parsed: Variant = _parse(text)
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return 0
 	return int((parsed as Dictionary).get("version", 0))
+
+
+## Parse JSON without the global ERROR log that JSON.parse_string pushes on bad
+## input. Empty/missing/old save text is a normal path here (callers fall back
+## to {} / 0), so it must stay silent instead of spamming hard errors.
+static func _parse(text: String) -> Variant:
+	var json := JSON.new()
+	if text.strip_edges().is_empty() or json.parse(text) != OK:
+		return null
+	return json.data
 
 
 ## Vector3 -> JSON-safe [x, y, z].

@@ -55,7 +55,10 @@ func add_armor(amount: float) -> void:
 
 
 func add_money(amount: int) -> void:
-	money += amount
+	# Floor at zero so a large negative adjustment (a fine, a failed deal) can't
+	# drive the wallet negative — matches CharacterRoster.add_money. spend_money
+	# stays the guarded debit path for affordability checks.
+	money = maxi(0, money + amount)
 	money_changed.emit(money)
 
 
@@ -83,6 +86,22 @@ func clear_objective() -> void:
 
 func has_waypoint() -> bool:
 	return _has_waypoint
+
+
+# --- Persistence (SaveManager) ---------------------------------------------
+
+
+func serialize() -> Dictionary:
+	return {"money": money, "armor": armor}
+
+
+## Rebuild from a serialize() snapshot; malformed/missing fields keep current
+## values. Emits the change signals so the HUD redraws the restored wallet.
+func restore(data: Dictionary) -> void:
+	money = maxi(int(SaveData.number_or(data.get("money"), money)), 0)
+	armor = clampf(SaveData.number_or(data.get("armor"), armor), 0.0, max_armor)
+	money_changed.emit(money)
+	armor_changed.emit(armor, max_armor)
 
 
 # --- Pure helpers (unit-tested) -------------------------------------------

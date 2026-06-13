@@ -190,7 +190,13 @@ func _build_water() -> void:
 	water.name = "StateOcean"
 	water.set_script(OCEAN_SCRIPT)
 	water.set("size_m", water_size_m)
-	water.set("resolution", 192)
+	# Tiered grid: a fine 3 km square over the playable bay (31 m vertex
+	# spacing — finer than the old uniform 62.5 m, so the 42 m swell finally
+	# displaces), flat 750 m quads out to the horizon. ~19k triangles versus
+	# ~74k for the old uniform 192x192 plane.
+	water.set("resolution", 96)
+	water.set("fine_extent_m", 1500.0)
+	water.set("far_cell_m", 750.0)
 	water.set("amplitude_scale", 0.75)
 	water.set("wave_speed", 0.78)
 	water.set("shallow_color", Color(0.02, 0.68, 0.58))

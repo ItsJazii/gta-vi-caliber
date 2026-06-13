@@ -78,11 +78,31 @@ func hud_text() -> String:
 	return MissionFlow.hud_line(title, _mission.objectives) if _mission != null else ""
 
 
+## id of the active (first not-done) objective, or "" when none remains.
+func current_objective_id() -> String:
+	if _mission == null:
+		return ""
+	return String(MissionFlow.current(_mission.objectives).get("id", ""))
+
+
 ## World marker for the active objective (for compass/minimap), or `fallback`.
 func current_waypoint(fallback: Vector3 = Vector3.ZERO) -> Vector3:
 	if _mission == null:
 		return fallback
-	return MissionFlow.current_waypoint(_mission.objectives, waypoints, fallback)
+	return MissionFlow.current_waypoint(_mission.objectives, _local_waypoints(), fallback)
+
+
+# Authored waypoints are absolute world coordinates; once a FloatingOrigin has
+# shifted the world, the live engine-local equivalent moves with it, so convert
+# at read time (local = absolute + origin_offset).
+func _local_waypoints() -> Dictionary:
+	var origin := get_tree().get_first_node_in_group("floating_origin") as FloatingOrigin
+	if origin == null or origin.origin_offset == Vector3.ZERO:
+		return waypoints
+	var local := {}
+	for id in waypoints:
+		local[id] = (waypoints[id] as Vector3) + origin.origin_offset
+	return local
 
 
 func _process(delta: float) -> void:

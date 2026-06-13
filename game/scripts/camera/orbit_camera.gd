@@ -17,7 +17,7 @@ const PITCH_MAX: float = 0.5
 @export_range(1.0, 4.0) var stick_exponent: float = 1.8
 ## Over-the-shoulder framing: the arm pivot sits slightly right of the spine.
 @export var shoulder_offset: Vector3 = Vector3(0.55, 0.0, 0.0)
-@export var base_fov: float = 75.0
+@export var base_fov: float = 58.0
 ## Extra FOV blended in at full sprint speed for a sense of acceleration.
 @export var sprint_fov_kick: float = 9.0
 @export var fov_smoothing: float = 8.0

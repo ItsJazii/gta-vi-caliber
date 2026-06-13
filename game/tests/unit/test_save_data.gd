@@ -80,3 +80,39 @@ func test_number_or_falls_back() -> bool:
 		and is_equal_approx(SaveData.number_or("x", -1.0), -1.0)
 		and is_equal_approx(SaveData.number_or(null, -1.0), -1.0)
 	)
+
+
+func test_version_is_two() -> bool:
+	return SaveData.VERSION == 2
+
+
+func test_migrate_v1_fills_new_sections() -> bool:
+	var v1 := {"player_pos": [1.0, 2.0, 3.0], "health": {"hp": 50.0}}
+	var migrated := SaveData.migrate(v1, 1)
+	return (
+		migrated.get("stats") is Dictionary
+		and (migrated["stats"] as Dictionary).is_empty()
+		and migrated.get("progression") is Dictionary
+		and migrated.get("properties") is Dictionary
+		and migrated["player_pos"] == v1["player_pos"]
+		and migrated["health"] == v1["health"]
+	)
+
+
+func test_migrate_current_version_is_untouched() -> bool:
+	var v2 := {"stats": {"money": 900}, "vehicles": {}}
+	var migrated := SaveData.migrate(v2, SaveData.VERSION)
+	return migrated == v2
+
+
+func test_migrate_does_not_mutate_input() -> bool:
+	var v1 := {"health": {"hp": 10.0}}
+	SaveData.migrate(v1, 1)
+	return not v1.has("stats")
+
+
+func test_migrate_preserves_existing_sections_from_v1() -> bool:
+	# A hand-edited or future-mixed save with a stats dict keeps it verbatim.
+	var odd := {"stats": {"money": 123}}
+	var migrated := SaveData.migrate(odd, 1)
+	return int((migrated["stats"] as Dictionary).get("money", 0)) == 123

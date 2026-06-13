@@ -65,8 +65,11 @@ func tick(delta: float) -> void:
 
 
 ## Restore health (negative ignored), capped at max. Does not resurrect — a
-## dead player must respawn, so callers should guard on is_dead().
+## dead player must respawn, so a heal on a dead model is a no-op (the doc
+## promised this, but the model used to silently revive at 0 HP).
 func heal(amount: float) -> void:
+	if is_dead():
+		return
 	health = minf(health + maxf(amount, 0.0), max_health)
 
 

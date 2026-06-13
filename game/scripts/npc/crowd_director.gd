@@ -13,6 +13,12 @@ extends Node3D
 ## Pedestrian scene to populate the crowd with. Defaults to the standard one so
 ## the director works the moment it is dropped into a scene.
 @export var pedestrian_scene: PackedScene = preload("res://scenes/npc/pedestrian.tscn")
+## Optional Citizen scene (life-sim pedestrians: schedules, needs, barks).
+## When set, citizen_fraction of spawns use it instead of pedestrian_scene,
+## interleaved deterministically (CrowdDistribution.is_citizen_slot) so the
+## street reads as a mix of commuters and drifters.
+@export var citizen_scene: PackedScene = null
+@export_range(0.0, 1.0) var citizen_fraction: float = 0.0
 ## How many peds to keep alive around the player.
 @export var target_count: int = 12
 ## Peds spawn in this annulus (m) around the player — far enough to fade in at
@@ -76,6 +82,8 @@ var nav: NavGrid = null
 var _peds: Array[Node3D] = []
 var _rng := RandomNumberGenerator.new()
 var _accum: float = 0.0
+# Monotonic spawn counter driving the citizen/pedestrian interleave.
+var _spawn_slot: int = 0
 var _base_target_count: int = -1
 
 
@@ -135,13 +143,22 @@ func _spawn(center: Vector3) -> void:
 		var pos := _find_spawn(center)
 		if pos == Vector3.INF:
 			continue  # nowhere walkable this tick; try again next tick
-		var ped := pedestrian_scene.instantiate() as Node3D
+		var ped := _next_scene().instantiate() as Node3D
 		if ped == null:
 			return
+		_spawn_slot += 1
 		_apply_variety(ped)
 		add_child(ped)
 		ped.global_position = pos
 		_peds.append(ped)
+
+
+## The scene for the next successful spawn: a Citizen on citizen slots when a
+## citizen scene is wired, the plain pedestrian otherwise.
+func _next_scene() -> PackedScene:
+	if citizen_scene != null and CrowdDistribution.is_citizen_slot(_spawn_slot, citizen_fraction):
+		return citizen_scene
+	return pedestrian_scene
 
 
 ## Raycast a coarse grid of the surrounding area into a NavGrid: every cell whose

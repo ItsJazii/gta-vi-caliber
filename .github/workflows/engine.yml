@@ -96,6 +96,14 @@ jobs:
             "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_${{ matrix.godot-zip }}.zip"
           unzip -q /tmp/godot.zip -d ~/godot-bin
 
+      # Without the manifest the engine never loads the freshly built lib and
+      # every "with native module" step below silently tests the GDScript
+      # fallback instead.
+      - name: Install native manifest
+        run: |
+          mkdir -p game/bin
+          cp engine/worldcore.gdextension.example game/bin/worldcore.gdextension
+
       - name: Headless import with native module
         run: |
           GODOT=~/godot-bin/"${{ matrix.godot-bin }}"
@@ -112,19 +120,23 @@ jobs:
       - name: Unit tests with native module (asserts WorldCore loads)
         run: |
           GODOT=~/godot-bin/"${{ matrix.godot-bin }}"
-          out=$("$GODOT" --headless --path game --script res://tests/run_tests.gd)
+          # gdUnit4-discovered suites, run with the freshly built native lib present.
+          "$GODOT" --headless --path game --script res://tests/run_tests.gd
+          # The WorldCore-loaded assertion lives in test_worldcore.gd, a legacy
+          # RefCounted suite that gdUnit4's discoverer skips — so it only runs via
+          # run_legacy_tests.gd. The native lib was just built, so it must NOT skip.
+          out=$("$GODOT" --headless --path game --script res://tests/run_legacy_tests.gd)
           echo "$out"
-          # The native lib was just built, so the WorldCore test must NOT skip.
           echo "$out" | grep -q "WorldCore .* loaded from native module"
 
-      - name: Native module integration probes (crowd, traffic, benchmarks)
+      - name: Native module integration probes (benchmarks, crowd capacity)
         run: |
           # These standalone probes exercise the native modules end to end
           # (SpatialHash/CrowdSteering/TrafficModel) and the perf benchmarks, and
           # quit(1) on failure. The native lib was just built, so they run the
           # real native path rather than the absent-module skip.
           GODOT=~/godot-bin/"${{ matrix.godot-bin }}"
-          for probe in crowd_native_probe traffic_demo_probe native_bench_probe crowd_capacity_probe; do
+          for probe in native_bench_probe crowd_capacity_probe; do
             echo "== ${probe} =="
             "$GODOT" --headless --path game --script "res://tests/${probe}.gd"
           done

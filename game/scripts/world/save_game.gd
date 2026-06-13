@@ -15,7 +15,15 @@ static func serialize(state: Dictionary) -> String:
 
 
 static func deserialize(text: String) -> Dictionary:
-	var parsed: Variant = JSON.parse_string(text)
+	# Use an instance JSON.parse (returns an error code) rather than the static
+	# JSON.parse_string, which pushes a global ERROR to the log on any malformed
+	# or empty input — and "no save yet / empty file" is the normal first-run
+	# path, so that was spamming hard errors that mask real ones. Behaviour is
+	# identical: anything that isn't a versioned object yields {}.
+	var json := JSON.new()
+	if text.strip_edges().is_empty() or json.parse(text) != OK:
+		return {}
+	var parsed: Variant = json.data
 	if parsed is Dictionary and int(parsed.get("version", 0)) == VERSION and parsed.has("state"):
 		return parsed["state"]
 	return {}

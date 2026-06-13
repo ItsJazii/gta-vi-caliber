@@ -19,9 +19,11 @@ signal busted(fee: int)
 var _time_held: float = 0.0
 var _player: Node3D = null
 var _tracker: Node = null
+var _police: GroupCache = null
 
 
 func _ready() -> void:
+	_police = GroupCache.for_group(get_tree(), "police")
 	add_to_group("arrest")
 
 
@@ -29,7 +31,9 @@ func _physics_process(delta: float) -> void:
 	_bind()
 	if _player == null or _tracker == null or not _tracker.has_method("stars"):
 		return
-	var cornered := ArrestModel.cornered(_tracker.stars(), _nearest_cop_distance(), catch_distance)
+	var cornered := ArrestModel.cornered(
+		_tracker.stars(), _nearest_cop_distance(delta), catch_distance
+	)
 	_time_held = ArrestModel.tick_grapple(_time_held, cornered, delta)
 	if ArrestModel.is_busted(_time_held, grapple_time):
 		_apply_bust()
@@ -62,12 +66,14 @@ func _haul_to_station() -> void:
 		(_player as CharacterBody3D).velocity = Vector3.ZERO
 
 
-func _nearest_cop_distance() -> float:
+## Planar distance to the closest living officer, read from the cached police
+## list rather than a fresh group scan every physics frame.
+func _nearest_cop_distance(delta: float) -> float:
 	if _player == null:
 		return INF
 	var best := INF
 	var here := _player.global_position
-	for cop in get_tree().get_nodes_in_group("police"):
+	for cop in _police.nodes(delta):
 		var officer := cop as Node3D
 		if officer == null or (officer.has_method("is_dead") and officer.is_dead()):
 			continue

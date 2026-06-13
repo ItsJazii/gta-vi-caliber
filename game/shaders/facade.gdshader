@@ -19,6 +19,10 @@ uniform float night_mix : hint_range(0.0, 1.0) = 0.0;
 uniform float floor_height = 3.2;
 // Horizontal distance between punched-window bay centres, metres.
 uniform float window_step = 2.7;
+// Tileable CC0 stucco albedo — real troweled-plaster breakup blended over the
+// procedural masonry fill at close range. White default = neutral (greybox
+// fallback and tests behave identically without the texture).
+uniform sampler2D detail_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
 
 varying vec3 v_pos; // mesh-local position
 varying vec3 v_nrm; // mesh-local normal (flat per wall face)
@@ -181,6 +185,15 @@ void fragment() {
 	float grain_fade = 1.0 - smoothstep(6.0, 18.0, length(VERTEX));
 	float stucco = wall * (1.0 - is_glass) * grain_fade;
 	if (stucco > 0.001) {
+		// CC0 stucco detail map: luminance-modulates the wall fill (keeps the
+		// per-building pastel hue) and roughens with the plaster height. Same
+		// distance fade as the procedural grain so far walls stay stable.
+		vec3 detail = texture(detail_tex, vec2(u, v) * 0.55).rgb;
+		float dlum = dot(detail, vec3(0.3333));
+		float wall_area = stucco * (1.0 - mwin) * (1.0 - ground);
+		ALBEDO *= mix(1.0, clamp(0.82 + dlum * 0.36, 0.82, 1.18), wall_area);
+		ROUGHNESS = clamp(ROUGHNESS + (dlum - 0.5) * 0.12 * wall_area, 0.1, 1.0);
+
 		vec2 st = vec2(u, v) * 13.0;
 		float h = vnoise(st) * 0.6 + vnoise(st * 2.6) * 0.3;
 		vec3 sx = dFdx(VERTEX);

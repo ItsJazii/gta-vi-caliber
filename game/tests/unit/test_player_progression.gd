@@ -144,3 +144,29 @@ func test_reset_restores_start() -> bool:
 	p.add_xp(5000)
 	p.reset()
 	return p.level() == 1 and p.xp_into_level() == 0 and p.total_xp() == 0
+
+
+func test_tracker_save_round_trip_replays_curve() -> bool:
+	# ProgressionTracker persists lifetime XP only; restoring replays it
+	# through the curve, reconstructing level and within-level progress.
+	var tracker := ProgressionTracker.new()
+	tracker.restore({"total_xp": 1730})
+	var reference := PlayerProgression.new()
+	reference.add_xp(1730)
+	var ok := (
+		tracker.total_xp() == 1730
+		and tracker.level() == reference.level()
+		and absf(tracker.level_progress() - reference.level_progress()) < 0.0001
+		and int(tracker.serialize().get("total_xp", 0)) == 1730
+	)
+	tracker.free()
+	return ok
+
+
+func test_tracker_restore_garbage_resets_clean() -> bool:
+	var tracker := ProgressionTracker.new()
+	tracker.restore({"total_xp": 990})
+	tracker.restore({"total_xp": "junk"})
+	var ok := tracker.total_xp() == 0 and tracker.level() == 1
+	tracker.free()
+	return ok

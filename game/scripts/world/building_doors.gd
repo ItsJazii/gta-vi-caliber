@@ -15,6 +15,8 @@ const DOOR_Y: float = 1.2
 ## footprints into the loader's local metre frame (the same frame as the meshes).
 static func build(loader: Node3D, buildings: Array, proj: GeoProjection) -> void:
 	for b in Enterable.pick(buildings, MAX_DOORS):
+		if BuildingUse.is_shop(String(b.get("kind", ""))):
+			continue
 		var ring := _project_ring(b.get("footprint", []), proj)
 		if ring.size() < 3:
 			continue

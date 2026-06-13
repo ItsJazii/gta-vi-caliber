@@ -56,7 +56,11 @@ static func separation(pos: Vector3, neighbors: Array, radius: float, max_speed:
 			push += away.normalized() * (1.0 - d / radius)
 	if push.length() < 0.0001:
 		return Vector3.ZERO
-	return push.normalized() * max_speed
+	# Preserve the inverse-falloff magnitude accumulated above — normalizing it
+	# away made a lone distant neighbour shove exactly as hard as one at the
+	# elbow, contradicting the "closer shoves harder" doc. Only clamp when a dense
+	# crowd's combined push would exceed max_speed.
+	return push.limit_length(max_speed)
 
 
 ## Blend weighted steering vectors and clamp the result to `max_speed`, so no

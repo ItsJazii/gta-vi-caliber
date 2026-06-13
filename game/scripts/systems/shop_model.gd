@@ -59,7 +59,10 @@ func items_in_category(category: String) -> Array:
 	var out: Array = []
 	for id in _items:
 		if _items[id]["category"] == category:
-			out.append(_items[id])
+			# Hand back COPIES: the entries are the live master catalogue, and a
+			# caller mutating a returned dict (e.g. a discounted price) would
+			# corrupt the source that price_of/can_afford/purchase read.
+			out.append((_items[id] as Dictionary).duplicate())
 	return out
 
 
@@ -77,7 +80,7 @@ func sell_value(id: String, fraction: float = DEFAULT_SELL_FRACTION) -> int:
 	var price := price_of(id)
 	if price < 0:
 		return 0
-	return int(price * clampf(fraction, 0.0, 1.0))
+	return int(round(float(price) * clampf(fraction, 0.0, 1.0)))
 
 
 ## Resolve a purchase against a wallet balance. Never mutates state: the caller

@@ -14,12 +14,15 @@ signal weapon_changed(display_name: String, armed: bool)
 ## dropped the target. The HUD turns this into a hit-marker.
 signal hit_confirmed(killed: bool)
 ## Emitted only when the thing shot was a person (pedestrian/police). The
-## WantedTracker turns this into heat. killed distinguishes a wounding from a
-## kill so murders escalate harder.
-signal crime_committed(killed: bool)
+## WantedTracker witness-checks the crime position and turns it into heat.
+## killed distinguishes a wounding from a kill so murders escalate harder.
+signal crime_committed(killed: bool, crime_pos: Vector3)
 
 ## Tighter cone while aiming down sights (fraction of the hipfire spread).
 const AIM_SPREAD_SCALE: float = 0.4
+
+## Generated once and shared by every bullet hole; a soft round scorch decal.
+static var _decal_texture: Texture2D = null
 
 @export var camera_path: NodePath
 @export var muzzle_path: NodePath
@@ -32,6 +35,12 @@ const AIM_SPREAD_SCALE: float = 0.4
 ## Camera-shake trauma added per shot (on top of the directed recoil kick) via
 ## the shared CameraShake system, for a punchier muzzle feel.
 @export_range(0.0, 1.0) var fire_shake_trauma: float = 0.12
+## Impact hitstop: a brief real-time clock freeze when a shot connects, for that
+## meaty crunch. A kill freezes a little longer/harder than a wounding.
+@export var hitstop_hit_seconds: float = 0.045
+@export_range(0.0, 1.0) var hitstop_hit_scale: float = 0.08
+@export var hitstop_kill_seconds: float = 0.10
+@export_range(0.0, 1.0) var hitstop_kill_scale: float = 0.02
 
 var _weapons: Array[Weapon] = []
 var _index: int = 0
@@ -41,6 +50,7 @@ var _gun_recoil: float = 0.0
 var _gun_rest_z: float = 0.0
 var _player_rid: RID
 var _rng := RandomNumberGenerator.new()
+var _hitstop: Hitstop = null
 
 @onready var _camera: Camera3D = get_node_or_null(camera_path)
 @onready var _muzzle: Node3D = get_node_or_null(muzzle_path)
@@ -51,6 +61,9 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	add_to_group("weapon_controller")
+	# Hitstop is code-spawned so the punch-on-impact feature stays self-contained.
+	_hitstop = Hitstop.new()
+	add_child(_hitstop)
 	for stats in [
 		WeaponStats.pistol(), WeaponStats.smg(), WeaponStats.rifle(), WeaponStats.shotgun()
 	]:
@@ -199,9 +212,12 @@ func _try_fire(weapon: Weapon) -> void:
 			_spawn_tracer(muzzle_pos, target)
 		else:
 			_spawn_tracer(muzzle_pos, hit.position)
-			_spawn_impact(hit.position, hit.normal)
+			# Bullet holes only mark static world geometry — decaling a moving
+			# pedestrian or car would smear and strand the hole in mid-air.
+			_spawn_impact(hit.position, hit.normal, not _is_actor(hit.get("collider")))
 			_apply_damage(weapon, origin, hit)
 
+	_spawn_muzzle_flash(muzzle_pos, -basis.z)
 	_gun_recoil = recoil_gun_kick
 	if _camera_rig != null:
 		_camera_rig.add_recoil(weapon.stats.recoil_kick)
@@ -223,13 +239,24 @@ func _apply_damage(weapon: Weapon, origin: Vector3, hit: Dictionary) -> void:
 	)
 	collider.take_damage(damage, hit.position, hit.normal)
 	var killed: bool = collider.has_method("is_dead") and collider.is_dead()
+	# Punch the moment: stagger the target and jam the clock briefly (harder on a
+	# kill) so a connecting shot lands with weight instead of passing through.
+	if collider.has_method("flinch"):
+		var shot_dir: Vector3 = hit.position - origin
+		if shot_dir.length() > 0.001:
+			collider.flinch(shot_dir.normalized())
+	if _hitstop != null:
+		if killed:
+			_hitstop.hit(hitstop_kill_seconds, hitstop_kill_scale)
+		else:
+			_hitstop.hit(hitstop_hit_seconds, hitstop_hit_scale)
 	hit_confirmed.emit(killed)
 	for text in get_tree().get_nodes_in_group("combat_text"):
 		if text.has_method("popup"):
 			text.popup(damage, hit.position, killed)
 	var node := collider as Node
 	if node != null and (node.is_in_group("pedestrians") or node.is_in_group("police")):
-		crime_committed.emit(killed)
+		crime_committed.emit(killed, hit.position)
 
 
 func _cycle_weapon() -> void:
@@ -318,14 +345,96 @@ func _spawn_tracer(from: Vector3, to: Vector3) -> void:
 	_free_after(inst, 0.04)
 
 
-func _spawn_impact(point: Vector3, normal: Vector3) -> void:
+func _spawn_impact(point: Vector3, normal: Vector3, decal: bool) -> void:
 	var flash := OmniLight3D.new()
 	flash.light_color = Color(1.0, 0.7, 0.3)
 	flash.light_energy = 2.5
 	flash.omni_range = 2.5
+	flash.shadow_enabled = false
 	_fx_parent().add_child(flash)
 	flash.global_position = point + normal * 0.05
 	_free_after(flash, 0.06)
+	if decal:
+		_spawn_bullet_hole(point, normal)
+
+
+## A lingering scorched bullet hole projected onto the surface that was hit. The
+## decal is oriented so its projection axis drives into the surface along -normal.
+func _spawn_bullet_hole(point: Vector3, normal: Vector3) -> void:
+	var n := normal.normalized()
+	if n.length() < 0.5:
+		return
+	var decal := Decal.new()
+	decal.texture_albedo = _bullet_hole_texture()
+	decal.size = Vector3(0.32, 0.4, 0.32)
+	decal.albedo_mix = 1.0
+	# Build an orthonormal basis whose +Y is the surface normal, so the decal's
+	# downward projection (-Y) sinks into the surface.
+	var tangent := n.cross(Vector3.RIGHT)
+	if tangent.length() < 0.01:
+		tangent = n.cross(Vector3.FORWARD)
+	tangent = tangent.normalized()
+	var bitangent := tangent.cross(n).normalized()
+	_fx_parent().add_child(decal)
+	decal.global_transform = Transform3D(Basis(tangent, n, bitangent), point + n * 0.02)
+	_free_after(decal, 6.0)
+
+
+func _spawn_muzzle_flash(at: Vector3, dir: Vector3) -> void:
+	var light := OmniLight3D.new()
+	light.light_color = Color(1.0, 0.85, 0.5)
+	light.light_energy = 3.5
+	light.omni_range = 3.5
+	light.shadow_enabled = false
+	_fx_parent().add_child(light)
+	light.global_position = at + dir * 0.1
+	_free_after(light, 0.05)
+	var card := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.34, 0.34)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.9, 0.55)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.8, 0.4)
+	mat.emission_energy_multiplier = 4.0
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	quad.material = mat
+	card.mesh = quad
+	_fx_parent().add_child(card)
+	card.global_position = at + dir * 0.12
+	_free_after(card, 0.04)
+
+
+## True when the hit thing is a moving actor (pedestrian/police/vehicle), which
+## must not receive a world-space bullet-hole decal.
+func _is_actor(collider: Object) -> bool:
+	var node := collider as Node
+	if node == null:
+		return false
+	return (
+		node.is_in_group("pedestrians")
+		or node.is_in_group("police")
+		or node.is_in_group("vehicles")
+	)
+
+
+## Lazily bake the shared bullet-hole texture: a soft round dark scorch that fades
+## to transparent at the rim, so holes read as round marks not hard squares.
+static func _bullet_hole_texture() -> Texture2D:
+	if _decal_texture != null:
+		return _decal_texture
+	var size := 32
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var center := (float(size) - 1.0) * 0.5
+	for y in size:
+		for x in size:
+			var d := Vector2(float(x) - center, float(y) - center).length() / center
+			var alpha := clampf(1.0 - smoothstep(0.35, 1.0, d), 0.0, 1.0)
+			img.set_pixel(x, y, Color(0.04, 0.035, 0.03, alpha))
+	_decal_texture = ImageTexture.create_from_image(img)
+	return _decal_texture
 
 
 # World-space parent for transient FX; falls back to the tree root in headless

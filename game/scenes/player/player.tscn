@@ -1,9 +1,11 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="2_camera"]
 [ext_resource type="PackedScene" path="res://scenes/player/character_rig.tscn" id="3_rig"]
 [ext_resource type="Script" path="res://scripts/weapons/weapon_controller.gd" id="5_weapon"]
+[ext_resource type="Script" path="res://scripts/combat/melee_controller.gd" id="6_melee"]
+[ext_resource type="Script" path="res://scripts/weapons/grenade_thrower.gd" id="7_grenade"]
 
 [sub_resource type="CapsuleShape3D" id="body_shape"]
 radius = 0.4
@@ -48,13 +50,13 @@ mesh = SubResource("gun_barrel_mesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, -0.45)
 
 [node name="CameraRig" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
 script = ExtResource("2_camera")
 
 [node name="SpringArm" type="SpringArm3D" parent="CameraRig"]
-transform = Transform3D(1, 0, 0, 0, 0.796084, 0.605186, 0, -0.605186, 0.796084, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 0, 0)
 collision_mask = 1
-spring_length = 8.0
+spring_length = 3.3
 
 [node name="Camera" type="Camera3D" parent="CameraRig/SpringArm"]
 current = true
@@ -64,3 +66,9 @@ script = ExtResource("5_weapon")
 camera_path = NodePath("../CameraRig/SpringArm/Camera")
 muzzle_path = NodePath("../Rig/GunMount/Muzzle")
 gun_mount_path = NodePath("../Rig/GunMount")
+
+[node name="MeleeController" type="Node" parent="."]
+script = ExtResource("6_melee")
+
+[node name="GrenadeThrower" type="Node" parent="."]
+script = ExtResource("7_grenade")

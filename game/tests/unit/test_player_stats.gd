@@ -1,6 +1,7 @@
 extends RefCounted
 ## Unit tests for PlayerStats static helpers (see tests/run_tests.gd contract).
-## Only the pure maths are tested here; the node mutators need a SceneTree.
+## Only the pure maths are tested here, plus the tree-free save round trip;
+## the other node mutators need a SceneTree.
 
 
 func test_absorb_full_soak() -> bool:
@@ -35,3 +36,30 @@ func test_fraction_clamps_high() -> bool:
 
 func test_fraction_zero_max_safe() -> bool:
 	return absf(PlayerStats.fraction(5.0, 0.0)) < 0.0001
+
+
+func test_save_round_trip_restores_wallet_and_armor() -> bool:
+	var stats := PlayerStats.new()
+	stats.money = 4250
+	stats.armor = 62.5
+	var snapshot := stats.serialize()
+	var fresh := PlayerStats.new()
+	fresh.money = 0
+	fresh.armor = 0.0
+	fresh.restore(snapshot)
+	var ok := fresh.money == 4250 and absf(fresh.armor - 62.5) < 0.0001
+	stats.free()
+	fresh.free()
+	return ok
+
+
+func test_restore_clamps_and_survives_garbage() -> bool:
+	var stats := PlayerStats.new()
+	stats.money = 700
+	stats.armor = 10.0
+	stats.restore({"money": -50, "armor": 9999.0})
+	var clamped := stats.money == 0 and absf(stats.armor - stats.max_armor) < 0.0001
+	stats.restore({"money": "junk", "armor": null})
+	var kept := stats.money == 0 and absf(stats.armor - stats.max_armor) < 0.0001
+	stats.free()
+	return clamped and kept

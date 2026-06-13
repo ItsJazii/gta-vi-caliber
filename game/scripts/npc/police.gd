@@ -60,6 +60,7 @@ var _last_known: Vector3 = Vector3.ZERO
 var _time_unseen: float = 0.0
 var _engaged: bool = false
 var _gave_up: bool = false
+var _flinch_until: float = 0.0
 
 @onready var _rig: CharacterAnimator = $Rig
 
@@ -112,6 +113,21 @@ func take_damage(amount: float, _point: Vector3, _normal: Vector3) -> void:
 
 func is_dead() -> bool:
 	return _dead
+
+
+## A quick recoil jolt of the rig when hit — same impact tell as a civilian,
+## self-limiting against rapid fire and inert once down. `_dir` is reserved for a
+## future directional stagger.
+func flinch(_dir: Vector3) -> void:
+	if _dead or _rig == null:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _flinch_until:
+		return
+	_flinch_until = now + 0.22
+	var tween := create_tween()
+	tween.tween_property(_rig, "rotation:x", deg_to_rad(-13.0), 0.05)
+	tween.tween_property(_rig, "rotation:x", 0.0, 0.17)
 
 
 ## Chase in three phases while wanted:

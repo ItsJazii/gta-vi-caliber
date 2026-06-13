@@ -86,3 +86,23 @@ func test_approach_angle_takes_short_arc_over_wrap() -> void:
 	# From 3.0 toward -3.0 the short way is across the ±PI wrap (increasing),
 	# not the long -6.0 sweep.
 	assert_float(CameraFeel.approach_angle(3.0, -3.0, 0.1)).is_greater(3.0)
+
+
+func test_turn_roll_is_zero_at_zero_speed() -> void:
+	# No bank when stationary even if the yaw rate is high.
+	assert_float(CameraFeel.turn_roll(2.0, 0.0, 0.05, 0.08)).is_equal_approx(0.0, 0.0001)
+
+
+func test_turn_roll_banks_opposite_to_yaw() -> void:
+	# A positive yaw rate (left turn) rolls negative (into the corner).
+	assert_float(CameraFeel.turn_roll(1.0, 1.0, 0.05, 0.08)).is_equal_approx(-0.05, 0.0001)
+
+
+func test_turn_roll_is_capped() -> void:
+	# A huge yaw rate cannot exceed max_roll.
+	assert_float(CameraFeel.turn_roll(100.0, 1.0, 0.05, 0.08)).is_equal_approx(-0.08, 0.0001)
+
+
+func test_turn_roll_scales_with_blend() -> void:
+	# Half speed blend halves the roll.
+	assert_float(CameraFeel.turn_roll(1.0, 0.5, 0.05, 0.08)).is_equal_approx(-0.025, 0.0001)

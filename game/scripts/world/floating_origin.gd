@@ -17,6 +17,12 @@ signal origin_shifted(shift: Vector3, origin_offset: Vector3)
 var origin_offset: Vector3 = Vector3.ZERO
 
 
+func _ready() -> void:
+	# Systems that hold absolute world coordinates (district streamer, mission
+	# waypoints, saves) find the live offset here.
+	add_to_group("floating_origin")
+
+
 func _physics_process(_delta: float) -> void:
 	var anchor := get_tree().get_first_node_in_group("player") as Node3D
 	if anchor == null:
@@ -33,7 +39,16 @@ func _apply_shift(shift: Vector3) -> void:
 	var world_root := get_parent()
 	if world_root == null:
 		return
-	for child in world_root.get_children():
+	_shift_branch(world_root, shift)
+
+
+# Shift every top-most Node3D under `branch`. Plain-Node containers (mission
+# roots, system holders) are recursed into so their spatial children move with
+# the world instead of silently staying behind; Node3D subtrees move as one.
+func _shift_branch(branch: Node, shift: Vector3) -> void:
+	for child in branch.get_children():
 		var spatial := child as Node3D
 		if spatial != null:
 			spatial.global_position += shift
+		else:
+			_shift_branch(child, shift)

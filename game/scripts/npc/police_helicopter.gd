@@ -8,6 +8,9 @@ extends Node3D
 ## math is the pure, tested HelicopterPursuit model; the body is a cheap greybox
 ## stand-in for the look-dev pass to replace.
 
+## Stars at which the pursuit siren joins the rotor thump.
+const SIREN_STARS: int = 4
+
 @export var orbit_radius: float = 30.0
 @export var altitude: float = 34.0
 @export var angular_speed: float = 0.55
@@ -22,11 +25,15 @@ var _player: Node3D = null
 var _tracker: Node = null
 var _rotor: Node3D = null
 var _light: SpotLight3D = null
+var _audio: HelicopterAudio = null
 
 
 func _ready() -> void:
 	add_to_group("police_air")
 	_build_body()
+	_audio = HelicopterAudio.new()
+	_audio.name = "Audio"
+	add_child(_audio)
 	visible = false
 
 
@@ -34,6 +41,8 @@ func _physics_process(delta: float) -> void:
 	_bind()
 	var stars := int(_tracker.stars()) if _tracker != null and _tracker.has_method("stars") else 0
 	_set_active(HelicopterPursuit.should_deploy(stars) and _player != null)
+	if _audio != null:
+		_audio.set_siren(_active and stars >= SIREN_STARS)
 	if not _active or _player == null:
 		return
 	_t += delta
@@ -62,6 +71,8 @@ func _set_active(on: bool) -> void:
 	_active = on
 	visible = on
 	_lit = _lit and on
+	if _audio != null:
+		_audio.set_running(on)
 	if on and _player != null:
 		# Fly in from high above so it eases onto the orbit instead of popping in.
 		global_position = _player.global_position + Vector3(0.0, altitude + 24.0, 0.0)

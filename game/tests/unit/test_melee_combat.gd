@@ -21,6 +21,24 @@ func test_strike_damage_combo_bonus_caps() -> bool:
 	return is_equal_approx(capped, 6.0 * 1.6) and is_equal_approx(beyond, capped)
 
 
+# --- static: strike_for_combo (chain escalation) ---
+
+
+func test_strike_for_combo_chain() -> bool:
+	# 1->jab, 2->cross, 3->kick, then holds on heavy; a fresh/degenerate count
+	# (<=0) opens with the lightest strike rather than wrapping.
+	return (
+		MeleeCombat.strike_for_combo(1) == MeleeCombat.Strike.JAB
+		and MeleeCombat.strike_for_combo(2) == MeleeCombat.Strike.CROSS
+		and MeleeCombat.strike_for_combo(3) == MeleeCombat.Strike.KICK
+		and MeleeCombat.strike_for_combo(4) == MeleeCombat.Strike.HEAVY
+		and MeleeCombat.strike_for_combo(5) == MeleeCombat.Strike.HEAVY
+		and MeleeCombat.strike_for_combo(20) == MeleeCombat.Strike.HEAVY
+		and MeleeCombat.strike_for_combo(0) == MeleeCombat.Strike.JAB
+		and MeleeCombat.strike_for_combo(-3) == MeleeCombat.Strike.JAB
+	)
+
+
 # --- static: block_reduction ---
 
 

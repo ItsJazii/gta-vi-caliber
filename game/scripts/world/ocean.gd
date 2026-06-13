@@ -15,7 +15,19 @@ extends MeshInstance3D
 @export var size_m: float = 1400.0
 ## Subdivisions per side. Vertex spacing = size_m / resolution; short waves
 ## below that still shade correctly (per-pixel normals) but won't displace.
-@export_range(16, 512) var resolution: int = 200
+## With a fine region (below), this is the fine grid's resolution instead.
+@export_range(16, 512) var resolution: int = 280
+## Half-extent (m) of the densely tessellated centre square. 0 keeps the
+## classic uniform plane. Positive values build a tiered mesh (OceanMeshBuilder):
+## fine vertices where displacement is visible, flat far-field quads beyond —
+## a 12 km backdrop drops from ~74k to ~19k triangles while the playable water
+## gets a finer grid than before. Displacement fades out across fade_band_m
+## approaching the fine edge (GPU and CPU alike) so the tier seam stays flat.
+@export var fine_extent_m: float = 0.0
+## Approximate far-field quad edge (m) when fine_extent_m > 0.
+@export var far_cell_m: float = 750.0
+## Width (m) of the displacement fade band inside the fine-region edge.
+@export var fade_band_m: float = 250.0
 ## Scales every wave amplitude; 0 is a dead-flat sea.
 @export_range(0.0, 4.0) var amplitude_scale: float = 1.0
 ## Time multiplier for wave travel speed.
@@ -42,14 +54,28 @@ extends MeshInstance3D
 
 var _material: ShaderMaterial
 var _time: float = 0.0
+# Snapped fine-square half-extent; INF means uniform mesh (no fade anywhere).
+var _fine_half: float = INF
 
 
 func _ready() -> void:
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(size_m, size_m)
-	plane.subdivide_width = resolution
-	plane.subdivide_depth = resolution
-	mesh = plane
+	if fine_extent_m > 0.0 and fine_extent_m < size_m * 0.5:
+		var geo := OceanMeshBuilder.build(size_m, fine_extent_m, resolution, far_cell_m)
+		_fine_half = geo["fine_half"]
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = geo["vertices"]
+		arrays[Mesh.ARRAY_NORMAL] = geo["normals"]
+		arrays[Mesh.ARRAY_INDEX] = geo["indices"]
+		var tiered := ArrayMesh.new()
+		tiered.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh = tiered
+	else:
+		var plane := PlaneMesh.new()
+		plane.size = Vector2(size_m, size_m)
+		plane.subdivide_width = resolution
+		plane.subdivide_depth = resolution
+		mesh = plane
 
 	_material = ShaderMaterial.new()
 	_material.shader = load("res://shaders/ocean.gdshader")
@@ -62,13 +88,35 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_time += delta * wave_speed
 	_material.set_shader_parameter("u_time", _time)
+	if _fine_half != INF:
+		# Track origin shifts (FloatingOrigin) so the fade stays mesh-centred.
+		var origin := _origin()
+		_material.set_shader_parameter("u_fade_center", Vector2(origin.x, origin.z))
 
 
 ## Surface height in world space at world_pos.xz, for buoyancy queries.
-## Matches the rendered surface — see the OceanMath/shader contract.
+## Matches the rendered surface — see the OceanMath/shader contract; with a
+## tiered mesh this includes the same far-field displacement fade as the GPU.
 func wave_height_at(world_pos: Vector3) -> float:
 	var xz := Vector2(world_pos.x, world_pos.z)
-	return global_position.y + OceanMath.wave_height_at(xz, _time, amplitude_scale)
+	return _origin().y + OceanMath.wave_height_at(xz, _time, _amp_scale_at(xz))
+
+
+## Effective amplitude scale at a world XZ: the authored scale, faded toward
+## zero across the band inside the fine-region edge (tiered meshes only).
+func _amp_scale_at(world_xz: Vector2) -> float:
+	if _fine_half == INF:
+		return amplitude_scale
+	var origin := _origin()
+	var rel := world_xz - Vector2(origin.x, origin.z)
+	var fade_start := maxf(_fine_half - maxf(fade_band_m, 0.0), 0.0)
+	return amplitude_scale * OceanMeshBuilder.displacement_falloff(rel, fade_start, _fine_half)
+
+
+## Node origin in world space; falls back to the local position out of tree
+## (pure unit tests) where global_position would error.
+func _origin() -> Vector3:
+	return global_position if is_inside_tree() else position
 
 
 ## Buoyancy convenience matching the floater/boat API (world x/z -> surface y).
@@ -80,6 +128,13 @@ func surface_height(world_x: float, world_z: float) -> float:
 func _push_look_params() -> void:
 	_material.set_shader_parameter("u_time", _time)
 	_material.set_shader_parameter("u_amplitude_scale", amplitude_scale)
+	if _fine_half != INF:
+		var origin := _origin()
+		_material.set_shader_parameter("u_fade_center", Vector2(origin.x, origin.z))
+		_material.set_shader_parameter(
+			"u_fade_start", maxf(_fine_half - maxf(fade_band_m, 0.0), 0.0)
+		)
+		_material.set_shader_parameter("u_fade_end", _fine_half)
 	_material.set_shader_parameter("u_shallow_color", shallow_color)
 	_material.set_shader_parameter("u_deep_color", deep_color)
 	_material.set_shader_parameter("u_horizon_color", horizon_color)

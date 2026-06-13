@@ -14,6 +14,10 @@ signal resprayed(cost: int)
 ## won't clear — shake them first.
 @export var sight_radius: float = 45.0
 
+# Singleton lookups cached across visits; re-resolved only when freed.
+var _tracker: Node = null
+var _stats: Node = null
+
 
 func _ready() -> void:
 	# player.gd puts the player body on collision layer 2; watch for it.
@@ -24,13 +28,16 @@ func _ready() -> void:
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("player"):
 		return
-	var tracker := get_tree().get_first_node_in_group("wanted")
+	_bind()
+	var tracker := _tracker
 	if tracker == null or not tracker.has_method("is_wanted") or not tracker.is_wanted():
 		return
-	var stats := get_tree().get_first_node_in_group("player_stats")
+	var stats := _stats
 	var balance: int = int(stats.money) if stats != null and ("money" in stats) else 0
 	var stars: int = tracker.stars() if tracker.has_method("stars") else 0
-	# Traced if a cop watches you duck in — no clean getaway.
+	# Traced if a cop watches you duck in — no clean getaway. The police list is
+	# read live (not cached): entries are rare events and a stale list here
+	# could let the player respray under a watching cop's nose.
 	if PaySpray.is_seen_entering(global_position, _police_positions(), sight_radius):
 		return
 	var cost := PaySpray.cost_for(stars, base_cost, per_star)
@@ -40,6 +47,13 @@ func _on_body_entered(body: Node) -> void:
 		stats.spend_money(cost)
 	tracker.clear()
 	resprayed.emit(cost)
+
+
+func _bind() -> void:
+	if _tracker == null or not is_instance_valid(_tracker):
+		_tracker = get_tree().get_first_node_in_group("wanted")
+	if _stats == null or not is_instance_valid(_stats):
+		_stats = get_tree().get_first_node_in_group("player_stats")
 
 
 func _police_positions() -> Array:

@@ -14,6 +14,8 @@ static var night_level: float = 0.0
 
 var _material: StandardMaterial3D = null
 var _full_energy: float = 2.5
+var _lights: Array[OmniLight3D] = []
+var _light_full_energy: float = 0.0
 
 
 ## Emission energy for a night level: off in daylight, ramping to full at night.
@@ -28,7 +30,25 @@ func setup(material: StandardMaterial3D, full_energy: float) -> void:
 	_full_energy = full_energy
 
 
+## Bind real OmniLight3D pools to fade with the same clock as the emissive heads
+## so the lamps actually pour warm light onto the street at night (and switch off
+## — invisible, zero cost — by day). `full_energy` is their peak night energy.
+func bind_lights(lights: Array[OmniLight3D], full_energy: float) -> void:
+	_lights = lights
+	_light_full_energy = full_energy
+
+
 func _process(_delta: float) -> void:
-	if _material == null:
+	if _material != null:
+		_material.emission_energy_multiplier = lamp_energy(night_level, _full_energy)
+	if _lights.is_empty():
 		return
-	_material.emission_energy_multiplier = lamp_energy(night_level, _full_energy)
+	var energy := lamp_energy(night_level, _light_full_energy)
+	var lit := energy > 0.001
+	for light in _lights:
+		if not is_instance_valid(light):
+			continue
+		# Hide the light outright by day so it costs nothing in the light cluster.
+		light.visible = lit
+		if lit:
+			light.light_energy = energy

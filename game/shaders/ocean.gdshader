@@ -26,6 +26,16 @@ const float WAVE_HEIGHT_SUM = 1.05;
 uniform float u_time = 0.0;
 uniform float u_amplitude_scale = 1.0;
 
+// Far-field displacement fade for tiered meshes (OceanMeshBuilder): vertex
+// displacement is full inside u_fade_start (Chebyshev distance from
+// u_fade_center), zero at/beyond u_fade_end, so the coarse far quads stay
+// coplanar with the fine grid's edge. Mirrors
+// OceanMeshBuilder.displacement_falloff — edit both together. Defaults keep
+// uniform planes (no fade) fully displaced.
+uniform vec2 u_fade_center = vec2(0.0);
+uniform float u_fade_start = 1.0e8;
+uniform float u_fade_end = 1.0e9;
+
 uniform vec4 u_shallow_color : source_color = vec4(0.02, 0.6, 0.56, 1.0);
 uniform vec4 u_deep_color : source_color = vec4(0.0, 0.12, 0.28, 1.0);
 uniform vec4 u_horizon_color : source_color = vec4(0.16, 0.38, 0.55, 1.0);
@@ -133,7 +143,10 @@ float foam_noise(vec2 p) {
 
 void vertex() {
 	v_param = VERTEX.xz; // world-space thanks to world_vertex_coords
-	vec3 off = gerstner_offset(v_param, u_time, u_amplitude_scale);
+	vec2 rel = v_param - u_fade_center;
+	float cheb = max(abs(rel.x), abs(rel.y));
+	float fade = 1.0 - smoothstep(u_fade_start, u_fade_end, cheb);
+	vec3 off = gerstner_offset(v_param, u_time, u_amplitude_scale) * fade;
 	v_crest = off.y;
 	VERTEX += off;
 	v_world_pos = VERTEX;

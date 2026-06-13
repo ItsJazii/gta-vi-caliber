@@ -97,6 +97,11 @@ func _add_boardwalk_props(rng: RandomNumberGenerator) -> void:
 	lamp_mat.emission_enabled = true
 	lamp_mat.emission = Color(1.0, 0.82, 0.5)
 	lamp_mat.emission_energy_multiplier = 2.5
+	# Fade the boardwalk lamps with the same day/night clock as the city
+	# streetlights instead of leaving them glowing at noon.
+	var switch := StreetlightSwitch.new()
+	switch.setup(lamp_mat, lamp_mat.emission_energy_multiplier)
+	add_child(switch)
 	var seat_mesh := BoxMesh.new()
 	seat_mesh.size = Vector3(0.5, 0.08, 1.8)
 	var back_mesh := BoxMesh.new()

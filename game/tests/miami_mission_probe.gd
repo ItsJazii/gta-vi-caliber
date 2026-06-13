@@ -1,31 +1,30 @@
 extends SceneTree
 ## Mission-campaign probe for the main playable map.
 ##
-## Proves the in-world CAMPAIGN actually plays end to end: it walks the player rig
-## through the three MissionTrigger zones (reach the car, drive the strip, return
-## home) over and over, and the MissionCampaign coordinator advances the
-## MissionController through all three missions. Asserts the campaign reports
-## complete and that the reward loop accrued across missions — money, respect, and
-## the missions-passed stat. Guards the mission framework + its wiring in CI.
-## Run headless:
+## Proves the in-world CAMPAIGN actually plays end to end: every frame it pins
+## the player rig onto the MissionController's CURRENT waypoint — whatever
+## mission and objective that is — so reach objectives complete on arrival and
+## hold objectives complete by dwelling (the player stays pinned until the
+## waypoint moves on). The MissionCampaign coordinator advances through all
+## five missions, including the timed ones. Asserts the campaign reports
+## complete and that the reward loop accrued across missions — money, respect,
+## and the missions-passed stat. Guards the mission framework + its wiring in
+## CI. Run headless:
 ##   godot --headless --path game --script res://tests/miami_mission_probe.gd
 
 const SCENE_PATH: String = "res://scenes/world/miami.tscn"
 const WARMUP_FRAMES: int = 36
-const DWELL_FRAMES: int = 14
-## The three trigger world positions, cycled once per mission.
-const WAYPOINTS: Array = [Vector3(7, 1, 5), Vector3(72, 1, -48), Vector3(0, 1, 0)]
-## Generous cap: 3 missions x 3 zones x ~16 frames, plus slack.
-const DRIVE_FRAMES: int = 700
+## Generous cap: 16 objectives, ~10.5 s of hold beats (~630 frames) plus
+## per-zone detection and mission handoffs, with slack.
+const DRIVE_FRAMES: int = 2400
 
 var _scene: Node = null
 var _player: Node3D = null
 var _campaign: Node = null
+var _controller: Node = null
 var _stats: Node = null
 var _money_at_start: int = 0
 var _frames: int = 0
-var _phase: int = 0
-var _dwell: int = 0
 var _failed: bool = false
 
 
@@ -53,15 +52,15 @@ func _process(_delta: float) -> bool:
 	if _frames >= WARMUP_FRAMES + DRIVE_FRAMES:
 		return _timeout()
 
-	# Pin the player inside the current zone for a few frames so Area3D
-	# body_entered registers, then drive on to the next — cycling the three
-	# zones so each mission in the campaign gets completed in turn.
-	var target: Vector3 = WAYPOINTS[_phase % WAYPOINTS.size()]
+	# Chase the live waypoint: pinning the player on it satisfies reach
+	# objectives instantly and accrues hold objectives' dwell clocks; when an
+	# objective (or mission) flips, the waypoint moves and the pin follows.
+	# Velocity is zeroed so the teleport doesn't bank fall speed into a lethal
+	# phantom impact during long holds.
+	var target: Vector3 = _controller.current_waypoint(_player.global_position)
 	_player.global_position = target
-	_dwell += 1
-	if _dwell >= DWELL_FRAMES:
-		_dwell = 0
-		_phase += 1
+	if _player is CharacterBody3D:
+		(_player as CharacterBody3D).velocity = Vector3.ZERO
 	return false
 
 
@@ -73,6 +72,9 @@ func _resolve_nodes() -> bool:
 		return _fail("no player rig in group 'player'")
 	if _campaign == null or not _campaign.has_method("is_campaign_complete"):
 		return _fail("no MissionCampaign in group 'campaign'")
+	_controller = get_first_node_in_group("mission")
+	if _controller == null or not _controller.has_method("current_waypoint"):
+		return _fail("no MissionController in group 'mission'")
 	_stats = get_first_node_in_group("player_stats")
 	if _stats == null or not ("money" in _stats):
 		return _fail("no PlayerStats with money in group 'player_stats'")
@@ -105,7 +107,12 @@ func _pass() -> bool:
 
 func _timeout() -> bool:
 	var passed: int = _campaign.missions_done() if _campaign.has_method("missions_done") else -1
-	return _fail("campaign never completed (missions_done=%d)" % passed)
+	var hud: String = _controller.hud_text() if _controller.has_method("hud_text") else "?"
+	var health := get_first_node_in_group("player_health")
+	var hp: float = float(health.health) if health != null and "health" in health else -1.0
+	return _fail(
+		"campaign never completed (missions_done=%d, hp=%.0f, stuck on: %s)" % [passed, hp, hud]
+	)
 
 
 func _fail(message: String) -> bool:

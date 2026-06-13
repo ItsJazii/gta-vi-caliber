@@ -25,6 +25,11 @@ const MAX_SUN_ENERGY: float = 1.35
 ## night scenes still read.
 const MOON_ENERGY: float = 0.06
 
+## Cool key energy for a dedicated moon DirectionalLight at full night (scaled by
+## night_amount and weather). Brighter than the sun's MOON_ENERGY floor so a
+## moonlit night reads with a soft cool key and real shadows, not pitch black.
+const MOON_LIGHT_ENERGY: float = 0.2
+
 ## Daytime ambient light energy at the sun's zenith.
 const MAX_AMBIENT: float = 0.55
 
@@ -49,6 +54,12 @@ const SKY_HIGH: float = 0.06
 ## (sunrise/sunset orange) — lerped by how warm the low sun is.
 const DAY_LIGHT_COLOR: Color = Color(1.0, 0.98, 0.95)
 const HORIZON_LIGHT_COLOR: Color = Color(1.0, 0.54, 0.26)
+
+## Ambient (sky fill) tint — warm sun-bleached daylight easing to a cool moonlit
+## blue at night, so night shadows read cool instead of keeping the warm daytime
+## colour the scene authored.
+const DAY_AMBIENT_COLOR: Color = Color(0.92, 0.76, 0.62)
+const NIGHT_AMBIENT_COLOR: Color = Color(0.34, 0.42, 0.66)
 
 
 ## Unit vector pointing from the world TO the sun at time `tod`.
@@ -100,6 +111,14 @@ static func ambient_energy(tod: float) -> float:
 	var h := sun_direction(tod).y
 	var day := smoothstep(DAWN_LOW, DAWN_HIGH, h)
 	return lerpf(MIN_AMBIENT, MAX_AMBIENT, day)
+
+
+## Ambient (sky fill) colour for the WorldEnvironment — warm by day, cool by
+## night, crossing over through twilight on the same ramp as the key light.
+static func ambient_color(tod: float) -> Color:
+	var h := sun_direction(tod).y
+	var day := smoothstep(DAWN_LOW, DAWN_HIGH, h)
+	return NIGHT_AMBIENT_COLOR.lerp(DAY_AMBIENT_COLOR, day)
 
 
 ## Overall daylight scale fed to the sky shader's `sun_energy`. Tracks the key

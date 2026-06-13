@@ -1,4 +1,4 @@
-[gd_scene load_steps=46 format=3]
+[gd_scene load_steps=52 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -43,6 +43,12 @@
 [ext_resource type="Script" path="res://scripts/world/armor_shop.gd" id="37_armorshop"]
 [ext_resource type="Shader" path="res://assets/shaders/sky.gdshader" id="38_sky"]
 [ext_resource type="Script" path="res://scripts/world/sky_controller.gd" id="39_skyctl"]
+[ext_resource type="Script" path="res://scripts/world/rain.gd" id="40_rain"]
+[ext_resource type="Script" path="res://scripts/world/floating_origin.gd" id="41_origin"]
+[ext_resource type="Script" path="res://scripts/npc/city_director.gd" id="42_city"]
+[ext_resource type="Script" path="res://scripts/world/city_poi_seeder.gd" id="43_poi"]
+[ext_resource type="PackedScene" path="res://scenes/npc/citizen.tscn" id="44_citizen"]
+[ext_resource type="Script" path="res://scripts/world/night_lights_switch.gd" id="45_nightlights"]
 [ext_resource type="Script" path="res://scripts/world/coastal_prop_placements.gd" id="40_coastal_props"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
@@ -108,12 +114,12 @@ fog_density = 0.00012
 fog_sky_affect = 0.0
 fog_aerial_perspective = 0.12
 volumetric_fog_enabled = true
-volumetric_fog_density = 0.00010
+volumetric_fog_density = 0.003
 volumetric_fog_albedo = Color(1.0, 0.86, 0.72, 1.0)
-volumetric_fog_emission = Color(0.28, 0.18, 0.22, 1.0)
-volumetric_fog_emission_energy = 0.0
-volumetric_fog_length = 450.0
-volumetric_fog_detail_spread = 3.0
+volumetric_fog_emission = Color(0.4, 0.28, 0.3, 1.0)
+volumetric_fog_emission_energy = 0.3
+volumetric_fog_length = 900.0
+volumetric_fog_detail_spread = 1.6
 volumetric_fog_ambient_inject = 0.05
 adjustment_enabled = true
 adjustment_contrast = 1.08
@@ -125,16 +131,28 @@ adjustment_brightness = 1.0
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("env")
 script = ExtResource("6_quality")
-minimum_tier = 1
+minimum_tier = 2
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.94, 0.18, -0.29, 0, 0.85, 0.53, 0.34, -0.5, 0.8, 0, 80, 0)
 light_color = Color(1.0, 0.66, 0.4, 1.0)
 light_energy = 0.92
 light_angular_distance = 2.0
+light_volumetric_fog_energy = 1.6
 shadow_enabled = true
 shadow_blur = 0.8
 directional_shadow_max_distance = 350.0
+
+; Night key light. SkyController (resolves it by the name "Moon") aims it
+; opposite the sun and ramps its cool energy with night_amount, so moonlit
+; geometry reads cool and casts soft shadows instead of going pitch black.
+[node name="Moon" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 80, 0)
+light_color = Color(0.6, 0.7, 0.96, 1.0)
+light_energy = 0.0
+light_angular_distance = 1.0
+shadow_blur = 1.4
+directional_shadow_max_distance = 600.0
 
 [node name="SkyController" type="Node" parent="." groups=["sky"]]
 script = ExtResource("39_skyctl")
@@ -143,6 +161,12 @@ day_length_seconds = 1200.0
 
 [node name="FloridaBackdrop" type="Node3D" parent="."]
 script = ExtResource("4_florida")
+
+; Switches the backdrop neon light clusters (group "night_lights") on at dusk
+; and off by day off the shared SkyController night clock — the legacy
+; DayNightCycle that used to own this group isn't in this scene.
+[node name="NightLightsSwitch" type="Node" parent="."]
+script = ExtResource("45_nightlights")
 
 [node name="CoastalProps" type="Node3D" parent="."]
 script = ExtResource("40_coastal_props")
@@ -162,10 +186,29 @@ script = ExtResource("3_streamer")
 load_radius = 8500.0
 unload_radius = 9500.0
 
+; Districts sit up to ~6.5 km out; beyond ~2 km float32 jitter sets in, so the
+; world is teleported back around the player. The streamer and mission
+; waypoints reconstruct absolute coords from its origin_offset.
+[node name="FloatingOrigin" type="Node" parent="."]
+script = ExtResource("41_origin")
+
+; Live weather: a rolling front (clear -> overcast -> rain -> clearing) that
+; thickens the fog, darkens the sky-shader clouds, rains over the player, and
+; wets the streets (world_wetness shader global). Fog densities stay near the
+; authored Vice City air so clear weather keeps the warm golden-hour grade.
 [node name="Weather" type="Node3D" parent="."]
 script = ExtResource("5_weather")
-auto_cycle = false
-start_condition = 0
+front_length_sec = 360.0
+start_cycle = 0.1
+environment_path = NodePath("../WorldEnvironment")
+rain_path = NodePath("Rain")
+clear_fog_density = 8e-05
+storm_fog_density = 0.006
+rain_fog_boost = 0.004
+
+[node name="Rain" type="Node3D" parent="Weather"]
+script = ExtResource("40_rain")
+intensity = 0.0
 
 [node name="SpawnPoint" type="Marker3D" parent="." groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
@@ -247,8 +290,16 @@ shape = SubResource("trigger_shape")
 [node name="BarkDirector" type="Node" parent="."]
 script = ExtResource("14_bark")
 
+[node name="CityDirector" type="Node3D" parent="."]
+script = ExtResource("42_city")
+
+[node name="CityPoiSeeder" type="Node3D" parent="."]
+script = ExtResource("43_poi")
+
 [node name="CrowdDirector" type="Node3D" parent="."]
 script = ExtResource("15_crowd")
+citizen_scene = ExtResource("44_citizen")
+citizen_fraction = 0.35
 target_count = 40
 spawn_max_radius = 54.0
 cull_radius = 70.0

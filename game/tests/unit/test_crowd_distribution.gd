@@ -63,3 +63,35 @@ func test_spawn_count_zero_when_full() -> bool:
 
 func test_spawn_count_zero_when_over_target() -> bool:
 	return CrowdDistribution.spawn_count(15, 12, 3) == 0
+
+
+func test_citizen_slot_zero_fraction_never() -> bool:
+	for slot in 50:
+		if CrowdDistribution.is_citizen_slot(slot, 0.0):
+			return false
+	return true
+
+
+func test_citizen_slot_full_fraction_always() -> bool:
+	for slot in 50:
+		if not CrowdDistribution.is_citizen_slot(slot, 1.0):
+			return false
+	return true
+
+
+func test_citizen_slot_hits_exact_fraction_over_run() -> bool:
+	var citizens := 0
+	for slot in 100:
+		if CrowdDistribution.is_citizen_slot(slot, 0.35):
+			citizens += 1
+	return citizens == 35
+
+
+func test_citizen_slot_half_fraction_alternates() -> bool:
+	# f = 0.5 should yield exactly one citizen per consecutive pair.
+	for pair in 10:
+		var a := CrowdDistribution.is_citizen_slot(pair * 2, 0.5)
+		var b := CrowdDistribution.is_citizen_slot(pair * 2 + 1, 0.5)
+		if int(a) + int(b) != 1:
+			return false
+	return true

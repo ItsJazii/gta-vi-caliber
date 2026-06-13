@@ -66,3 +66,53 @@ func test_labels_track_conditions() -> bool:
 	var grey := WeatherState.new()
 	grey.cloudiness = 0.8
 	return clear.label() == "clear" and storm.label() == "rain" and grey.label() == "overcast"
+
+
+func test_sky_cloud_coverage_spans_clear_to_storm() -> bool:
+	# Clear keeps a few fair-weather clouds; a storm never becomes a solid slab.
+	var clear := WeatherState.sky_cloud_coverage(0.0)
+	var storm := WeatherState.sky_cloud_coverage(1.0)
+	return clear > 0.05 and clear < 0.35 and storm > 0.85 and storm < 1.0
+
+
+func test_sky_cloud_coverage_is_monotonic_and_clamped() -> bool:
+	var low := WeatherState.sky_cloud_coverage(0.2)
+	var high := WeatherState.sky_cloud_coverage(0.8)
+	var below := WeatherState.sky_cloud_coverage(-5.0)
+	var above := WeatherState.sky_cloud_coverage(5.0)
+	var monotonic := high > low
+	var clamped := (
+		absf(below - WeatherState.sky_cloud_coverage(0.0)) < 0.001
+		and absf(above - WeatherState.sky_cloud_coverage(1.0)) < 0.001
+	)
+	return monotonic and clamped
+
+
+func test_storm_darkness_fair_weather_stays_bright() -> bool:
+	# Below the overcast threshold the sky keeps its full brightness.
+	return (
+		is_equal_approx(WeatherState.sky_storm_darkness(0.0), 0.0)
+		and is_equal_approx(WeatherState.sky_storm_darkness(0.3), 0.0)
+	)
+
+
+func test_storm_darkness_builds_to_charcoal_cap() -> bool:
+	var mid := WeatherState.sky_storm_darkness(0.7)
+	var full := WeatherState.sky_storm_darkness(1.0)
+	var beyond := WeatherState.sky_storm_darkness(9.0)
+	return (
+		mid > 0.1 and mid < full and is_equal_approx(full, 0.85) and is_equal_approx(beyond, full)
+	)
+
+
+func test_sun_dim_clear_is_full_strength() -> bool:
+	return (
+		is_equal_approx(WeatherState.sun_dim_factor(0.0), 1.0)
+		and is_equal_approx(WeatherState.sun_dim_factor(0.3), 1.0)
+	)
+
+
+func test_sun_dim_storm_drops_toward_floor() -> bool:
+	var mid := WeatherState.sun_dim_factor(0.7)
+	var full := WeatherState.sun_dim_factor(1.0)
+	return mid < 1.0 and mid > full and is_equal_approx(full, 0.35)

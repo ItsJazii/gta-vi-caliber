@@ -45,3 +45,19 @@ func level_progress() -> float:
 ## Total respect earned, for the HUD / save.
 func total_xp() -> int:
 	return _progression.total_xp() if _progression != null else 0
+
+
+# --- Persistence (SaveManager) ---------------------------------------------
+
+
+func serialize() -> Dictionary:
+	return {"total_xp": total_xp()}
+
+
+## Rebuild from a serialize() snapshot: replaying lifetime XP through the
+## levelling curve reconstructs level and within-level progress exactly.
+func restore(data: Dictionary) -> void:
+	if _progression == null:
+		_progression = PlayerProgression.new()
+	_progression.reset()
+	_progression.add_xp(maxi(int(SaveData.number_or(data.get("total_xp"), 0)), 0))

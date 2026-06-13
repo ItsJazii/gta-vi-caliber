@@ -28,6 +28,14 @@ const POI_COLORS: Dictionary = {
 @export var pixels_per_meter: float = 1.6
 ## Street grid spacing in world metres.
 @export var grid_spacing: float = 24.0
+## Map refresh rate (Hz). The minimap is a HUD read, not a smooth viewport:
+## ~10 Hz keeps blips and rotation current while cutting the every-frame
+## full-disc redraw (streets + blips + POIs) that used to dominate UI time.
+@export_range(1.0, 60.0) var refresh_hz: float = 10.0
+## Seconds between re-pulls of the moving blip groups (peds, police, vehicles).
+@export var blip_rescan_sec: float = 0.5
+## Seconds between re-pulls of the static POI marker groups.
+@export var poi_rescan_sec: float = 2.0
 
 @export var disc_color: Color = Color(0.07, 0.09, 0.12, 0.92)
 @export var disc_inner_color: Color = Color(0.14, 0.17, 0.22, 0.6)
@@ -48,11 +56,21 @@ const POI_COLORS: Dictionary = {
 var _player: Node3D = null
 var _stats: Node = null
 var _health: Node = null
+var _redraw_accum: float = 0.0
+# Time to feed the blip/POI caches on the next draw (0 for engine-driven
+# redraws like resizes, so cache clocks only advance with game time).
+var _scan_delta: float = 0.0
+var _blip_caches: Dictionary = {}
+var _poi_caches: Dictionary = {}
 
 
 func _ready() -> void:
 	call_deferred("_bind")
 	set_process(true)
+	for group in ["pedestrians", "police", "vehicles"]:
+		_blip_caches[group] = GroupCache.for_group(get_tree(), group, blip_rescan_sec)
+	for kind in POI_COLORS.keys():
+		_poi_caches[kind] = GroupCache.for_group(get_tree(), "poi_%s" % kind, poi_rescan_sec)
 
 
 func _bind() -> void:
@@ -67,7 +85,13 @@ func _bind() -> void:
 		_health = health[0]
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_redraw_accum += delta
+	var period := 1.0 / maxf(refresh_hz, 1.0)
+	if _redraw_accum < period:
+		return
+	_scan_delta = _redraw_accum
+	_redraw_accum = fmod(_redraw_accum, period)
 	queue_redraw()
 
 
@@ -96,6 +120,7 @@ func _draw() -> void:
 	_draw_player(center, radius)
 	_draw_frame(center, radius, forward)
 	_draw_vitals(center, radius)
+	_scan_delta = 0.0
 
 
 func _facing() -> Vector2:
@@ -147,11 +172,12 @@ func _draw_streets(center: Vector2, radius: float, player_xz: Vector2, forward: 
 
 
 func _draw_blips(center: Vector2, radius: float, player_xz: Vector2, forward: Vector2) -> void:
-	for group in ["pedestrians", "police", "vehicles"]:
+	for group in _blip_caches.keys():
 		var col := vehicle_color if group == "vehicles" else ped_color
 		if group == "police":
 			col = Color(0.4, 0.6, 1.0)
-		for n in get_tree().get_nodes_in_group(group):
+		var cache: GroupCache = _blip_caches[group]
+		for n in cache.nodes(_scan_delta):
 			var n3 := n as Node3D
 			if n3 == null:
 				continue
@@ -165,7 +191,8 @@ func _draw_blips(center: Vector2, radius: float, player_xz: Vector2, forward: Ve
 
 func _draw_pois(center: Vector2, radius: float, player_xz: Vector2, forward: Vector2) -> void:
 	for kind in POI_COLORS.keys():
-		for n in get_tree().get_nodes_in_group("poi_%s" % kind):
+		var cache: GroupCache = _poi_caches[kind]
+		for n in cache.nodes(_scan_delta):
 			var n3 := n as Node3D
 			if n3 == null:
 				continue
