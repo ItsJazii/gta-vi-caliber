@@ -64,11 +64,27 @@ func world_to_cell(pos: Vector3) -> Vector2i:
 ## blocked — the cheap way to stamp a building footprint or water body into the
 ## grid. min_xz/max_xz are (x, z) corners.
 func block_world_rect(min_xz: Vector2, max_xz: Vector2) -> void:
-	var lo := world_to_cell(Vector3(min_xz.x, origin.y, min_xz.y))
-	var hi := world_to_cell(Vector3(max_xz.x, origin.y, max_xz.y))
-	for r in range(mini(lo.y, hi.y), maxi(lo.y, hi.y) + 1):
-		for c in range(mini(lo.x, hi.x), maxi(lo.x, hi.x) + 1):
-			set_blocked(c, r, true)
+	var lo_x := minf(min_xz.x, max_xz.x)
+	var hi_x := maxf(min_xz.x, max_xz.x)
+	var lo_z := minf(min_xz.y, max_xz.y)
+	var hi_z := maxf(min_xz.y, max_xz.y)
+	# Bail when the rect misses the grid entirely. world_to_cell clamps corners to
+	# the edge, so without this an off-grid footprint stamped a phantom blocked
+	# strip along the nearest edge.
+	if hi_x < origin.x or lo_x > origin.x + float(cols) * cell_size:
+		return
+	if hi_z < origin.z or lo_z > origin.z + float(rows) * cell_size:
+		return
+	var lo := world_to_cell(Vector3(lo_x, origin.y, lo_z))
+	var hi := world_to_cell(Vector3(hi_x, origin.y, hi_z))
+	for r in range(lo.y, hi.y + 1):
+		for c in range(lo.x, hi.x + 1):
+			# Block only cells whose CENTRE is actually inside the rect (the doc
+			# contract). The old span-fill also blocked edge cells whose centre sat
+			# outside the rect, eating drivable road next to a footprint.
+			var p := cell_to_world(c, r)
+			if p.x >= lo_x and p.x <= hi_x and p.z >= lo_z and p.z <= hi_z:
+				set_blocked(c, r, true)
 
 
 ## A* over cells. Returns the cell path inclusive of start and goal, or an empty
