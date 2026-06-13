@@ -266,8 +266,6 @@ func _build_street_furniture(roads: Array, proj: GeoProjection) -> void:
 	var container := Node3D.new()
 	container.name = "StreetFurniture"
 	container.position.y = 0.15  # sit props on the raised sidewalk, not the gutter
-	container.visibility_range_end = 120.0
-	container.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(container)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
@@ -290,6 +288,7 @@ func _build_street_furniture(roads: Array, proj: GeoProjection) -> void:
 				_add_mesh(prop, hydrant_cap, Vector3(0.0, 0.42, 0.0), hydrant_mat)
 			container.add_child(prop)
 			placed += 1
+	LodUtil.apply_range(container, 120.0)
 
 
 func _add_mesh(parent: Node, mesh: Mesh, pos: Vector3, mat: Material) -> void:
@@ -318,8 +317,6 @@ func _build_trees(roads: Array, proj: GeoProjection) -> void:
 	rng.seed = 1337
 	var container := Node3D.new()
 	container.name = "Trees"
-	container.visibility_range_end = 300.0
-	container.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(container)
 
 	var placed := 0
@@ -348,6 +345,7 @@ func _build_trees(roads: Array, proj: GeoProjection) -> void:
 			tree.add_child(crown)
 			container.add_child(tree)
 			placed += 1
+	LodUtil.apply_range(container, 300.0)
 
 
 ## Palm-lined avenues — the signature Miami streetscape. Trunks and frond crowns
@@ -510,8 +508,6 @@ func _build_streetlights(roads: Array, proj: GeoProjection) -> void:
 	var container := Node3D.new()
 	container.name = "StreetLights"
 	container.position.y = 0.15  # poles rise from the raised sidewalk
-	container.visibility_range_end = 200.0
-	container.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(container)
 	# All lamp heads share lamp_mat, so one switch fades them all with day/night.
 	var switch := StreetlightSwitch.new()
@@ -542,6 +538,7 @@ func _build_streetlights(roads: Array, proj: GeoProjection) -> void:
 			lamp.add_child(head)
 			container.add_child(lamp)
 			placed += 1
+	LodUtil.apply_range(container, 200.0)
 
 
 func _load_district(path: String) -> Dictionary:
