@@ -78,6 +78,13 @@ func hud_text() -> String:
 	return MissionFlow.hud_line(title, _mission.objectives) if _mission != null else ""
 
 
+## id of the active (first not-done) objective, or "" when none remains.
+func current_objective_id() -> String:
+	if _mission == null:
+		return ""
+	return String(MissionFlow.current(_mission.objectives).get("id", ""))
+
+
 ## World marker for the active objective (for compass/minimap), or `fallback`.
 func current_waypoint(fallback: Vector3 = Vector3.ZERO) -> Vector3:
 	if _mission == null:
