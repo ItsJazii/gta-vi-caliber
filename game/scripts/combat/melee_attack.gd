@@ -21,6 +21,11 @@ var _strike: float
 var _recover: float
 var _t: float = 0.0
 var _struck: bool = false
+# Latched true the moment the strike window OPENS, so a long frame that advances
+# WINDUP->STRIKE->RECOVER in one tick() can't strand the hit (the caller queries
+# consume_hit() after tick(), by which point the live phase may already be past
+# STRIKE). Cleared on the consumed hit and reset each swing.
+var _strike_pending: bool = false
 
 
 func _init(windup: float = 0.10, strike: float = 0.08, recover: float = 0.34) -> void:
@@ -43,6 +48,7 @@ func start() -> bool:
 	phase = Phase.WINDUP
 	_t = 0.0
 	_struck = false
+	_strike_pending = false
 	return true
 
 
@@ -77,6 +83,7 @@ func _advance_phase() -> void:
 	match phase:
 		Phase.WINDUP:
 			phase = Phase.STRIKE
+			_strike_pending = true  # latch: the active window opened this tick
 		Phase.STRIKE:
 			phase = Phase.RECOVER
 		Phase.RECOVER:
@@ -87,7 +94,11 @@ func _advance_phase() -> void:
 ## True at most once per swing, only during the active strike window — the
 ## moment the caller should run its hit query.
 func consume_hit() -> bool:
-	if phase == Phase.STRIKE and not _struck:
+	# Use the latch, not the live phase: a long frame can blow WINDUP->STRIKE->
+	# RECOVER past the strike window in a single tick(), and the caller queries us
+	# afterwards. _strike_pending records that the window opened, so the hit still
+	# lands exactly once.
+	if _strike_pending and not _struck:
 		_struck = true
 		return true
 	return false

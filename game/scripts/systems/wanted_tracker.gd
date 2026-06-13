@@ -26,10 +26,16 @@ signal stars_changed(stars: int)
 @export var police_fov_degrees: float = 100.0
 ## Seconds a civilian witness takes to call a crime in.
 @export var report_delay_sec: float = 2.5
+## Seconds after a crime during which the player still counts as "actively
+## committing", so heat HOLDS instead of decaying. WantedSystem has this branch
+## (tick's committing flag) but the tracker hardcoded committing=false every
+## frame, so heat decayed even mid-rampage and this hold was dead.
+@export var crime_active_window: float = 0.6
 
 var _wanted: WantedSystem
 var _stars: int = -1
 var _pending_reports: Array[Dictionary] = []
+var _crime_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -52,6 +58,7 @@ func _on_crime(killed: bool, crime_pos: Vector3) -> void:
 ## (scripted events, probes, anything that bypasses perception).
 func report_crime(killed: bool) -> void:
 	_wanted.add_crime(kill_heat if killed else wound_heat)
+	_crime_timer = crime_active_window
 	_refresh()
 
 
@@ -60,6 +67,9 @@ func report_crime(killed: bool) -> void:
 ## toward double the direct tuning (one witness lands exactly report_crime's
 ## heat, a crowd approaches 2x).
 func report_witnessed_crime(killed: bool, crime_pos: Vector3) -> void:
+	# The player just committed a crime (seen or not) — mark them actively
+	# committing so heat holds through a rampage even before/without a witness.
+	_crime_timer = crime_active_window
 	var seen: Dictionary = CrimeWitness.collect_witnesses(
 		crime_pos,
 		_gather_observers(),
@@ -89,7 +99,10 @@ func report_witnessed_crime(killed: bool, crime_pos: Vector3) -> void:
 
 
 func _process(delta: float) -> void:
-	_wanted.tick(delta, false)
+	# Hold heat while the player is still actively committing crimes (the timer is
+	# re-armed on each crime); only decay once the rampage has paused.
+	_crime_timer = maxf(_crime_timer - delta, 0.0)
+	_wanted.tick(delta, _crime_timer > 0.0)
 	_tick_reports(delta)
 	_refresh()
 
