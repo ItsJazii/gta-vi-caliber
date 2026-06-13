@@ -22,6 +22,9 @@ func _ready() -> void:
 		_native_status = "native: %s" % bench.ping()
 	else:
 		_native_status = "native: absent — GDScript fallbacks (engine/README.md)"
+	# Dormant geometry inspector (F3) for z-fight / grounding hunts; lives with
+	# the rest of the dev HUD so all diagnostics share one host.
+	add_child(DebugInspector.new())
 
 
 func _process(_delta: float) -> void:
