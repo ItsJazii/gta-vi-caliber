@@ -15,6 +15,7 @@ const DistrictLoaderScript := preload("res://scripts/world/district_loader.gd")
 @export var tile_size: float = 128.0
 @export var near_tile_radius: float = 900.0
 @export var near_tile_unload_radius: float = 1100.0
+@export_range(1, 8, 1) var max_loads_per_update: int = 1
 
 var _districts: Array = []
 var _district_by_name: Dictionary = {}

@@ -118,6 +118,8 @@ run_godot_checked "headless import" "$GODOT_BIN" --headless --path game --import
 # --- 4. smoke test (main scene boots, player rig present) --------------------
 step "smoke test"
 run_godot_checked "smoke test" "$GODOT_BIN" --headless --path game --script res://tests/smoke_test.gd
+step "menu startup probe"
+run_godot_checked "menu startup probe" "$GODOT_BIN" --headless --path game --script res://tests/menu_startup_probe.gd
 
 # --- 5. gdUnit4 unit tests ----------------------------------------------------
 step "gdUnit4 unit tests"

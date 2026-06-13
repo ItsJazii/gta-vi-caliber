@@ -16,6 +16,7 @@ const BENCHMARK_SCENE: String = "res://scenes/tests/benchmark_runner.tscn"
 
 var _time: float = 0.0
 var _starting: bool = false
+var _fade_finished: bool = false
 
 @onready var _title: Label = $Center/VBox/Title
 @onready var _subtitle: Label = $Center/VBox/Subtitle
@@ -24,6 +25,7 @@ var _starting: bool = false
 @onready var _quit: Button = $Center/VBox/Buttons/Quit
 @onready var _settings: SettingsPanel = $Settings
 @onready var _fade: ColorRect = $Fade
+@onready var _loading: Label = $Loading
 
 
 func _ready() -> void:
@@ -35,6 +37,7 @@ func _ready() -> void:
 	SettingsPanel.apply(SettingsPanel.load_settings(), get_tree())
 
 	_settings.hide()
+	_loading.hide()
 	_fade.color = Color(0, 0, 0, 0)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -55,16 +58,50 @@ func _process(delta: float) -> void:
 	var pulse := 0.5 + 0.5 * sin(_time * 1.4)
 	_title.modulate = Color(1, 1, 1).lerp(Color(1.0, 0.78, 0.45), 0.35 * pulse)
 	_subtitle.modulate.a = 0.55 + 0.25 * sin(_time * 0.9)
+	if _starting:
+		_poll_play_scene()
 
 
 func _on_play() -> void:
 	if _starting:
 		return
 	_starting = true
+	_fade_finished = false
 	_set_buttons_disabled(true)
+	_loading.text = SceneLoadState.loading_text([])
+	_loading.show()
+	var error := ResourceLoader.load_threaded_request(PLAY_SCENE, "PackedScene")
+	if error != OK:
+		_cancel_start("LOAD FAILED")
+		return
 	var tween := create_tween()
 	tween.tween_property(_fade, "color", Color(0, 0, 0, 1), fade_time)
-	tween.tween_callback(func(): get_tree().change_scene_to_file(PLAY_SCENE))
+	tween.tween_callback(func(): _fade_finished = true)
+
+
+func _poll_play_scene() -> void:
+	var progress: Array = []
+	var status := ResourceLoader.load_threaded_get_status(PLAY_SCENE, progress)
+	_loading.text = SceneLoadState.loading_text(progress)
+	if SceneLoadState.has_failed(status):
+		_cancel_start("LOAD FAILED")
+		return
+	if not SceneLoadState.can_enter_world(status, _fade_finished):
+		return
+	var packed := ResourceLoader.load_threaded_get(PLAY_SCENE) as PackedScene
+	if packed == null:
+		_cancel_start("LOAD FAILED")
+		return
+	set_process(false)
+	get_tree().change_scene_to_packed(packed)
+
+
+func _cancel_start(message: String) -> void:
+	_starting = false
+	_fade_finished = false
+	_loading.text = message
+	_set_buttons_disabled(false)
+	create_tween().tween_property(_fade, "color", Color(0, 0, 0, 0), 0.2)
 
 
 func _on_settings() -> void:

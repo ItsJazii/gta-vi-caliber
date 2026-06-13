@@ -47,3 +47,12 @@ static func resolve(
 	for candidate in load_candidates:
 		to_load.append(candidate["name"])
 	return {"to_load": to_load, "to_unload": to_unload}
+
+
+## Cap scene assembly work performed by one streamer update. The remaining
+## names stay non-resident and are naturally returned by resolve() next time.
+static func load_batch(to_load: Array[String], max_count: int) -> Array[String]:
+	var batch: Array[String] = []
+	for index in mini(to_load.size(), maxi(max_count, 0)):
+		batch.append(to_load[index])
+	return batch

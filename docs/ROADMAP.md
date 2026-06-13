@@ -25,6 +25,7 @@ Goal: every clone runs instantly; contribution pipeline works end to end.
 - [x] GitHub Actions CI, issue templates, PR template
 - [x] Vendor [gdUnit4](https://github.com/MikeSchulze/gdUnit4) into `game/addons/` and port the unit-test runner to it
 - [x] First exported build artifacts (Linux/Windows/macOS) uploaded by CI on tag
+- [x] Stable menu-to-world startup with bounded district and crowd loading
 
 ## M1 — Locomotion & camera feel
 

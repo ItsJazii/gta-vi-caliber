@@ -10,9 +10,11 @@ extends Node3D
 ## from the player's Y — flat-world assumption for now; a navmesh/raycast
 ## sample is a later refinement.
 
-## Pedestrian scene to populate the crowd with. Defaults to the standard one so
-## the director works the moment it is dropped into a scene.
-@export var pedestrian_scene: PackedScene = preload("res://scenes/npc/pedestrian.tscn")
+## Optional scene override. The production scene is loaded after startup so its
+## large character textures do not compete with the world transition.
+@export var pedestrian_scene: PackedScene
+@export_file("*.tscn") var pedestrian_scene_path: String = "res://scenes/npc/pedestrian.tscn"
+@export var pedestrian_load_delay: float = 2.0
 ## How many peds to keep alive around the player.
 @export var target_count: int = 12
 ## Peds spawn in this annulus (m) around the player — far enough to fade in at
@@ -79,6 +81,9 @@ var _peds: Array[Node3D] = []
 var _rng := RandomNumberGenerator.new()
 var _accum: float = 0.0
 var _base_target_count: int = -1
+var _scene_load_elapsed: float = 0.0
+var _scene_load_requested: bool = false
+var _scene_load_failed: bool = false
 
 
 func _ready() -> void:
@@ -106,6 +111,7 @@ func _trim_to_target() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_update_pedestrian_scene(delta)
 	_accum += delta
 	if _accum < tick_interval:
 		return
@@ -117,6 +123,30 @@ func _physics_process(delta: float) -> void:
 		_bake_nav(player.global_position)
 	_cull(player.global_position)
 	_spawn(player.global_position)
+
+
+func _update_pedestrian_scene(delta: float) -> void:
+	if pedestrian_scene != null or _scene_load_failed:
+		return
+	_scene_load_elapsed += delta
+	if SceneLoadState.should_request(
+		_scene_load_elapsed, pedestrian_load_delay, _scene_load_requested, pedestrian_scene != null
+	):
+		var error := ResourceLoader.load_threaded_request(pedestrian_scene_path, "PackedScene")
+		if error != OK:
+			_scene_load_failed = true
+			push_error("CrowdDirector: could not request %s" % pedestrian_scene_path)
+			return
+		_scene_load_requested = true
+	if not _scene_load_requested:
+		return
+	var status := ResourceLoader.load_threaded_get_status(pedestrian_scene_path)
+	if status == ResourceLoader.THREAD_LOAD_LOADED:
+		pedestrian_scene = ResourceLoader.load_threaded_get(pedestrian_scene_path) as PackedScene
+		_scene_load_failed = pedestrian_scene == null
+	elif SceneLoadState.has_failed(status):
+		_scene_load_failed = true
+		push_error("CrowdDirector: failed loading %s" % pedestrian_scene_path)
 
 
 ## Recycle peds that have drifted past the cull radius (or were freed elsewhere,
