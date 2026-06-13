@@ -55,7 +55,7 @@ static func enhance(env: Environment, with_gi: bool = false) -> Environment:
 	# Screen-space reflections: the headline glass-curtain-wall realism cue —
 	# towers mirror the street and neighbouring buildings.
 	env.ssr_enabled = true
-	env.ssr_max_steps = 48
+	env.ssr_max_steps = 24
 	env.ssr_fade_in = 0.15
 	env.ssr_fade_out = 2.0
 	env.ssr_depth_tolerance = 0.2
@@ -75,7 +75,7 @@ static func enhance(env: Environment, with_gi: bool = false) -> Environment:
 	env.fog_sky_affect = 0.2
 	env.fog_aerial_perspective = 0.5
 	env.volumetric_fog_enabled = true
-	env.volumetric_fog_density = 0.002
+	env.volumetric_fog_density = 0.001
 	env.volumetric_fog_albedo = Color(0.82, 0.86, 0.92)
 
 	# A gentle cinematic grade — a touch more contrast and saturation.
@@ -145,6 +145,12 @@ static func apply_quality(env: Environment, tier: int = Quality.MEDIUM) -> Envir
 	var authored_volumetric_albedo := env.volumetric_fog_albedo
 	var authored_volumetric_density := env.volumetric_fog_density
 	var authored_volumetric_emission := env.volumetric_fog_emission
+	# Preserve authored performance-sensitive settings so the scene file can
+	# set conservative defaults (e.g. lower ssr_max_steps) without being
+	# clobbered by the tier-gated apply.
+	var authored_ssr_max_steps := env.ssr_max_steps
+	var authored_glow_intensity := env.glow_intensity
+	var authored_glow_bloom := env.glow_bloom
 
 	# --- always-on, ~free: image-based ambient + filmic grade + bloom --------
 	if env.background_mode == Environment.BG_CLEAR_COLOR:
@@ -156,8 +162,8 @@ static func apply_quality(env: Environment, tier: int = Quality.MEDIUM) -> Envir
 	env.tonemap_white = maxf(authored_tonemap_white, 6.0)
 	env.tonemap_exposure = authored_tonemap_exposure
 	env.glow_enabled = true
-	env.glow_intensity = 0.7
-	env.glow_bloom = 0.12
+	env.glow_intensity = authored_glow_intensity if had_glow else 0.7
+	env.glow_bloom = authored_glow_bloom if had_glow else 0.12
 	env.glow_hdr_threshold = minf(env.glow_hdr_threshold, 1.1) if had_glow else 1.1
 	env.adjustment_enabled = true
 	env.adjustment_contrast = authored_adjustment_contrast if had_adjustment else 1.08
@@ -187,7 +193,7 @@ static func apply_quality(env: Environment, tier: int = Quality.MEDIUM) -> Envir
 		env.ssao_intensity = 2.2
 		env.ssao_power = 1.5
 		env.ssr_enabled = true
-		env.ssr_max_steps = 48
+		env.ssr_max_steps = mini(authored_ssr_max_steps, 24)
 		env.ssr_fade_in = 0.15
 		env.ssr_fade_out = 2.0
 		env.ssr_depth_tolerance = 0.2
@@ -199,7 +205,10 @@ static func apply_quality(env: Environment, tier: int = Quality.MEDIUM) -> Envir
 		env.volumetric_fog_density = (
 			authored_volumetric_density
 			if had_volumetric
-			else maxf(env.volumetric_fog_density, 0.002)
+			else maxf(env.volumetric_fog_density, 0.001)
+		)
+		env.volumetric_fog_length = minf(
+			env.volumetric_fog_length if had_volumetric else 450.0, 450.0
 		)
 		env.volumetric_fog_albedo = (
 			authored_volumetric_albedo if had_volumetric else Color(0.82, 0.86, 0.92)

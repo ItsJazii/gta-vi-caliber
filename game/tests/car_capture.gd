@@ -2,10 +2,11 @@ extends SceneTree
 ## Close-up capture harness for the playable car body.
 ## Run with a renderer, not --headless:
 ##   SHOT=/tmp/car.png VIEW=front godot --path game --script res://tests/car_capture.gd
+## CAR_SCENE=res://scenes/vehicles/coastal_sport_coupe.tscn selects a variant.
 ## VIEW=front|rear|threequarter picks the camera. The car is frozen at the origin
 ## so the lofted body + emissive head/tail lights can be reviewed by pixel.
 
-const CAR_SCENE := "res://scenes/vehicles/car.tscn"
+const CAR_SCENE := "res://scenes/vehicles/coastal_sport_coupe.tscn"
 
 var _frames := 0
 var _setup_done := false
@@ -13,7 +14,10 @@ var _setup_done := false
 
 func _initialize() -> void:
 	DisplayServer.window_set_size(Vector2i(1600, 1000))
-	change_scene_to_file(CAR_SCENE)
+	var scene_path := OS.get_environment("CAR_SCENE")
+	if scene_path.is_empty():
+		scene_path = CAR_SCENE
+	change_scene_to_file(scene_path)
 
 
 func _process(_delta: float) -> bool:

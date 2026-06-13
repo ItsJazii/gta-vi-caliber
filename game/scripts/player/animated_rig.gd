@@ -3,14 +3,10 @@ extends Node3D
 ## Skeletal character rig driven by an AnimationTree state machine.
 ##
 ## The player's replacement for the procedural CharacterAnimator (issue #1):
-## same animate() input contract fed by Player after move_and_slide, but the
-## pose comes from imported CC0 clips (Quaternius Universal Animation
-## Library) playing on the Universal Base Character skeleton. This script
-## sits on the imported model's root (see character_rig.tscn), so animation
-## method tracks reach it at path "." for foot-plant events. Routing from
-## locomotion state to state-machine target is pure logic in AnimRouter;
-## state classification stays in Locomotion, so both are unit-tested without
-## this scene.
+## same animate() input contract fed by Player after move_and_slide. Imported
+## CC0 clips play on a hidden Quaternius source skeleton, then Godot 4.6's
+## RetargetModifier3D transfers those poses to the selected production visual.
+## This keeps locomotion clips reusable across player and pedestrian models.
 
 ## Fired when a locomotion clip plants a foot on the ground. Player listens
 ## and re-emits its surface-typed `footstep` signal, so step audio is locked
@@ -21,9 +17,7 @@ signal foot_planted(is_left: bool)
 ## imported animations resolve against our Model without retargeting.
 const ANIM_LIBRARY_SCENE := "res://assets/characters/universal_animations/UAL1_Standard.glb"
 
-## Hairstyle from the same pack, skinned to the same skeleton; its mesh is
-## grafted onto the body's Skeleton3D at runtime and binds by bone name.
-const HAIR_SCENE := "res://assets/characters/player_male_01/Hair_SimpleParted.gltf"
+const DEFAULT_VISUAL_SCENE := preload("res://assets/characters/coastal_residents/player.glb")
 
 ## Blend-space positions for the Move state, matching Locomotion.move_blend's
 ## axis: 0.0 standing, 0.5 at walk_speed, 1.0 at run_speed.
@@ -71,6 +65,10 @@ const MIN_STEP_BLEND := 0.1
 ## Landing at or above this planar speed (m/s) skips the landing absorb and
 ## rolls straight back into locomotion, so moving landings don't foot-slide.
 @export var land_skip_speed: float = 2.0
+## Visible skinned model. When options are supplied, one is chosen per rig so
+## the pedestrian crowd can mix the imported man and woman variants.
+@export var visual_scene: PackedScene = DEFAULT_VISUAL_SCENE
+@export var visual_scene_options: Array[PackedScene] = []
 
 var _facing: float = 0.0
 var _blend: float = 0.0
@@ -81,6 +79,7 @@ var _playback: AnimationNodeStateMachinePlayback = null
 var _aim_facing: bool = false
 var _weapon_controller: Node = null
 var _phone_raised: bool = false
+var _retargeted_skeleton: Skeleton3D = null
 
 @onready var _anim_player: AnimationPlayer = $AnimationPlayer
 @onready var _tree: AnimationTree = $AnimationTree
@@ -91,7 +90,7 @@ func _ready() -> void:
 	var owner_body := get_parent()
 	_aim_facing = owner_body != null and owner_body.is_in_group("player")
 	_install_animations()
-	_install_hair()
+	_install_retargeted_visual()
 	_tree.tree_root = _build_state_machine()
 	_tree.active = true
 	_playback = _tree.get("parameters/playback")
@@ -188,27 +187,68 @@ func _install_animations() -> void:
 	source.free()
 
 
-## Graft the hairstyle's skinned mesh onto the body skeleton. The hair scene
-## carries the same 65-joint rig, so its Skin resource binds to our bones by
-## name once the mesh hangs under our Skeleton3D. Hair is cosmetic — a
-## missing file logs and degrades to the bald base mesh.
-func _install_hair() -> void:
-	var packed: PackedScene = load(HAIR_SCENE)
-	if packed == null:
-		push_warning("AnimatedRig: cannot load hairstyle " + HAIR_SCENE)
+func _install_retargeted_visual() -> void:
+	var source_skeleton := _source_skeleton()
+	var packed := _selected_visual_scene()
+	if source_skeleton == null or packed == null:
+		push_error("AnimatedRig: missing source skeleton or visible character scene")
 		return
+
+	for mesh in find_children("*", "MeshInstance3D", true, false):
+		(mesh as MeshInstance3D).visible = false
+
+	var visual_root := packed.instantiate() as Node3D
+	if visual_root == null:
+		push_error("AnimatedRig: visible character scene has no Node3D root")
+		return
+	var skeletons := visual_root.find_children("*", "Skeleton3D", true, false)
+	if skeletons.is_empty():
+		push_error("AnimatedRig: visible character scene has no Skeleton3D")
+		visual_root.free()
+		return
+
+	var target_skeleton := skeletons[0] as Skeleton3D
+	var target_transform := _transform_to_ancestor(target_skeleton, visual_root)
+	var missing := HumanoidRetarget.rename_target_skeleton(target_skeleton)
+	if not missing.is_empty():
+		push_warning("AnimatedRig: unmapped target bones: %s" % [missing])
+
+	target_skeleton.get_parent().remove_child(target_skeleton)
+	target_skeleton.owner = null
+	target_skeleton.name = "RetargetedSkeleton"
+	target_skeleton.transform = target_transform
+
+	var modifier := RetargetModifier3D.new()
+	modifier.name = "CharacterRetarget"
+	modifier.profile = HumanoidRetarget.build_profile()
+	modifier.set_position_enabled(false)
+	modifier.set_scale_enabled(false)
+	source_skeleton.add_child(modifier)
+	modifier.add_child(target_skeleton)
+	_retargeted_skeleton = target_skeleton
+	visual_root.free()
+
+
+func _source_skeleton() -> Skeleton3D:
 	var skeletons := find_children("*", "Skeleton3D", true, false)
 	if skeletons.is_empty():
-		push_warning("AnimatedRig: no Skeleton3D to graft hair onto")
-		return
-	var skeleton: Skeleton3D = skeletons[0]
-	var source := packed.instantiate()
-	for mesh in source.find_children("*", "MeshInstance3D", true, false):
-		mesh.get_parent().remove_child(mesh)
-		mesh.owner = null
-		skeleton.add_child(mesh)
-		(mesh as MeshInstance3D).skeleton = NodePath("..")
-	source.free()
+		return null
+	return skeletons[0] as Skeleton3D
+
+
+func _selected_visual_scene() -> PackedScene:
+	if visual_scene_options.is_empty():
+		return visual_scene
+	return visual_scene_options[randi() % visual_scene_options.size()]
+
+
+func _transform_to_ancestor(node: Node3D, ancestor: Node3D) -> Transform3D:
+	var result := node.transform
+	var parent := node.get_parent() as Node3D
+	while parent != null and parent != ancestor:
+		result = parent.transform * result
+		parent = parent.get_parent() as Node3D
+	return result
 
 
 ## Append one method track per clip whose keys call _on_foot_plant (this

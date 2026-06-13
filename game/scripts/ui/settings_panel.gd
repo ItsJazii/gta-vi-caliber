@@ -21,6 +21,7 @@ const MUTE_THRESHOLD: float = 0.001
 
 @onready var _volume: HSlider = $Panel/Margin/VBox/VolumeRow/Volume
 @onready var _fullscreen: CheckButton = $Panel/Margin/VBox/FullscreenRow/Fullscreen
+@onready var _graphics: OptionButton = $Panel/Margin/VBox/GraphicsRow/Graphics
 @onready var _sensitivity: HSlider = $Panel/Margin/VBox/SensRow/Sensitivity
 @onready var _back: Button = $Panel/Margin/VBox/Back
 
@@ -29,18 +30,20 @@ func _ready() -> void:
 	var cfg := load_settings()
 	_volume.value = cfg["volume"]
 	_fullscreen.button_pressed = cfg["fullscreen"]
+	_graphics.selected = cfg["graphics"]
 	_sensitivity.value = cfg["sensitivity"]
-	apply(cfg)
+	apply(cfg, get_tree())
 
 	_volume.value_changed.connect(func(_v): _on_changed())
 	_sensitivity.value_changed.connect(func(_v): _on_changed())
 	_fullscreen.toggled.connect(func(_v): _on_changed())
+	_graphics.item_selected.connect(func(_idx): _on_changed())
 	_back.pressed.connect(_on_back)
 
 
 func _on_changed() -> void:
 	var cfg := current()
-	apply(cfg)
+	apply(cfg, get_tree())
 	save_settings(cfg)
 
 
@@ -49,6 +52,7 @@ func current() -> Dictionary:
 		"volume": _volume.value,
 		"fullscreen": _fullscreen.button_pressed,
 		"sensitivity": _sensitivity.value,
+		"graphics": _graphics.selected,
 	}
 
 
@@ -62,7 +66,7 @@ func _on_back() -> void:
 
 ## Push a settings dict onto the live engine. Static so it has no node deps
 ## beyond the global servers; callable before the panel is in the tree.
-static func apply(cfg: Dictionary) -> void:
+static func apply(cfg: Dictionary, tree: SceneTree = null) -> void:
 	var bus := AudioServer.get_bus_index(MASTER_BUS)
 	if bus >= 0:
 		var vol := float(cfg.get("volume", 0.8))
@@ -74,6 +78,28 @@ static func apply(cfg: Dictionary) -> void:
 		else DisplayServer.WINDOW_MODE_WINDOWED
 	)
 	DisplayServer.window_set_mode(mode)
+	apply_graphics(int(cfg.get("graphics", 1)), tree)
+
+
+## Applies the graphics quality presets.
+static func apply_graphics(quality: int, tree: SceneTree) -> void:
+	if not tree or not tree.root:
+		return
+	var root := tree.root
+	match quality:
+		0:  # Low
+			root.msaa_3d = Viewport.MSAA_DISABLED
+			root.scaling_3d_scale = 0.75
+			RenderingServer.directional_shadow_atlas_set_size(2048, true)
+		1:  # Medium
+			root.msaa_3d = Viewport.MSAA_2X
+			root.scaling_3d_scale = 1.0
+			RenderingServer.directional_shadow_atlas_set_size(4096, true)
+		2:  # High
+			root.msaa_3d = Viewport.MSAA_4X
+			root.scaling_3d_scale = 1.0
+			RenderingServer.directional_shadow_atlas_set_size(8192, true)
+	tree.call_group("density_aware", "apply_graphics_setting", quality)
 
 
 # --- Pure helpers (unit-tested) ------------------------------------------
@@ -102,7 +128,7 @@ static func sensitivity_to_multiplier(value: float) -> float:
 
 
 static func defaults() -> Dictionary:
-	return {"volume": 0.8, "fullscreen": false, "sensitivity": 0.5}
+	return {"volume": 0.8, "fullscreen": false, "sensitivity": 0.5, "graphics": 1}
 
 
 static func load_settings() -> Dictionary:
@@ -115,6 +141,7 @@ static func load_settings() -> Dictionary:
 	out["sensitivity"] = clampf(
 		float(cfg.get_value(SECTION, "sensitivity", out["sensitivity"])), 0.0, 1.0
 	)
+	out["graphics"] = int(cfg.get_value(SECTION, "graphics", out["graphics"]))
 	return out
 
 
@@ -123,4 +150,5 @@ static func save_settings(cfg_dict: Dictionary) -> void:
 	cfg.set_value(SECTION, "volume", cfg_dict.get("volume", 0.8))
 	cfg.set_value(SECTION, "fullscreen", cfg_dict.get("fullscreen", false))
 	cfg.set_value(SECTION, "sensitivity", cfg_dict.get("sensitivity", 0.5))
+	cfg.set_value(SECTION, "graphics", cfg_dict.get("graphics", 1))
 	cfg.save(CONFIG_PATH)

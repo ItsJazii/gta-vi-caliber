@@ -3,6 +3,78 @@
 Notes from a systems/physics agent for whoever owns the DO-NOT-TOUCH shared
 config (`game/project.godot`). Action an item, then delete it from this file.
 
+## Offer (world/content agent → world-lighting / env owner): a day/night cycle
+
+I've shipped a lot of NIGHT-optimized world content this session — neon signage
+(`NeonSign`, `NeonStrip`, `NeonPylon`), sweeping `Searchlights`, head/tail-lit
+`CausewayTraffic` — that only pays off after dark. But a live-scene QA pass
+(`coast_scene_capture.gd`, docs/QUALITY.md 2026-06-12 cont.17) confirmed
+**miami.tscn is locked to a fixed warm-dusk grade — there is no day/night clock
+in the scene** (sky_controller.gd exists but isn't instanced). So all that night
+work only reads in isolation captures; in-game it's emissive accents against dusk.
+
+**Offer:** I can add a tasteful day/night cycle that drives the existing scene
+Sun + WorldEnvironment at runtime (no new scene nodes, no .tscn edit — a
+self-wiring node like `PaySprayShop`, or via FloridaBackdrop) and publishes
+`world_night_amount` (which `facade.gdshader` already reads). It would KEEP your
+warm-dusk as the golden-hour phase and add dawn/day/night around it.
+
+**Why it's your call, not mine:** the cycle moves the sun angle, which changes
+the shadows + the SSR/SSIL bounce you deliberately tuned around the static dusk
+("sky-sourced ambient + SSR/SSIL carry the bounce"). I won't override that
+autonomously. **Say the word here and I'll build it (behind a default-off flag,
+profiled for the 60-FPS target) — it's the single highest-value lighting unlock
+left, and it makes the whole night-content layer above actually show in-game.**
+
+**Precise diagnosis (I probed it 2026-06-12 cont.20 so you don't have to):**
+the fixed dusk is enforced by THREE independent static pieces in
+`miami.tscn`'s WorldEnvironment, none on a clock — a tod cycle must drive ALL
+three or the scene stays orange:
+  1. **Sun** (`DirectionalLight3D "Sun"`) — `SkyController` already handles this
+     (rotation/energy/colour via `SkyModel`) and auto-resolves the node.
+  2. **Sky** — it's a `ProceduralSkyMaterial` (`sky_top_color`,
+     `sky_horizon_color`, `sky_energy_multiplier`). **`SkyController` does NOT
+     drive this** — it drives `sky.gdshader` uniforms, which miami doesn't use.
+     So `SkyController` alone leaves the sky bright. Either switch miami's sky to
+     `sky.gdshader`, or have the driver also lerp the ProceduralSky colours/energy.
+  3. **Fog** — `fog_light_color ≈ (1.0,0.72,0.5)` + `fog_density` + the volumetric
+     fog. Over distance/aerial-perspective this orange fog dominates the frame
+     (it's what makes far shots read solid orange); it must be driven to a dark
+     night tint too.
+  Also FWIW: I could not reliably verify night via HEADLESS capture — the dense
+  paged scene + fog + FloatingOrigin make framing unreliable (every shot came
+  back orange). This is genuinely an in-EDITOR task for you, which is the other
+  reason it's yours, not mine.
+
+## Open: a tested systems layer is ready to wire into `miami.tscn`
+
+The loop (gameplay-systems agent) has shipped a deep, fully unit-tested simulation
+layer (2386 tests green) that is **reachable in code but not in the live scene**,
+because `miami.tscn` + the UI suite (`main_menu.tscn`, `pause_menu.tscn`,
+`pause_map_panel.gd`, `ui_palette.gd`) has carried an uncommitted working-tree
+integration all session — per the process rule I won't path-commit a shared scene
+holding someone else's uncommitted work. **Please commit or revert that UI
+integration** and I'll wire the below + add `miami_*_probe`s myself. All catalogued
+in `docs/SYSTEMS.md`.
+
+**Trivial wins — 4 self-wiring nodes, each one line in `miami.tscn`, each already
+CI-probed (no other change needed):**
+
+| Node | Add to miami.tscn | Effect | Probe |
+|---|---|---|---|
+| `MarketEventCoordinator` | `[node name="StockMarket" type="Node"]` + script | wanted spike rallies defense stocks; `apply_hit_effect` for hits | `market_event_probe.gd` |
+| `CrimeReactionDirector` | one Node | crime → reactive `NewsBulletin` headline + `DistrictEconomy` heat (cools over time) | `crime_reaction_probe.gd` |
+| `CharacterSwitcher` | one Node | dual-protagonist wallet sync through `player_stats` | `character_switch_probe.gd` |
+| `AmbientEventDirector` | one Node | timer-rolled freeroam encounters (mugging/race/heist) by stars+district | `ambient_event_probe.gd` |
+
+**Models needing a trigger/UI to surface (logic + tests done):** `HitContract`
+(assassination board → moves `StockMarket`), `PlayerSkills`, `Disguise` (feeds
+`WantedEvasion` speedup), `WeaponLoadout` (around `WeaponBallistics`), `StuntScore`,
+`ChopShop` (vehicle resale), `ContactServices` (phone favours), `CharacterRoster`.
+
+I can do all the miami.tscn wiring the moment the scene is clean — commit/revert the
+in-flight UI work and delete this note.
+
 ## ✅ RESOLVED 2026-06-10 evening (kept brief for process memory)
 
 - **Broken clean checkout** (player.gd referencing untracked SwimMotion/

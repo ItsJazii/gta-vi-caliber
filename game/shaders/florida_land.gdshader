@@ -1,13 +1,19 @@
 shader_type spatial;
 render_mode world_vertex_coords, cull_disabled;
 
-// Original state-map ground material: wet tropical grass, dark marsh basins,
-// sandy uplands, and fine procedural grain. No texture assets required.
+// State-map ground material: a sunlit subtropical wetland (Leonida) — luminous
+// tropical grass, dry palmetto-scrub clearings, dark marsh basins, and fine
+// procedural grain. No texture assets required. Albedos sit in a real sunlit
+// range (the old set maxed at 0.18 and read near-black at ground level); a
+// large-scale "field" band breaks the canopy into open clearings so the land
+// reads as varied terrain from altitude instead of a single flat green sheet.
 
-uniform vec3 grass_low : source_color = vec3(0.055, 0.11, 0.07);
-uniform vec3 grass_high : source_color = vec3(0.11, 0.18, 0.10);
-uniform vec3 marsh_color : source_color = vec3(0.035, 0.07, 0.045);
-uniform vec3 dry_sand_color : source_color = vec3(0.18, 0.15, 0.10);
+uniform vec3 grass_low : source_color = vec3(0.10, 0.17, 0.08);
+uniform vec3 grass_high : source_color = vec3(0.22, 0.31, 0.13);
+uniform vec3 marsh_color : source_color = vec3(0.05, 0.10, 0.06);
+uniform vec3 dry_sand_color : source_color = vec3(0.44, 0.38, 0.23);
+// Sun-bleached open-field grass between the wet canopy and the dry scrub.
+uniform vec3 field_color : source_color = vec3(0.34, 0.36, 0.16);
 uniform float macro_scale = 0.0022;
 uniform float detail_scale = 0.042;
 uniform float normal_strength = 0.38;
@@ -34,7 +40,7 @@ float vnoise(vec2 p) {
 float fbm(vec2 p) {
 	float sum = 0.0;
 	float amp = 0.5;
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 3; i++) {
 		sum += vnoise(p) * amp;
 		p *= 2.03;
 		amp *= 0.5;
@@ -51,12 +57,18 @@ void fragment() {
 	float macro = fbm(p * macro_scale);
 	float detail = fbm(p * detail_scale);
 	float marsh = smoothstep(0.08, 0.36, fbm((p + vec2(180.0, -90.0)) * 0.004));
-	float dry = smoothstep(0.62, 0.86, macro);
+	float dry = smoothstep(0.60, 0.85, macro);
+	// Large-scale open fields/clearings: an independent low-frequency band so the
+	// wet canopy breaks into lighter sun-bleached savanna, readable from altitude.
+	float field = smoothstep(0.42, 0.72, fbm((p + vec2(-260.0, 410.0)) * 0.0015));
 
+	// Layered tonal zones: lush canopy -> open field -> dry scrub, with marsh
+	// basins darkened last so water-logged ground stays dark even inside a field.
 	vec3 grass = mix(grass_low, grass_high, detail);
-	vec3 col = mix(grass, marsh_color, marsh * 0.55);
-	col = mix(col, dry_sand_color, dry * 0.42);
-	col *= 0.82 + detail * 0.34;
+	vec3 col = mix(grass, field_color, field * 0.6);
+	col = mix(col, dry_sand_color, dry * 0.5);
+	col = mix(col, marsh_color, marsh * 0.6);
+	col *= 0.85 + detail * 0.3;
 
 	// Specular anti-aliasing: the procedural normal grain below is high-frequency,
 	// so in the distance it aliases under the pixel grid and the sharp specular
@@ -66,16 +78,17 @@ void fragment() {
 	float dist = length(w_pos - CAMERA_POSITION_WORLD);
 	float aa = clamp((dist - 40.0) / 140.0, 0.0, 1.0);
 
-	float e = 2.0;
-	float h_l = fbm((p - vec2(e, 0.0)) * detail_scale);
-	float h_r = fbm((p + vec2(e, 0.0)) * detail_scale);
-	float h_d = fbm((p - vec2(0.0, e)) * detail_scale);
-	float h_u = fbm((p + vec2(0.0, e)) * detail_scale);
 	float ns = normal_strength * (1.0 - aa);
-	vec3 n = normalize(vec3((h_l - h_r) * ns, 1.0, (h_d - h_u) * ns));
+	vec3 sx = dFdx(VERTEX);
+	vec3 sy = dFdy(VERTEX);
+	vec3 r1 = cross(sy, NORMAL);
+	vec3 r2 = cross(NORMAL, sx);
+	float det = dot(sx, r1);
+	vec3 grad = sign(det) * (dFdx(detail) * r1 + dFdy(detail) * r2);
+	vec3 n = normalize(abs(det) * NORMAL - ns * grad);
 
 	ALBEDO = col;
-	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	NORMAL = n;
 	// Matte grass/marsh: high roughness floor + low specular so wet sheen never
 	// blows out, trending to 1.0 roughness in the distance.
 	float rough = mix(0.96, 0.86, marsh * 0.45);

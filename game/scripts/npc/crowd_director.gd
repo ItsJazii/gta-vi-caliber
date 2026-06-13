@@ -5,10 +5,10 @@ extends Node3D
 ## a target headcount — so a district feels inhabited without ever paying for
 ## people the player can't see (roadmap M4: "spawn/despawn invisible to player").
 ##
-## All placement uses CrowdDistribution (pure, tested); the peds themselves are
-## the premium HumanoidBody pedestrians (randomize_palette), so the crowd reads
-## as distinct people. Ground height is taken from the player's Y — flat-world
-## assumption for now; a navmesh/raycast sample is a later refinement.
+## All placement uses CrowdDistribution (pure, tested); the peds themselves use
+## the imported coastal-resident character variants. Ground height is taken
+## from the player's Y — flat-world assumption for now; a navmesh/raycast
+## sample is a later refinement.
 
 ## Pedestrian scene to populate the crowd with. Defaults to the standard one so
 ## the director works the moment it is dropped into a scene.
@@ -84,10 +84,25 @@ var _rng := RandomNumberGenerator.new()
 var _accum: float = 0.0
 # Monotonic spawn counter driving the citizen/pedestrian interleave.
 var _spawn_slot: int = 0
+var _base_target_count: int = -1
 
 
 func _ready() -> void:
 	_rng.randomize()
+	add_to_group("density_aware")
+	apply_graphics_setting(int(SettingsPanel.load_settings().get("graphics", 1)))
+
+
+func apply_graphics_setting(quality: int) -> void:
+	if _base_target_count == -1:
+		_base_target_count = target_count
+	match quality:
+		0:
+			target_count = maxi(1, int(_base_target_count * 0.25))
+		1:
+			target_count = maxi(1, int(_base_target_count * 0.6))
+		2:
+			target_count = _base_target_count
 
 
 func _physics_process(delta: float) -> void:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=50 format=3]
+[gd_scene load_steps=52 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -22,10 +22,11 @@
 [ext_resource type="Script" path="res://scripts/ai/traffic_director.gd" id="16_traffic"]
 [ext_resource type="Script" path="res://scripts/npc/police_spawner.gd" id="17_police_spawner"]
 [ext_resource type="PackedScene" path="res://scenes/npc/police.tscn" id="18_police"]
-[ext_resource type="PackedScene" path="res://scenes/vehicles/car.tscn" id="19_car"]
+[ext_resource type="PackedScene" path="res://scenes/vehicles/coastal_sport_coupe.tscn" id="19_car"]
 [ext_resource type="Script" path="res://scripts/systems/save_manager.gd" id="20_save"]
 [ext_resource type="Script" path="res://scripts/missions/mission_trigger.gd" id="21_trigger"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/bike.tscn" id="22_bike"]
+[ext_resource type="PackedScene" path="res://scenes/vehicles/coastal_classic_sedan.tscn" id="23_sedan"]
 [ext_resource type="Script" path="res://scripts/missions/mission_reward.gd" id="24_reward"]
 [ext_resource type="Script" path="res://scripts/systems/wanted_evasion_controller.gd" id="25_evade"]
 [ext_resource type="PackedScene" path="res://scenes/props/medkit.tscn" id="26_medkit"]
@@ -48,6 +49,7 @@
 [ext_resource type="Script" path="res://scripts/world/city_poi_seeder.gd" id="43_poi"]
 [ext_resource type="PackedScene" path="res://scenes/npc/citizen.tscn" id="44_citizen"]
 [ext_resource type="Script" path="res://scripts/world/night_lights_switch.gd" id="45_nightlights"]
+[ext_resource type="Script" path="res://scripts/world/coastal_prop_placements.gd" id="40_coastal_props"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -84,7 +86,7 @@ shader_parameter/moon_color = Color(0.85, 0.88, 0.95, 1)
 
 [sub_resource type="Sky" id="sky"]
 sky_material = SubResource("sky_mat")
-radiance_size = 4
+radiance_size = 2
 
 [sub_resource type="Environment" id="env"]
 background_mode = 2
@@ -96,19 +98,19 @@ tonemap_mode = 4
 tonemap_exposure = 1.05
 tonemap_white = 6.0
 ssr_enabled = true
-ssr_max_steps = 48
+ssr_max_steps = 24
 ssao_enabled = true
-ssao_intensity = 2.2
+ssao_intensity = 1.8
 ssil_enabled = true
 glow_enabled = true
 glow_intensity = 0.58
 glow_strength = 0.76
-glow_bloom = 0.14
+glow_bloom = 0.10
 glow_blend_mode = 1
-glow_hdr_threshold = 0.85
+glow_hdr_threshold = 1.0
 fog_enabled = true
 fog_light_color = Color(1.0, 0.72, 0.5, 1.0)
-fog_density = 0.00008
+fog_density = 0.00012
 fog_sky_affect = 0.0
 fog_aerial_perspective = 0.12
 volumetric_fog_enabled = true
@@ -138,8 +140,8 @@ light_energy = 0.92
 light_angular_distance = 2.0
 light_volumetric_fog_energy = 1.6
 shadow_enabled = true
-shadow_blur = 1.2
-directional_shadow_max_distance = 900.0
+shadow_blur = 0.8
+directional_shadow_max_distance = 350.0
 
 ; Night key light. SkyController (resolves it by the name "Moon") aims it
 ; opposite the sun and ramps its cool energy with night_amount, so moonlit
@@ -165,6 +167,9 @@ script = ExtResource("4_florida")
 ; DayNightCycle that used to own this group isn't in this scene.
 [node name="NightLightsSwitch" type="Node" parent="."]
 script = ExtResource("45_nightlights")
+
+[node name="CoastalProps" type="Node3D" parent="."]
+script = ExtResource("40_coastal_props")
 
 ; Drivable bay crossings (MacArthur / Julia Tuttle / Venetian) that connect the
 ; mainland districts to the beaches into one continuous Florida landmass.
@@ -309,10 +314,10 @@ cull_radius = 82.0
 script = ExtResource("17_police_spawner")
 police_scene = ExtResource("18_police")
 
-[node name="Car" parent="." instance=ExtResource("19_car")]
+[node name="Car" parent="." groups=["starter_vehicles"] instance=ExtResource("19_car")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0.6, 5)
 
-[node name="Car2" parent="." instance=ExtResource("19_car")]
+[node name="Car2" parent="." groups=["starter_vehicles"] instance=ExtResource("23_sedan")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16, 0.6, 9)
 
 [node name="Bike" parent="." instance=ExtResource("22_bike")]

@@ -62,8 +62,8 @@ const vec3 RAYLEIGH_COEFF = vec3(5.5e-6, 13.0e-6, 22.4e-6); // per-channel scatt
 const float MIE_COEFF = 21e-6;
 const float RAYLEIGH_SCALE_H = 8000.0;
 const float MIE_SCALE_H = 1200.0;
-const int PRIMARY_STEPS = 16;
-const int LIGHT_STEPS = 8;
+const int PRIMARY_STEPS = 8;
+const int LIGHT_STEPS = 4;
 
 // ---------------------------------------------------------------- noise helpers
 float hash12(vec2 p) {
@@ -87,7 +87,7 @@ float fbm(vec2 p) {
 	float total = 0.0;
 	float amp = 0.5;
 	float freq = 1.0;
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 3; i++) {
 		total += value_noise(p * freq) * amp;
 		freq *= 2.02;
 		amp *= 0.5;
@@ -112,6 +112,10 @@ vec2 ray_sphere(vec3 r0, vec3 r, float sr) {
 // Nishita-style single-scattering atmosphere. `view` and `sun` are world-space
 // unit vectors; returns linear HDR radiance toward the eye.
 vec3 atmosphere(vec3 view, vec3 sun) {
+	// Skip expensive integration for rays aimed well below the horizon.
+	if (view.y < -0.05) {
+		return vec3(0.0);
+	}
 	vec3 origin = vec3(0.0, R_PLANET + 1.0, 0.0);
 	vec2 p = ray_sphere(origin, view, R_ATMOS);
 	if (p.x > p.y) {

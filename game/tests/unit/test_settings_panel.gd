@@ -45,4 +45,4 @@ func test_sensitivity_monotonic() -> bool:
 
 func test_defaults_round_trip_shape() -> bool:
 	var d := SettingsPanel.defaults()
-	return d.has("volume") and d.has("fullscreen") and d.has("sensitivity")
+	return d.has("volume") and d.has("fullscreen") and d.has("sensitivity") and d.has("graphics")

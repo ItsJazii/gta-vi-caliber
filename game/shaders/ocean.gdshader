@@ -49,6 +49,15 @@ uniform float u_roughness = 0.08;
 uniform float u_foam_depth = 1.1;
 uniform vec4 u_foam_color : source_color = vec4(0.96, 0.97, 0.94, 1.0);
 uniform float u_foam_strength : hint_range(0.0, 2.0) = 1.0;
+// Open-water whitecaps (Ocean v2) — decoupled from the shore band so a calm,
+// flat-seabed bay can keep a thin shoreline yet still froth on the swell.
+// Foam appears where the Gerstner field *pinches* (Jacobian < coverage), i.e.
+// the steep leeward face of a cresting wave — physically where caps break, not
+// merely where the surface is tall.
+uniform float u_whitecap_strength : hint_range(0.0, 2.0) = 1.0;
+// Jacobian below this folds → foam. 1.0 = foam only at true overlap; higher
+// pre-empts the break so caps feather in on steep (not yet folded) crests.
+uniform float u_whitecap_coverage : hint_range(0.4, 1.6) = 1.0;
 
 uniform sampler2D u_depth_texture : hint_depth_texture, filter_nearest;
 
@@ -57,6 +66,10 @@ varying vec2 v_param;
 // Vertical displacement, for subtle crest tinting.
 varying float v_crest;
 varying vec3 v_world_pos;
+// Precomputed world-space normal from the vertex stage (mirrors the wave
+// displacement so shading stays consistent without recomputing all 5 waves
+// per fragment — a major GPU saving on a large water surface).
+varying vec3 v_normal_world;
 
 // Mirrors OceanMath.displacement().
 vec3 gerstner_offset(vec2 p, float t, float amp_scale) {
@@ -91,6 +104,31 @@ vec3 gerstner_normal(vec2 p, float t, float amp_scale) {
 	return normalize(n);
 }
 
+// Horizontal Jacobian determinant of the Gerstner map (x,z) -> displaced (x,z).
+// Mirrors the derivatives of gerstner_offset's xz terms. J ~ 1 on calm water;
+// J -> 0 where short steep waves compress the surface; J < 0 is an overlapping
+// (breaking) crest. Whitecap foam keys off where J drops below coverage.
+float gerstner_jacobian(vec2 p, float t, float amp_scale) {
+	// d(off.x)/dx, d(off.x)/dz, d(off.z)/dz  (Jzx == Jxz by symmetry below).
+	float jxx = 0.0;
+	float jxz = 0.0;
+	float jzz = 0.0;
+	for (int i = 0; i < WAVE_COUNT; i++) {
+		float k = TAU / WAVE_LENGTHS[i];
+		float amp = WAVE_AMPLITUDES[i] * amp_scale;
+		vec2 dir = vec2(cos(WAVE_ANGLES[i]), sin(WAVE_ANGLES[i]));
+		float omega = sqrt(GRAVITY * k);
+		float phase = k * dot(dir, p) - omega * t;
+		// off.{x,z} = S*amp*dir.{x,y}*cos(phase); d/dp = -S*amp*k*dir*dir*sin.
+		float w = WAVE_STEEPNESS[i] * amp * k * sin(phase);
+		jxx -= w * dir.x * dir.x;
+		jxz -= w * dir.x * dir.y;
+		jzz -= w * dir.y * dir.y;
+	}
+	// det of [[1+jxx, jxz],[jxz, 1+jzz]].
+	return (1.0 + jxx) * (1.0 + jzz) - jxz * jxz;
+}
+
 // Cheap animated value noise for foam break-up (no textures in the repo).
 float foam_noise(vec2 p) {
 	vec2 i = floor(p);
@@ -112,10 +150,11 @@ void vertex() {
 	v_crest = off.y;
 	VERTEX += off;
 	v_world_pos = VERTEX;
+	v_normal_world = gerstner_normal(v_param, u_time, u_amplitude_scale);
 }
 
 void fragment() {
-	vec3 n_world = gerstner_normal(v_param, u_time, u_amplitude_scale);
+	vec3 n_world = v_normal_world;
 	NORMAL = normalize(mat3(VIEW_MATRIX) * n_world);
 
 	// Water column thickness along the view ray: opaque scene depth minus
@@ -148,17 +187,44 @@ void fragment() {
 	// Peaks at mid shallows (transmit 0.5), vanishes at the shore and at depth.
 	EMISSION = u_shallow_color.rgb * (transmit * (1.0 - transmit) * 4.0) * 0.28;
 
-	// Surf foam (Ocean v2): a noisy white band where the water column thins
-	// at the sand, pulsing with the longest wave so the surf line breathes,
-	// plus whitecap foam on the steepest crests. Noise breaks the band into
-	// streaks so it reads as wash, not a painted stripe.
+	// Surf foam (Ocean v2). Two independent contributions sharing one noise
+	// field but their own strength knobs, so a calm flat-seabed bay can keep a
+	// thin shoreline (u_foam_strength low) while still frothing on the open
+	// swell (u_whitecap_strength up). Noise breaks both into streaks so they
+	// read as moving wash, not painted stripes.
+	//
+	// Perf (PR #38): the streak noise taps plus the Jacobian whitecap test are
+	// the costly part and their detail is imperceptible far away, so beyond
+	// 120 m we fall back to a cheap pulsing band + crest proxy and skip both.
 	float foam_band = 1.0 - smoothstep(0.0, u_foam_depth, thickness);
 	float surf_pulse = 0.7 + 0.3 * sin(u_time * 0.9 + v_param.x * 0.05);
-	float streaks = foam_noise(v_param * 0.35 + vec2(u_time * 0.25, 0.0));
-	streaks = streaks * 0.6 + 0.4 * foam_noise(v_param * 1.4 - vec2(0.0, u_time * 0.4));
-	float foam = clamp(foam_band * surf_pulse * smoothstep(0.35, 0.85, streaks) * 1.6, 0.0, 1.0);
-	foam += crest * smoothstep(0.5, 0.9, streaks) * 0.8;
-	foam = clamp(foam * u_foam_strength, 0.0, 1.0);
+	float frag_cam_dist = length(v_world_pos - CAMERA_POSITION_WORLD);
+	float foam;
+	if (frag_cam_dist < 120.0) {
+		float streaks = foam_noise(v_param * 0.35 + vec2(u_time * 0.25, 0.0));
+		streaks = streaks * 0.6 + 0.4 * foam_noise(v_param * 1.4 - vec2(0.0, u_time * 0.4));
+
+		// (a) Shoreline band: white where the water column thins at the sand,
+		// pulsing with the longest wave so the surf line breathes.
+		float shore_foam = clamp(foam_band * surf_pulse * smoothstep(0.35, 0.85, streaks) * 1.6, 0.0, 1.0);
+		shore_foam *= u_foam_strength;
+
+		// (b) Whitecaps: foam where the Gerstner field folds (Jacobian dips
+		// below coverage) — the breaking leeward face of a cresting wave.
+		// Modulated by the same streak noise so caps scatter, not band.
+		float jac = gerstner_jacobian(v_param, u_time, u_amplitude_scale);
+		float caps = smoothstep(u_whitecap_coverage, u_whitecap_coverage - 0.35, jac);
+		float whitecaps = clamp(caps * smoothstep(0.3, 0.8, streaks) * u_whitecap_strength, 0.0, 1.0);
+
+		foam = clamp(shore_foam + whitecaps, 0.0, 1.0);
+	} else {
+		// Far field: cheap breathing shore band + crest-keyed whitecap proxy,
+		// no noise or Jacobian taps. Honour both strength knobs so distant
+		// water still answers to the same controls.
+		float shore_foam = clamp(foam_band * surf_pulse * 0.5, 0.0, 1.0) * u_foam_strength;
+		float whitecaps = clamp(crest * 0.35, 0.0, 1.0) * u_whitecap_strength;
+		foam = clamp(shore_foam + whitecaps, 0.0, 1.0);
+	}
 	albedo = mix(albedo, u_foam_color.rgb, foam);
 	alpha = mix(alpha, 1.0, foam * 0.85);
 	ROUGHNESS = mix(u_roughness, 0.7, foam);

@@ -54,3 +54,7 @@ node_modules/
 
 # Claude Code session config
 .claude/
+
+# Local session artifacts — never committed
+session_captures/
+SESSION_NOTES.md

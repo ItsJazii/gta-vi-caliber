@@ -35,6 +35,7 @@ var _sign_back_mat: StandardMaterial3D
 var _amber_light_mat: StandardMaterial3D
 var _cypress_mat: StandardMaterial3D
 var _leaf_mat: StandardMaterial3D
+var _shrub_mat: StandardMaterial3D
 
 var _landmarks: FloridaLandmarks
 var _threejs: FloridaThreeJsPlacements
@@ -66,6 +67,20 @@ func _ready() -> void:
 	_build_city_accents()
 	_build_map_markers()
 	_build_wetlands()
+	_build_coastal_palms()
+	_build_clouds()
+	_build_bay_boats()
+	_build_seabirds()
+	_build_ad_blimp()
+	_build_air_banner()
+	_build_billboards()
+	_build_pier()
+	_build_lifeguard_towers()
+	_build_neon_sign()
+	_build_neon_strip()
+	_build_neon_pylon()
+	_build_searchlights()
+	_build_causeway_traffic()
 	_build_swim_volume()
 
 
@@ -152,6 +167,11 @@ func _make_materials() -> void:
 	_leaf_mat.roughness = 0.92
 	_leaf_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 
+	_shrub_mat = StandardMaterial3D.new()
+	_shrub_mat.albedo_color = Color(0.20, 0.31, 0.13)
+	_shrub_mat.roughness = 0.93
+	_shrub_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+
 
 static func _shader_or_fallback(path: String, fallback: Color) -> Material:
 	var shader := load(path) as Shader
@@ -187,6 +207,10 @@ func _build_water() -> void:
 	water.set("surface_roughness", 0.045)
 	water.set("foam_depth_m", 0.08)
 	water.set("foam_strength", 0.18)
+	# Flat seabed → keep the shoreline band thin (above), but let the open bay
+	# froth: Jacobian whitecaps on the swell read as a living sea, not plastic.
+	water.set("whitecap_strength", 0.7)
+	water.set("whitecap_coverage", 0.96)
 	water.set("foam_color", Color(0.92, 0.95, 0.92, 1.0))
 	water.position.y = ocean_y
 	add_child(water)
@@ -718,50 +742,149 @@ func _add_city_label(parent: Node, text: String, centre: Vector2, height: float)
 	parent.add_child(label)
 
 
+func _build_coastal_palms() -> void:
+	# Iconic palm fringe along the shore — frames the establishing shots that the
+	# bare sand left empty. CoastalPalms walks the same coast outline as
+	# _build_coastline, so the palms line the waterline the player sees.
+	var palms := CoastalPalms.new()
+	palms.name = "CoastalPalms"
+	palms.map_scale = map_scale
+	palms.ground_y = land_y + 0.05
+	add_child(palms)
+
+
+func _build_causeway_traffic() -> void:
+	# Ambient cars driving the bay causeways (with night head/tail lights) — the
+	# bridges the player drives shouldn't be empty. Density is bounded for perf;
+	# these are long spans, so it reads as light traffic, not a jam.
+	var traffic := CausewayTraffic.new()
+	traffic.name = "CausewayTraffic"
+	add_child(traffic)
+
+
+func _build_searchlights() -> void:
+	# Sweeping club searchlight beams over the boardwalk — night-sky drama.
+	var lights := Searchlights.new()
+	lights.name = "Searchlights"
+	lights.position = Vector3(1300.0, land_y + 0.5, 560.0)
+	add_child(lights)
+
+
+func _build_neon_pylon() -> void:
+	# An animated vintage motel pylon (chasing border + blinking VACANCY) — the
+	# moving neon landmark by the boardwalk.
+	var pylon := NeonPylon.new()
+	pylon.name = "NeonPylon"
+	pylon.position = Vector3(1255.0, land_y, 640.0)
+	add_child(pylon)
+
+
+func _build_neon_strip() -> void:
+	# Ocean-Drive Art-Deco strip: pastel hotels by day, glowing neon by night.
+	# A back row just inland of the boardwalk so it doesn't fight the billboards.
+	var strip := NeonStrip.new()
+	strip.name = "NeonStrip"
+	strip.ground_y = land_y
+	strip.line_x = 1280.0
+	add_child(strip)
+
+
+func _build_neon_sign() -> void:
+	# A glowing neon gateway at the pier approach — the Vice City night signature.
+	var sign := NeonSign.new()
+	sign.name = "NeonSign"
+	sign.position = Vector3(1350.0, land_y, 470.0)
+	sign.rotation.y = -PI * 0.5
+	add_child(sign)
+
+
+func _build_lifeguard_towers() -> void:
+	# The pastel Miami Beach lifeguard stands along the shore — a signature Vice
+	# City motif facing the water.
+	var towers := LifeguardTowers.new()
+	towers.name = "LifeguardTowers"
+	towers.ground_y = land_y
+	add_child(towers)
+
+
+func _build_pier() -> void:
+	# A fishing pier reaching off the bay-facing shore into the water — the
+	# "pier" half of the ledger's palms/pier postcard note. Yawed so the deck
+	# extends from the mainland shore out over the bay.
+	var pier := Pier.new()
+	pier.name = "Pier"
+	pier.position = Vector3(1380.0, 0.0, 500.0)
+	pier.rotation.y = -PI * 0.5
+	add_child(pier)
+
+
+func _build_billboards() -> void:
+	# Satirical roadside hoardings along the bay-facing shore — the humor/tone
+	# axis plus set-dressing the player drives past.
+	var boards := Billboards.new()
+	boards.name = "Billboards"
+	boards.ground_y = land_y
+	add_child(boards)
+
+
+func _build_air_banner() -> void:
+	# A banner-tow plane circling the beach with a satirical ad — ambient air
+	# life plus the humor/tone axis. Default centre is over South Beach.
+	var banner := AirBanner.new()
+	banner.name = "AirBanner"
+	add_child(banner)
+
+
+func _build_ad_blimp() -> void:
+	# A high advertising blimp circling over downtown — visible from the player's
+	# actual playspace (unlike the far-coast props) and reads in the dusk grade.
+	var blimp := AdBlimp.new()
+	blimp.name = "AdBlimp"
+	# Lower + a touch slower than default so it reads from the ground rather than
+	# being a high speck lost in the dusk haze.
+	blimp.centre = Vector3(200.0, 190.0, -250.0)
+	blimp.radius = 520.0
+	add_child(blimp)
+
+
+func _build_seabirds() -> void:
+	# Ambient gulls wheeling over the bay — the moving life the static scenery
+	# doesn't give. Centred over the open bay so they read against sky + water.
+	var birds := SeabirdFlock.new()
+	birds.name = "SeabirdFlock"
+	birds.centre = Vector3(2800.0, 80.0, 0.0)
+	add_child(birds)
+
+
+func _build_bay_boats() -> void:
+	# Ambient fleet drifting/bobbing on the open bay so the water reads as a
+	# living waterway, not an empty plane. Matches the StateOcean wave clock
+	# (same ocean_y/amplitude_scale as _build_water) via OceanMath.
+	var boats := BayBoats.new()
+	boats.name = "BayBoats"
+	boats.ocean_y = ocean_y
+	boats.amplitude_scale = 0.75
+	boats.count = 30
+	boats.area_min = Vector2(1500.0, -2300.0)
+	boats.area_max = Vector2(5000.0, 1600.0)
+	add_child(boats)
+
+
+func _build_clouds() -> void:
+	# A high broken-cumulus sheet so the playable map's flat ProceduralSky gains
+	# depth and drift. CloudLayer owns the look; added here (not in the shared
+	# scene env) so the world gets a sky without touching miami.tscn.
+	var clouds := CloudLayer.new()
+	clouds.name = "CloudLayer"
+	add_child(clouds)
+
+
 func _build_wetlands() -> void:
-	var trunk_mesh := CylinderMesh.new()
-	trunk_mesh.top_radius = 0.28
-	trunk_mesh.bottom_radius = 0.44
-	trunk_mesh.height = 5.2
-	var crown_mesh := SphereMesh.new()
-	crown_mesh.radius = 2.2
-	crown_mesh.height = 3.2
-
-	var trunks := MultiMesh.new()
-	trunks.transform_format = MultiMesh.TRANSFORM_3D
-	trunks.mesh = trunk_mesh
-	var crowns := MultiMesh.new()
-	crowns.transform_format = MultiMesh.TRANSFORM_3D
-	crowns.mesh = crown_mesh
-
+	# Cluster each wetland seed point into layered cypress + shrub understory.
+	# WetlandFlora owns the look (and its own tests); the count of seed points
+	# stays FloridaMapModel-driven so the wetlands keep their spatial spread.
 	var points := FloridaMapModel.wetland_points(wetland_count, map_scale)
-	trunks.instance_count = points.size()
-	crowns.instance_count = points.size()
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 811
-	for i in points.size():
-		var p := points[i]
-		var s := rng.randf_range(0.75, 1.45)
-		var yaw := Basis(Vector3.UP, rng.randf() * TAU)
-		var trunk_basis := yaw.scaled(Vector3(s, s, s))
-		trunks.set_instance_transform(
-			i, Transform3D(trunk_basis, Vector3(p.x, land_y + 2.6 * s, p.y))
-		)
-		crowns.set_instance_transform(
-			i, Transform3D(trunk_basis, Vector3(p.x, land_y + 6.0 * s, p.y))
-		)
-
-	var trunk_layer := MultiMeshInstance3D.new()
-	trunk_layer.name = "WetlandCypressTrunks"
-	trunk_layer.multimesh = trunks
-	trunk_layer.material_override = _cypress_mat
-	add_child(trunk_layer)
-
-	var crown_layer := MultiMeshInstance3D.new()
-	crown_layer.name = "WetlandCypressCrowns"
-	crown_layer.multimesh = crowns
-	crown_layer.material_override = _leaf_mat
-	add_child(crown_layer)
+	WetlandFlora.build(self, points, land_y, _cypress_mat, _leaf_mat, _shrub_mat)
 
 
 func _build_map_markers() -> void:

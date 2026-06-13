@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/vehicles/car_physics.tscn" id="1_base"]
+[ext_resource type="PackedScene" path="res://assets/vehicles/coastal_sport_coupe/coastal_sport_coupe.glb" id="2_model"]
+
+[node name="CoastalSportCoupe" instance=ExtResource("1_base")]
+
+[node name="ImportedVisual" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.18, 0)
+
+[node name="Model" parent="ImportedVisual" instance=ExtResource("2_model")]

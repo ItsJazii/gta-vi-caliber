@@ -57,6 +57,33 @@ require gdlint
 step "gdlint"
 gdlint "${GD_DIRS[@]}"
 
+# --- 2.5 git-lfs materialization guard ---------------------------------------
+# Binary assets (*.png, *.glb, ...) are stored via git-lfs. On a checkout where
+# the LFS objects were never pulled, each asset is a ~130-byte text *pointer*.
+# Importing a pointer makes Godot rewrite the committed *.import sidecars to
+# describe a broken asset, which then surfaces downstream as a cascade of
+# confusing "Failed loading resource" unit-test failures — and the corrupted
+# sidecars survive a `.godot/` cache wipe. Fail fast here with the real fix.
+step "git-lfs materialization"
+if [[ -f .gitattributes ]] && grep -q 'filter=lfs' .gitattributes; then
+    LFS_POINTER=""
+    while IFS= read -r asset; do
+        [[ -f "$asset" ]] || continue
+        IFS= read -r first_line <"$asset" || true
+        if [[ "$first_line" == "version https://git-lfs.github.com/spec/v1" ]]; then
+            LFS_POINTER="$asset"
+            break
+        fi
+    done < <(git ls-files game/assets | grep -iE '\.(png|jpg|jpeg|webp|glb|gltf|fbx|exr|hdr|ktx2|ogg|wav|mp3|ttf|otf)$' | head -60)
+    if [[ -n "$LFS_POINTER" ]]; then
+        echo "error: git-lfs assets are not materialized (e.g. '$LFS_POINTER' is still a pointer)." >&2
+        echo "       Run:  git lfs install && git lfs pull   then re-run this gate." >&2
+        echo "       (Importing un-pulled pointers corrupts the committed *.import sidecars;" >&2
+        echo "        if you already ran an import, also: git checkout -- game/assets && rm -rf game/.godot)" >&2
+        exit 1
+    fi
+fi
+
 # --- 3. headless import (validates project.godot, scenes, resources) ---------
 step "headless import"
 "$GODOT_BIN" --headless --path game --import
@@ -84,6 +111,12 @@ step "miami wiring probe"
 "$GODOT_BIN" --headless --path game --script res://tests/miami_wiring_probe.gd
 step "miami facade probe"
 "$GODOT_BIN" --headless --path game --script res://tests/miami_facade_probe.gd
+step "vehicle visual probe"
+"$GODOT_BIN" --headless --path game --script res://tests/vehicle_visual_probe.gd
+step "player ground probe"
+"$GODOT_BIN" --headless --path game --script res://tests/player_ground_probe.gd
+step "coastal asset probe"
+"$GODOT_BIN" --headless --path game --script res://tests/coastal_asset_probe.gd
 step "miami loop probe"
 "$GODOT_BIN" --headless --path game --script res://tests/miami_loop_probe.gd
 step "miami mission probe"
@@ -102,5 +135,17 @@ step "miami property probe"
 "$GODOT_BIN" --headless --path game --script res://tests/miami_property_probe.gd
 step "miami citizen probe"
 "$GODOT_BIN" --headless --path game --script res://tests/miami_citizen_probe.gd
+
+# --- 7. systems wiring probes (scene-free: self-wiring nodes in a mock tree) --
+step "market event probe"
+"$GODOT_BIN" --headless --path game --script res://tests/market_event_probe.gd
+step "crime reaction probe"
+"$GODOT_BIN" --headless --path game --script res://tests/crime_reaction_probe.gd
+step "character switch probe"
+"$GODOT_BIN" --headless --path game --script res://tests/character_switch_probe.gd
+step "ambient event probe"
+"$GODOT_BIN" --headless --path game --script res://tests/ambient_event_probe.gd
+step "systems integration probe"
+"$GODOT_BIN" --headless --path game --script res://tests/systems_integration_probe.gd
 
 printf '\nAll checks passed ✔\n'

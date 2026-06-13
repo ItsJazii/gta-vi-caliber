@@ -69,8 +69,9 @@ func _setup_native() -> void:
 
 
 func _setup_multimesh() -> void:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(2.0, 1.4, car_length)
+	var mesh := VehicleVisualLibrary.traffic_mesh(VehicleVisualLibrary.Variant.SPORT_COUPE)
+	if mesh == null:
+		return
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
 	_mm.mesh = mesh
@@ -158,7 +159,11 @@ func _sync_multimesh() -> void:
 		return
 	for i in car_count:
 		var theta := arc[i] / track_radius
-		var pos := Vector3(cos(theta) * track_radius, 0.7, sin(theta) * track_radius)
+		var pos := Vector3(
+			cos(theta) * track_radius,
+			VehicleVisualLibrary.MODEL_FLOOR_OFFSET_Y,
+			sin(theta) * track_radius
+		)
 		# Orient along the tangent (direction of travel).
 		var tangent := Vector3(-sin(theta), 0.0, cos(theta))
 		var basis := Basis.looking_at(tangent, Vector3.UP)

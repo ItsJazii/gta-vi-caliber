@@ -38,6 +38,9 @@ signal footstep(surface: String, is_left: bool)
 @export var body_height: float = 1.8
 ## How close (m) a vehicle must be for the interact key to enter it.
 @export var enter_vehicle_range: float = 3.5
+## How close (m) an interactable must be for the interact key to use it. Shorter
+## than the vehicle reach so a parked car keeps priority on the shared key.
+@export var interact_reach: float = 2.2
 ## Gamepad left-stick conditioning for analog walking, merged with the keyboard
 ## move vector via StickInput.movement (the harder-pushed source wins).
 @export_range(0.0, 0.9) var move_stick_deadzone: float = 0.2
@@ -70,6 +73,7 @@ var _jump_spent: bool = false
 var _vehicle: Node3D = null
 var _swimming: bool = false
 var _phone_ui: Phone = null
+var _interact_prompt: InteractPrompt = null
 var _was_on_floor: bool = true
 var _oxygen: float = 1.0
 # Per-physics-frame group probes (water overlap, ladder overlap, damage sink)
@@ -99,13 +103,18 @@ func _ready() -> void:
 	_water_cache = GroupCache.for_group(get_tree(), "water")
 	_ladder_cache = GroupCache.for_group(get_tree(), "ladders")
 	_health_cache = GroupCache.for_group(get_tree(), "player_health")
+	# The interact-prompt overlay is likewise code-spawned so the feature stays
+	# self-contained and doesn't touch player.tscn.
+	_interact_prompt = InteractPrompt.new()
+	add_child(_interact_prompt)
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_toggle_mouse_capture()
 	elif event.is_action_pressed("interact") and not _on_phone():
-		_toggle_vehicle()
+		if not _toggle_vehicle():
+			_try_interact()
 
 
 ## True while the phone is raised — gates sprint and vehicle entry so the player
@@ -142,6 +151,7 @@ func _nearest_pedestrian(max_range: float) -> Node3D:
 
 
 func _physics_process(delta: float) -> void:
+	_update_interact_prompt()
 	if _vehicle != null:
 		global_position = _vehicle.global_position
 		# Keep feeding the rig (grounded, no motion) while driving: its
@@ -324,13 +334,54 @@ func eject() -> void:
 		_exit_vehicle()
 
 
-func _toggle_vehicle() -> void:
+func _toggle_vehicle() -> bool:
 	if _vehicle != null:
 		_exit_vehicle()
-		return
+		return true
 	var vehicle := _nearest_vehicle()
 	if vehicle != null and not vehicle.has_driver():
 		_enter_vehicle(vehicle)
+		return true
+	return false
+
+
+## Use the nearest interactable in reach, if any. Reached only when the interact
+## key didn't enter or exit a vehicle, so cars keep priority on the shared key.
+func _try_interact() -> void:
+	var target := _nearest_interactable()
+	if target != null:
+		target.interact(self)
+
+
+## Nearest "interactables" node in reach implementing the contract
+## (interact()/interact_prompt()), or null. Mirrors _nearest_vehicle; the
+## selection math is the pure Interaction.nearest so it unit-tests headless.
+func _nearest_interactable() -> Node3D:
+	var bodies: Array[Node3D] = []
+	var points := PackedVector3Array()
+	for node in get_tree().get_nodes_in_group("interactables"):
+		var body := node as Node3D
+		if body == null or not body.has_method("interact"):
+			continue
+		bodies.append(body)
+		points.append(body.global_position)
+	var index := Interaction.nearest(points, global_position, interact_reach)
+	return bodies[index] if index != Interaction.NONE else null
+
+
+## Refresh the bottom-screen interact hint to the nearest interactable in reach.
+## Nothing shows while driving or on the phone, where the key is already busy.
+func _update_interact_prompt() -> void:
+	if _interact_prompt == null:
+		return
+	if _vehicle != null or _on_phone():
+		_interact_prompt.set_prompt("")
+		return
+	var target := _nearest_interactable()
+	var text := ""
+	if target != null and target.has_method("interact_prompt"):
+		text = String(target.interact_prompt())
+	_interact_prompt.set_prompt(text)
 
 
 func _enter_vehicle(vehicle: Node3D) -> void:

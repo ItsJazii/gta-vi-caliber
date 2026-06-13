@@ -27,7 +27,7 @@ var _starting: bool = false
 
 func _ready() -> void:
 	# Boot-time: honour saved audio/display settings immediately.
-	SettingsPanel.apply(SettingsPanel.load_settings())
+	SettingsPanel.apply(SettingsPanel.load_settings(), get_tree())
 
 	_settings.hide()
 	_fade.color = Color(0, 0, 0, 0)

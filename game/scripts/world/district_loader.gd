@@ -24,26 +24,25 @@ const STREETLIGHT_RADIUS_M: float = 250.0
 const MAX_STREETLIGHT_LIGHTS: int = 100
 const STREETLIGHT_LIGHT_RANGE_M: float = 13.0
 const STREETLIGHT_LIGHT_ENERGY: float = 4.0
-# The player/vehicles/props rest on the ground collider whose top is at y=0, so
-# every visual walking surface sits at (or a hair above) y=0 too — otherwise the
-# character stands on the collider and the feet sink below the visible street.
-# Roads ride 2 cm under the floor (feet never sink into them); the spawn vista's
-# hero road then sits exactly at the floor (see DistrictSpawnVista).
-const STREET_VISUAL_Y: float = -0.02
-# Gutter base; the sidewalk's walking top is base + curb height (0.15), so this
-# lands the walkable top flush with the road instead of a foot-sinking curb.
-const SIDEWALK_VISUAL_Y: float = -0.17
+## Visual walking surfaces sit just under the ground collider top
+## (GROUND_SURFACE_Y) so the player rests flush on the street; the spawn vista's
+## hero road aligns to STREET_VISUAL_Y (see DistrictSpawnVista).
+const STREET_VISUAL_Y: float = 0.32
+const SIDEWALK_VISUAL_Y: float = 0.28
+const GROUND_SURFACE_Y: float = 0.4
 ## Footprints extruded per build slice. Sized so one slice stays a small
 ## fraction of a 60 Hz frame; a 1500-building district pages in across ~7
 ## slices instead of one giant hitch.
 const BUILDINGS_PER_SLICE: int = 220
 
 ## res:// path to the district JSON (OSM-derived, ODbL).
-@export_file("*.json") var district_path: String = "res://assets/world/downtown_la.json"
+@export_file("*.json") var district_path: String = "res://assets/world/downtown_miami.json"
 ## Build collision for buildings. Off speeds up pure-visual previews.
 @export var build_collision: bool = true
 ## Spawn streetlight poles along roads (toggled at night by TimeOfDay).
 @export var build_streetlights: bool = true
+## Spawn "Enter" doors on enterable buildings (named or public-facing types).
+@export var build_doors: bool = true
 ## Spawn a ground tile sized to this district's bounds (so a district drops into
 ## a multi-district world without a hand-placed plane under it).
 @export var spawn_ground: bool = true
@@ -128,6 +127,9 @@ func _build_timesliced(data: Dictionary) -> void:
 		func() -> void: _build_roads(roads, proj),
 		func() -> void: _build_sidewalks(roads, proj),
 	]
+	if build_doors:
+		stages.append(func() -> void: BuildingDoors.build(self, buildings, proj))
+		stages.append(func() -> void: BuildingShops.build(self, buildings, proj))
 	if build_streetlights:
 		stages.append(func() -> void: _build_streetlights(roads, proj))
 	stages.append(func() -> void: _build_palms(roads, proj))
@@ -477,38 +479,27 @@ func _add_palm_layer(
 	mmi.name = node_name
 	mmi.multimesh = mm
 	mmi.material_override = mat
+	mmi.visibility_range_end = 300.0
+	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(mmi)
 
 
-## Parked cars line the kerbs — the cheapest high-impact street life: static
-## CarMesh bodies batched as ONE MultiMesh with per-instance paint colour, no AI
-## or physics. Complements (doesn't collide with) the engine's moving-traffic and
-## crowd work, which populates the streets separately.
+## Parked cars line the kerbs using decimated versions of the production coupe
+## and sedan, batched into one MultiMesh per model. They have no AI or physics;
+## moving traffic is populated separately by TrafficDirector.
 func _build_parked_cars(roads: Array, proj: GeoProjection) -> void:
-	var mesh := CarMesh.to_mesh(CarMesh.body(4.4, 1.9))
-	if mesh == null:
+	const PARKED_CAR_LIMIT: int = 240
+	const PARKED_CAR_SPACING: float = 14.0
+	var coupe_mesh := VehicleVisualLibrary.traffic_mesh(VehicleVisualLibrary.Variant.SPORT_COUPE)
+	var sedan_mesh := VehicleVisualLibrary.traffic_mesh(VehicleVisualLibrary.Variant.CLASSIC_SEDAN)
+	if coupe_mesh == null or sedan_mesh == null:
 		return
-	var mat := StandardMaterial3D.new()
-	mat.metallic = 0.45
-	mat.roughness = 0.35
-	mat.vertex_color_use_as_albedo = true  # MultiMesh per-instance colour
-	mesh.surface_set_material(0, mat)
-	var palette: Array[Color] = [
-		Color(0.88, 0.88, 0.9),
-		Color(0.07, 0.07, 0.08),
-		Color(0.55, 0.57, 0.6),
-		Color(0.72, 0.13, 0.12),
-		Color(0.12, 0.22, 0.5),
-		Color(0.2, 0.46, 0.32),
-		Color(0.85, 0.8, 0.32),
-		Color(0.3, 0.32, 0.36),
-	]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2207
-	var tfs: Array[Transform3D] = []
-	var cols := PackedColorArray()
+	var coupe_transforms: Array[Transform3D] = []
+	var sedan_transforms: Array[Transform3D] = []
 	for r in roads:
-		if tfs.size() >= 2200:
+		if coupe_transforms.size() + sedan_transforms.size() >= PARKED_CAR_LIMIT:
 			break
 		var width := float(r.get("width_m", 0.0))
 		if width < 7.0:
@@ -516,7 +507,7 @@ func _build_parked_cars(roads: Array, proj: GeoProjection) -> void:
 		var path := _project_ring(r["path"], proj)
 		var off := width * 0.5 - 1.1  # just inside the kerb (parallel parking)
 		for i in path.size() - 1:
-			if tfs.size() >= 2200:
+			if coupe_transforms.size() + sedan_transforms.size() >= PARKED_CAR_LIMIT:
 				break
 			var a: Vector2 = path[i]
 			var seg: Vector2 = path[i + 1] - a
@@ -527,25 +518,39 @@ func _build_parked_cars(roads: Array, proj: GeoProjection) -> void:
 			var nrm := Vector2(-dir.y, dir.x)
 			var yaw := atan2(dir.x, dir.y)  # align the car's length with the road
 			var t := 5.0
-			while t < seg_len - 4.0 and tfs.size() < 2200:
+			while (
+				t < seg_len - 4.0
+				and coupe_transforms.size() + sedan_transforms.size() < PARKED_CAR_LIMIT
+			):
 				if rng.randf() < 0.85:  # leave gaps so it's not bumper-to-bumper
 					var p := a + dir * t + nrm * off
 					var basis := Basis.from_euler(Vector3(0.0, yaw, 0.0))
-					tfs.append(Transform3D(basis, Vector3(p.x, -0.22, p.y)))
-					cols.append(palette[rng.randi() % palette.size()])
-				t += 6.0
-	if tfs.is_empty():
+					var transform := Transform3D(
+						basis,
+						Vector3(
+							p.x, STREET_VISUAL_Y + VehicleVisualLibrary.MODEL_FLOOR_OFFSET_Y, p.y
+						)
+					)
+					if rng.randi() % VehicleVisualLibrary.variant_count() == 0:
+						coupe_transforms.append(transform)
+					else:
+						sedan_transforms.append(transform)
+				t += PARKED_CAR_SPACING
+	_add_parked_car_layer(coupe_mesh, coupe_transforms, "ParkedSportCoupes")
+	_add_parked_car_layer(sedan_mesh, sedan_transforms, "ParkedClassicSedans")
+
+
+func _add_parked_car_layer(mesh: Mesh, transforms: Array[Transform3D], node_name: String) -> void:
+	if transforms.is_empty():
 		return
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
 	mm.mesh = mesh
-	mm.instance_count = tfs.size()
-	for i in tfs.size():
-		mm.set_instance_transform(i, tfs[i])
-		mm.set_instance_color(i, cols[i])
+	mm.instance_count = transforms.size()
+	for i in transforms.size():
+		mm.set_instance_transform(i, transforms[i])
 	var mmi := MultiMeshInstance3D.new()
-	mmi.name = "ParkedCars"
+	mmi.name = node_name
 	mmi.multimesh = mm
 	add_child(mmi)
 
@@ -777,7 +782,7 @@ func _build_ground(data: Dictionary, proj: GeoProjection) -> void:
 	var box := BoxShape3D.new()
 	box.size = Vector3(size_x, 1.0, size_z)
 	col.shape = box
-	col.position = Vector3(0, -0.5, 0)
+	col.position = Vector3(0, GROUND_SURFACE_Y - box.size.y * 0.5, 0)
 	body.add_child(col)
 	add_child(body)
 
@@ -853,6 +858,21 @@ func _place_actors_on_street(
 			if camera_rig != null:
 				camera_rig.rotation.y = best_yaw
 	DistrictSpawnVista.build(self, best, best_yaw, STREET_VISUAL_Y)
+	_place_starter_vehicles(best, best_yaw)
+
+
+func _place_starter_vehicles(spawn: Vector3, yaw: float) -> void:
+	var vehicle_spawn := Vector3(spawn.x, STREET_VISUAL_Y + 0.6, spawn.z)
+	var transforms := VehicleSpawnLayout.starter_transforms(vehicle_spawn, yaw)
+	var vehicles := get_tree().get_nodes_in_group("starter_vehicles")
+	for index in mini(vehicles.size(), transforms.size()):
+		var vehicle := vehicles[index] as Node3D
+		if vehicle == null:
+			continue
+		vehicle.global_transform = transforms[index]
+		if vehicle is RigidBody3D:
+			(vehicle as RigidBody3D).linear_velocity = Vector3.ZERO
+			(vehicle as RigidBody3D).angular_velocity = Vector3.ZERO
 
 
 static func _project_building_rings(

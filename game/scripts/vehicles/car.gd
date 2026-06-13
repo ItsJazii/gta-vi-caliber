@@ -1,6 +1,7 @@
 class_name Car
 extends VehicleBody3D
-## Greybox drivable car. Idle until a driver enters (Player calls enter()), then
+## Drivable car physics shared by the production coupe and sedan visuals. Idle
+## until a driver enters (Player calls enter()), then
 ## reads move input as throttle/steer. Steering math is delegated to
 ## VehicleMotion and the engine/gearbox to Powertrain — both pure and
 ## unit-tested. The drivetrain runs a real torque curve through a multi-speed
@@ -144,7 +145,7 @@ func _ready() -> void:
 	if not _rear_wheels.is_empty():
 		_rear_base_slip = _rear_wheels[0].wheel_friction_slip
 	_drift_scorer = VehicleHandling.DriftScorer.new()
-	# Radio is code-spawned so the feature is self-contained (no car.tscn edit).
+	# Radio is code-spawned so every visual variant gets the same feature.
 	_radio = Radio.new()
 	add_child(_radio)
 

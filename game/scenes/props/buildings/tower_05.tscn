@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/buildings/library/tower_05.glb" id="1_glb"]
+[ext_resource type="Script" path="res://scripts/props/building_facade.gd" id="2_facade"]
+
+[node name="Tower05" type="Node3D"]
+script = ExtResource("2_facade")
+wall_set = "res://assets/materials/facade_concrete_01"
+wall_tint = Color(0.86, 0.88, 0.93, 1)
+glass_color = Color(0.08, 0.12, 0.2, 1)
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]

@@ -1,16 +1,17 @@
 shader_type spatial;
-render_mode world_vertex_coords, cull_disabled, unshaded;
+render_mode world_vertex_coords, cull_disabled;
 
 // Procedural greybox ground (M1 fidelity): grass/dirt macro patches with micro
-// grain, height-derived normals and varied roughness so the sandbox floor reads
-// as real terrain instead of a flat painted plane. Fully procedural — no
-// textures (repo convention). World-space so detail stays put as you walk.
+// grain. Fully procedural — no textures (repo convention). World-space so
+// detail stays put as you walk.
+//
+// NOTE: lit mode with distance-based specular anti-aliasing (matches
+// florida_land.gdshader pattern). ROUGHNESS and SPECULAR fade at distance.
 
 uniform vec3 u_grass_color : source_color = vec3(0.055, 0.075, 0.065);
 uniform vec3 u_dirt_color : source_color = vec3(0.035, 0.04, 0.04);
 uniform float u_macro_scale = 0.035; // big patches (per metre)
 uniform float u_micro_scale = 0.9; // fine grain (per metre)
-uniform float u_normal_strength = 0.5;
 
 float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -30,7 +31,7 @@ float vnoise(vec2 p) {
 float fbm(vec2 p) {
 	float s = 0.0;
 	float amp = 0.5;
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 3; i++) {
 		s += amp * vnoise(p);
 		p *= 2.0;
 		amp *= 0.5;
@@ -54,23 +55,9 @@ void fragment() {
 	col *= 0.85 + 0.3 * micro; // micro brightness break-up
 	ALBEDO = col;
 
-	// Specular anti-aliasing: the per-pixel micro-normal below aliases in the
-	// distance and the old sharp specular (0.4) made it sparkle/"flash" as the
-	// camera moved. Keep grass matte (high roughness, low specular) and fade the
-	// micro grain + push roughness to 1.0 with distance so far ground stays calm.
+	// Distance-based specular anti-aliasing
 	float dist = length(v_wpos - CAMERA_POSITION_WORLD);
 	float aa = clamp((dist - 40.0) / 140.0, 0.0, 1.0);
-
-	ROUGHNESS = mix(mix(0.97, 0.86, blend), 1.0, aa * 0.6);
-	SPECULAR = 0.2 * (1.0 - aa * 0.7);
-
-	// Height-derived normal from the micro field so grazing light catches grain.
-	float e = 0.5;
-	float h_l = fbm((w - vec2(e, 0.0)) * u_micro_scale);
-	float h_r = fbm((w + vec2(e, 0.0)) * u_micro_scale);
-	float h_d = fbm((w - vec2(0.0, e)) * u_micro_scale);
-	float h_u = fbm((w + vec2(0.0, e)) * u_micro_scale);
-	float ns = u_normal_strength * (1.0 - aa);
-	vec3 n = normalize(vec3((h_l - h_r) * ns, 1.0, (h_d - h_u) * ns));
-	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	ROUGHNESS = mix(0.92, 1.0, aa * 0.6);
+	SPECULAR = 0.15 * (1.0 - aa * 0.7);
 }

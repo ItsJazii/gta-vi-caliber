@@ -69,25 +69,33 @@ void fragment() {
 	float curb = 1.0 - smoothstep(curb_frac, curb_frac + 0.01, u);
 	col = mix(col, curb_color + vec3(patch), curb);
 
+	// Concrete micro-surface bump from the hash-based patch noise, giving the
+	// flat slabs a tactile quality under raking light.
+	vec3 sx = dFdx(VERTEX);
+	vec3 sy = dFdy(VERTEX);
+	vec3 r1 = cross(sy, NORMAL);
+	vec3 r2 = cross(NORMAL, sx);
+	float det = dot(sx, r1);
+	vec3 bump_grad = sign(det) * (dFdx(patch) * r1 + dFdy(patch) * r2);
+	float dist = length(VERTEX);
+	float aa = clamp((dist - 20.0) / 80.0, 0.0, 1.0);
+
 	float wet = clamp(world_wetness, 0.0, 1.0);
 	ALBEDO = col * mix(1.0, 0.7, wet);
-	ROUGHNESS = mix(0.93, 0.24, wet);
+	NORMAL = normalize(abs(det) * NORMAL - (0.03 * (1.0 - aa)) * bump_grad);
+	ROUGHNESS = mix(mix(0.93, 1.0, aa * 0.4), 0.24, wet);
 	METALLIC = 0.0;
+	SPECULAR = mix(mix(0.3, 0.12, aa), 0.6, wet);
 
 	// Troweled-concrete micro-relief: a smooth value-noise height perturbs the
 	// normal (tangent-free Mikkelsen gradient) and roughness so the walking top
 	// reads as real concrete grain up close. Kept off the joints so the grooves
 	// stay crisp, faded with distance, and relaxed when wet.
-	float micro_fade = 1.0 - smoothstep(10.0, 42.0, length(VERTEX));
+	float micro_fade = 1.0 - smoothstep(10.0, 42.0, dist);
 	float micro = on_top * (1.0 - joint) * micro_fade;
 	if (micro > 0.001) {
 		vec2 st = vec2(u * 5.0, along) * 4.0;
 		float h = vnoise(st) * 0.6 + vnoise(st * 2.7) * 0.3;
-		vec3 sx = dFdx(VERTEX);
-		vec3 sy = dFdy(VERTEX);
-		vec3 r1 = cross(sy, NORMAL);
-		vec3 r2 = cross(NORMAL, sx);
-		float det = dot(sx, r1);
 		vec3 grad = sign(det) * (dFdx(h) * r1 + dFdy(h) * r2);
 		NORMAL = normalize(abs(det) * NORMAL - (0.04 * micro * (1.0 - 0.7 * wet)) * grad);
 		ROUGHNESS = clamp(ROUGHNESS + (h - 0.45) * 0.10 * micro * (1.0 - wet), 0.1, 1.0);

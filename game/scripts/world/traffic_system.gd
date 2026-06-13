@@ -64,7 +64,9 @@ func _advance(car: Dictionary, delta: float) -> void:
 		guard += 1
 	var s := _net.point_on_segment(car["seg"], car["offset"])
 	var mesh: Node3D = car["mesh"]
-	mesh.global_position = (s["pos"] as Vector3) + Vector3(0, 0.6, 0)
+	mesh.global_position = (
+		(s["pos"] as Vector3) + Vector3(0, 0.32 + VehicleVisualLibrary.MODEL_FLOOR_OFFSET_Y, 0)
+	)
 	var heading: Vector3 = s["heading"]
 	if heading.length() > 0.01:
 		mesh.look_at(mesh.global_position + heading, Vector3.UP)
@@ -87,15 +89,9 @@ func _next_segment(seg: int) -> int:
 
 
 func _make_car_mesh() -> Node3D:
-	var mi := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(2.0, 1.4, 4.4)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color.from_hsv(_rng.randf(), 0.45, 0.85)
-	mat.roughness = 0.4
-	box.material = mat
-	mi.mesh = box
-	return mi
+	return VehicleVisualLibrary.instantiate_traffic(
+		_rng.randi() % VehicleVisualLibrary.variant_count()
+	)
 
 
 func _load(path: String) -> Dictionary:

@@ -44,6 +44,12 @@ extends MeshInstance3D
 ## broad shallow flats from turning into white paint.
 @export_range(0.05, 3.0) var foam_depth_m: float = 1.1
 @export_range(0.0, 2.0) var foam_strength: float = 1.0
+## Open-water whitecap foam, decoupled from the shoreline band so a calm bay
+## over a flat seabed can stay thin at the sand yet still froth on the swell.
+@export_range(0.0, 2.0) var whitecap_strength: float = 1.0
+## Gerstner Jacobian below which whitecaps form. 1.0 = only true wave overlap;
+## raise it to feather caps onto steep-but-unbroken crests on a livelier sea.
+@export_range(0.4, 1.6) var whitecap_coverage: float = 1.0
 @export var foam_color: Color = Color(0.96, 0.97, 0.94, 1.0)
 
 var _material: ShaderMaterial
@@ -137,4 +143,6 @@ func _push_look_params() -> void:
 	_material.set_shader_parameter("u_roughness", surface_roughness)
 	_material.set_shader_parameter("u_foam_depth", foam_depth_m)
 	_material.set_shader_parameter("u_foam_strength", foam_strength)
+	_material.set_shader_parameter("u_whitecap_strength", whitecap_strength)
+	_material.set_shader_parameter("u_whitecap_coverage", whitecap_coverage)
 	_material.set_shader_parameter("u_foam_color", foam_color)

@@ -5,7 +5,7 @@ extends RefCounted
 ## A sleek shell lofted from rounded (superellipse) cross-sections with a pointed
 ## bow, a hull bottom that rockers up at bow and stern, and a flared deck line
 ## raised at the bow. Static and scene-free so it unit-tests headless
-## (tests/unit/test_boat_mesh.gd) — same pattern as CarMesh. A BoatBody node swaps
+## (tests/unit/test_boat_mesh.gd). A BoatBody node swaps
 ## it onto the greybox boat at runtime, leaving the RigidBody physics untouched.
 
 const SE_POWER: float = 2.6

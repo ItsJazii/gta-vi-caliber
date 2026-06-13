@@ -87,14 +87,28 @@ void fragment() {
 	float asphalt_area = (1.0 - side) * (1.0 - paint);
 	col *= mix(1.0, clamp(0.74 + grain * 1.2, 0.74, 1.28), asphalt_area);
 
+	// Asphalt micro-surface normal from the grain texture, giving wet roads
+	// readable specular highlights (nearly free — reuses the grain lookup).
+	vec3 sx = dFdx(VERTEX);
+	vec3 sy = dFdy(VERTEX);
+	vec3 r1 = cross(sy, NORMAL);
+	vec3 r2 = cross(NORMAL, sx);
+	float det = dot(sx, r1);
+	vec3 grain_grad = sign(det) * (dFdx(grain) * r1 + dFdy(grain) * r2);
+
 	col = mix(col, paint_color, paint * 0.7);
 	col *= 1.0 - 0.30 * curb;
 
 	float wet = clamp(world_wetness, 0.0, 1.0);
 	ALBEDO = col * mix(1.0, 0.62, wet);
 	ROUGHNESS = mix(0.92 - 0.25 * paint, 0.16, wet);
+	float dist = length(VERTEX);
+	float aa = clamp((dist - 30.0) / 100.0, 0.0, 1.0);
+	// Grain-gradient normal, distance-faded, gives wet roads readable specular.
+	NORMAL = normalize(abs(det) * NORMAL - (0.04 * asphalt_area * (1.0 - aa)) * grain_grad);
 	METALLIC = 0.0;
-	SPECULAR = mix(0.5, 0.72, wet);
+	// Dry asphalt dims with distance; wet asphalt reads glossy.
+	SPECULAR = mix(mix(0.35, 0.15, aa), 0.72, wet);
 
 	// Aggregate micro-relief: a smooth value-noise height perturbs the normal
 	// (tangent-free Mikkelsen surface gradient — road meshes carry no tangents)

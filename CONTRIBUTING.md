@@ -58,6 +58,10 @@ Assets are licensed CC BY 4.0 (see [LICENSE-ASSETS](LICENSE-ASSETS)). Hard rules
   Nothing over 50 MB in-repo; see [docs/ASSETS.md](docs/ASSETS.md) for the size policy.
 - Use the **Asset submission** issue template — it captures the license
   attestation we need.
+- **Sourcing, tooling, and the test battery** live in
+  [docs/ASSET_PIPELINE.md](docs/ASSET_PIPELINE.md). Every asset must pass
+  the integration gauntlet (§12 there) before it ships; CC-BY attribution
+  goes in [CREDITS.md](CREDITS.md).
 
 ## AI agents
 
