@@ -109,8 +109,11 @@ func _make_bubble() -> void:
 	_bubble = Label3D.new()
 	_bubble.name = "Bubble"
 	_bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_bubble.fixed_size = true
-	_bubble.pixel_size = 0.0007
+	# World-space (not fixed_size) so distant chatter shrinks into ambient
+	# background instead of stacking full-size captions over the whole crowd;
+	# only NPCs near the camera read large.
+	_bubble.fixed_size = false
+	_bubble.pixel_size = 0.005
 	_bubble.font_size = 64
 	_bubble.outline_size = 14
 	_bubble.position = Vector3(0.0, 2.15, 0.0)
