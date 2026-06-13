@@ -30,8 +30,13 @@ const MIN_SIGHT: float = 0.3
 const SOAKED_TRAFFIC_SPEED: float = 0.75
 
 
-## Clamp any external 0..1 level defensively (NaN-safe via the comparison floor).
+## Clamp any external 0..1 level defensively. Genuinely NaN-safe: clampf(NaN)
+## returns NaN (every NaN comparison is false, so neither bound applies), which
+## would then poison grip/brake/sight/traffic/hydroplane and the whole physics
+## chain — so collapse a non-finite level to 0 (dry) first.
 static func _level(x: float) -> float:
+	if is_nan(x):
+		return 0.0
 	return clampf(x, 0.0, 1.0)
 
 
