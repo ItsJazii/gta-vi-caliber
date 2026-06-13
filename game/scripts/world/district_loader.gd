@@ -27,6 +27,8 @@ const GROUND_SURFACE_Y: float = 0.4
 @export var build_collision: bool = true
 ## Spawn streetlight poles along roads (toggled at night by TimeOfDay).
 @export var build_streetlights: bool = true
+## Spawn "Enter" doors on enterable buildings (named or public-facing types).
+@export var build_doors: bool = true
 ## Spawn a ground tile sized to this district's bounds (so a district drops into
 ## a multi-district world without a hand-placed plane under it).
 @export var spawn_ground: bool = true
@@ -61,6 +63,8 @@ func _ready() -> void:
 		_build_ground(data, proj)
 	var built_buildings := _build_buildings(data.get("buildings", []), proj)
 	DistrictFacadePanels.build(self, data.get("buildings", []), proj)
+	if build_doors:
+		BuildingDoors.build(self, data.get("buildings", []), proj)
 	_build_rooftops(data.get("buildings", []), proj)
 	_build_roads(data.get("roads", []), proj)
 	_build_sidewalks(data.get("roads", []), proj)
