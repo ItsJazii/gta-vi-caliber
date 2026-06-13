@@ -5,6 +5,25 @@ bar (trailer-fidelity coastal open world). Updated by whoever runs a
 playtest/capture pass; newest entry first. Captures referenced live in
 `/tmp/gta6_playtest/` locally — judge from a fresh run, not memory.
 
+## 2026-06-12 (cont. 18) — advertising blimp over downtown
+
+Track Q (detail/life + humor), and the FIRST element chosen for the QA finding:
+unlike the far-coast props, a big object at altitude is visible from the
+player's actual playspace (downtown) and reads in the fixed dusk grade. `AdBlimp`
+is a slow advertising blimp circling over downtown — white envelope, tail fins,
+gondola, and a parody ad on the flank ("EGO CHASER — THE COLOGNE", "PASTOR
+RICH'S MIRACLE CRUISE", …). Realistic ~10 m/s drift; built in populate()
+(headless-test), animated in _process. Lowered to ~190 m so it reads from the
+ground rather than as a high speck. Added by FloridaBackdrop; verified in
+isolation (`/tmp/blimp.png` — clean blimp + legible ad) + 4 unit tests.
+
+HONEST: confirmed built + present in the live scene at altitude (the verification
+tool found it and it renders), but I could NOT get a clean in-scene still — at
+distance against pale dusk haze it's a small, low-contrast, moving speck (like a
+real distant blimp). So its in-game prominence is modest; it's an ambient
+high-altitude detail + a flank gag, strongest in isolation. The honest pattern
+holds: in the locked dusk grade, even "broadly visible" additions read subtly.
+
 ## 2026-06-12 (cont. 17) — QA: do the shipped elements land in the LIVE map?
 
 Not a feature — an honest verification pass (added `coast_scene_capture.gd`,

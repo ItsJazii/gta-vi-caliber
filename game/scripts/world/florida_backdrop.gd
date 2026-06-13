@@ -71,6 +71,7 @@ func _ready() -> void:
 	_build_clouds()
 	_build_bay_boats()
 	_build_seabirds()
+	_build_ad_blimp()
 	_build_air_banner()
 	_build_billboards()
 	_build_pier()
@@ -826,6 +827,18 @@ func _build_air_banner() -> void:
 	var banner := AirBanner.new()
 	banner.name = "AirBanner"
 	add_child(banner)
+
+
+func _build_ad_blimp() -> void:
+	# A high advertising blimp circling over downtown — visible from the player's
+	# actual playspace (unlike the far-coast props) and reads in the dusk grade.
+	var blimp := AdBlimp.new()
+	blimp.name = "AdBlimp"
+	# Lower + a touch slower than default so it reads from the ground rather than
+	# being a high speck lost in the dusk haze.
+	blimp.centre = Vector3(200.0, 190.0, -250.0)
+	blimp.radius = 520.0
+	add_child(blimp)
 
 
 func _build_seabirds() -> void:
