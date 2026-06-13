@@ -42,7 +42,17 @@ func take_damage(
 ) -> void:
 	if _dead:
 		return
-	if _model.apply(amount):
+	# Body armor absorbs first. Shop-bought (and HUD-shown) armor lives on the
+	# PlayerStats node, whose soak_damage had ZERO callers — so a paid vest gave
+	# no protection and its HUD bar never drained. Route the hit through it and
+	# send only the overflow to health. soak_damage also emits armor_changed, so
+	# the HUD bar now drains correctly.
+	var to_health := amount
+	if amount > 0.0:
+		var stats := get_tree().get_first_node_in_group("player_stats")
+		if stats != null and stats.has_method("soak_damage"):
+			to_health = float(stats.soak_damage(amount))
+	if _model.apply(to_health):
 		_die()
 	else:
 		changed.emit(_model.fraction())
