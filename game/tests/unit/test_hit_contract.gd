@@ -33,6 +33,11 @@ func test_reward_lookup() -> bool:
 	return hc.reward_of("airline_war") == 18000 and hc.reward_of("nope") == -1
 
 
+func test_target_lookup() -> bool:
+	var hc := HitContract.new()
+	return hc.target_of("airline_war") == "Don Percival" and hc.target_of("nope") == ""
+
+
 func test_market_effect_lookup() -> bool:
 	var hc := HitContract.new()
 	var e := hc.market_effect_of("airline_war")

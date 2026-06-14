@@ -24,6 +24,7 @@ var contracts: HitContract
 
 var _stats: Node = null
 var _market: Node = null
+var _objective_contract_id: String = ""
 
 
 func _init() -> void:
@@ -72,12 +73,14 @@ func _accept() -> void:
 	var id := _next_id()
 	if id.is_empty() or not contracts.accept(id):
 		return
+	_set_hit_objective(id)
 	contract_accepted.emit(id, contracts.reward_of(id))
 
 
 ## Finish the active hit: bank the reward against PlayerStats, best-effort apply the
 ## resulting market shock to a live market node, then announce the completion.
 func _complete() -> void:
+	var id := contracts.active()
 	var result: Dictionary = contracts.complete()
 	if not result.get("success", false):
 		return
@@ -86,8 +89,31 @@ func _complete() -> void:
 	var stats := _player_stats()
 	if reward > 0 and stats != null and stats.has_method("add_money"):
 		stats.add_money(reward)
+	_clear_hit_objective(id)
 	_apply_market_effect(effect)
 	contract_completed.emit(reward, effect)
+
+
+func _set_hit_objective(id: String) -> void:
+	var stats := _player_stats()
+	if stats == null or not stats.has_method("set_objective"):
+		return
+	stats.set_objective(_objective_text(id), Vector3.ZERO, false)
+	_objective_contract_id = id
+
+
+func _clear_hit_objective(id: String) -> void:
+	var stats := _player_stats()
+	if stats == null or not stats.has_method("clear_objective") or _objective_contract_id != id:
+		return
+	if not ("objective_title" in stats) or String(stats.objective_title) == _objective_text(id):
+		stats.clear_objective()
+	_objective_contract_id = ""
+
+
+func _objective_text(id: String) -> String:
+	var target := contracts.target_of(id) if contracts != null else ""
+	return "Complete hit: %s" % (target if not target.is_empty() else id)
 
 
 ## Feed the completed contract's {company_id, magnitude, spillover} shock to a live
