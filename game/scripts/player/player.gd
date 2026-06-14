@@ -83,7 +83,7 @@ var _ladder_cache: GroupCache = null
 var _health_cache: GroupCache = null
 
 @onready var _camera_rig: OrbitCamera = $CameraRig
-@onready var _rig: AnimatedRig = $Rig
+@onready var _rig: McPlayerRig = $Rig
 
 
 func _ready() -> void:

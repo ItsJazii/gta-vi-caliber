@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/camera/orbit_camera.gd" id="2_camera"]
-[ext_resource type="PackedScene" path="res://scenes/player/character_rig.tscn" id="3_rig"]
+[ext_resource type="PackedScene" path="res://scenes/player/mc_rig.tscn" id="3_rig"]
 [ext_resource type="Script" path="res://scripts/weapons/weapon_controller.gd" id="5_weapon"]
 [ext_resource type="Script" path="res://scripts/combat/melee_controller.gd" id="6_melee"]
 [ext_resource type="Script" path="res://scripts/weapons/grenade_thrower.gd" id="7_grenade"]
