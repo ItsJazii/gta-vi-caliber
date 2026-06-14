@@ -49,3 +49,30 @@ static func approach_angle(current: float, target: float, max_step: float) -> fl
 ## (positive yaw rate) tilts the horizon into the corner.
 static func turn_roll(yaw_rate: float, blend: float, roll_gain: float, max_roll: float) -> float:
 	return clampf(-yaw_rate * roll_gain, -max_roll, max_roll) * clampf(blend, 0.0, 1.0)
+
+
+## Apply a mouse-motion delta to a free-look (yaw, pitch) offset and clamp it, so
+## the driving chase cam can glance around the car. Mouse right/down subtract
+## (matching OrbitCamera) so the view turns the intuitive way. Yaw is bounded to
+## ±yaw_limit — enough to swing right behind the car without spinning endlessly —
+## and pitch to [pitch_min, pitch_max]. Returns the new offset as (x=yaw, y=pitch).
+static func look_offset(
+	current: Vector2,
+	mouse_relative: Vector2,
+	sensitivity: float,
+	yaw_limit: float,
+	pitch_min: float,
+	pitch_max: float
+) -> Vector2:
+	return Vector2(
+		clampf(current.x - mouse_relative.x * sensitivity, -yaw_limit, yaw_limit),
+		clampf(current.y - mouse_relative.y * sensitivity, pitch_min, pitch_max)
+	)
+
+
+## Ease a free-look offset back toward neutral (the view settled behind the car)
+## at `rate` rad/s on each axis — used once the player stops looking around so the
+## camera follows the car again without them having to steer it back by hand.
+static func look_return(current: Vector2, rate: float, delta: float) -> Vector2:
+	var step := rate * delta
+	return Vector2(move_toward(current.x, 0.0, step), move_toward(current.y, 0.0, step))
