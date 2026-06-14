@@ -181,6 +181,10 @@ func is_wanted() -> bool:
 ## Wipe all heat (e.g. on death/arrest). The player escapes the law.
 func clear() -> void:
 	_wanted.heat = 0.0
+	# Drop any in-flight witness reports too: an arrest/death clear must not be
+	# undone seconds later when a queued report lands and re-applies the heat for
+	# the crime that was just cleared.
+	_pending_reports.clear()
 	_refresh()
 
 

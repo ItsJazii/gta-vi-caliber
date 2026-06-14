@@ -160,6 +160,8 @@ func acquire(id: String, cost: int, balance: int) -> Dictionary:
 		return _fail(balance, "unknown venture: %s" % id)
 	if _owned.has(id):
 		return _fail(balance, "already owned: %s" % id)
+	if cost < 0:
+		return _fail(balance, "negative cost")  # a negative cost would mint money
 	if balance < cost:
 		return _fail(balance, "insufficient funds: need %d, have %d" % [cost, balance])
 	_owned[id] = {"supply": 0.0, "product": 0.0, "staff": 0, "tier": 0}
@@ -197,6 +199,8 @@ func upgrade(id: String, cost: int, balance: int) -> Dictionary:
 	var max_tier: int = _catalogue[id]["max_tier"]
 	if _owned[id]["tier"] >= max_tier:
 		return _fail(balance, "already at max tier")
+	if cost < 0:
+		return _fail(balance, "negative cost")  # a negative cost would mint money
 	if balance < cost:
 		return _fail(balance, "insufficient funds: need %d, have %d" % [cost, balance])
 	_owned[id]["tier"] = int(_owned[id]["tier"]) + 1

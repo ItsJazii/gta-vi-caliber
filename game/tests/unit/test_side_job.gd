@@ -50,8 +50,9 @@ func test_time_bonus_full_at_exactly_par() -> bool:
 	return SideJob.time_bonus(30.0, 30.0, 500) == 500
 
 
-func test_time_bonus_zero_over_par() -> bool:
-	return SideJob.time_bonus(45.0, 30.0, 500) == 0
+func test_time_bonus_linear_decay_over_par() -> bool:
+	# 1.5x par -> 50% of the bonus (was wrongly 0 before the decay band was added).
+	return SideJob.time_bonus(45.0, 30.0, 500) == 250
 
 
 func test_time_bonus_clamped_non_negative() -> bool:
