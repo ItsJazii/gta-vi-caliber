@@ -84,10 +84,14 @@ static func time_bonus(time_taken: float, par_time: float, bonus: int) -> int:
 	if par_time <= 0.0 or reward == 0:
 		return 0
 	var taken := maxf(time_taken, 0.0)
-	if taken > par_time:
-		return 0
-	# At/under par -> full bonus; this branch only handles the under-par case.
-	return reward
+	if taken <= par_time:
+		return reward  # at or under par -> full bonus
+	if taken >= 2.0 * par_time:
+		return 0  # at/over 2x par -> nothing
+	# Between par and 2x par: shrink linearly to 0 (the documented decay band that
+	# was missing — every slightly-over-par finish used to pay 0).
+	var frac := 1.0 - (taken - par_time) / par_time
+	return maxi(int(round(float(reward) * frac)), 0)
 
 
 ## Total cash for a completed job, combining the per-kind core reward with the

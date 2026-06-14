@@ -226,7 +226,40 @@ func _install_retargeted_visual() -> void:
 	source_skeleton.add_child(modifier)
 	modifier.add_child(target_skeleton)
 	_retargeted_skeleton = target_skeleton
+	_ground_visual_feet()
 	visual_root.free()
+
+
+## Lift the retargeted visual so its lowest vertex rests at the skeleton origin
+## (the character's floor, which the rig places at the capsule feet), whatever
+## the source model's pivot. Measured from the bind-pose mesh bounds in the
+## retarget node's own space, so the figure stands on the ground instead of
+## sinking through it, while animation foot-lift still reads above the ground.
+func _ground_visual_feet() -> void:
+	if _retargeted_skeleton == null:
+		return
+	var parent := _retargeted_skeleton.get_parent() as Node3D
+	if parent == null:
+		return
+	var inv := parent.global_transform.affine_inverse()
+	var box := AABB()
+	var seen := false
+	for node in _retargeted_skeleton.find_children("*", "MeshInstance3D", true, false):
+		var m := node as MeshInstance3D
+		if m.mesh == null:
+			continue
+		var local := inv * m.global_transform * m.get_aabb()
+		if seen:
+			box = box.merge(local)
+		else:
+			box = local
+			seen = true
+	if not seen:
+		return
+	# box.position.y is the lowest visible point relative to the skeleton origin;
+	# subtracting it snaps that point onto the origin, correcting both a model
+	# that sinks (bounds below) and one that floats (bounds above).
+	_retargeted_skeleton.position.y -= box.position.y
 
 
 func _source_skeleton() -> Skeleton3D:

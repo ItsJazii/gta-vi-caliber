@@ -41,6 +41,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _open() -> void:
 	get_tree().paused = true
 	_root.show()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_resume.grab_focus()
 
 
@@ -48,6 +49,7 @@ func resume() -> void:
 	_settings.hide()
 	_root.hide()
 	get_tree().paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _on_quit() -> void:

@@ -121,6 +121,24 @@ func take_damage(amount: float, point: Vector3, _normal: Vector3) -> void:
 		_die()
 
 
+## Spook this pedestrian into fleeing from `threat_pos` for `seconds` WITHOUT
+## dealing damage — e.g. a gunshot going off nearby. Keeps the longer of any
+## current and the new fear so a fresh scare never cuts an existing panic short.
+## Inert when dead or for a non-positive duration.
+func scare(threat_pos: Vector3, seconds: float) -> void:
+	if _dead or seconds <= 0.0:
+		return
+	_threat_pos = threat_pos
+	_fear = maxf(_fear, seconds)
+	_state = NpcBrain.State.FLEE
+
+
+## Seconds of panic left on this pedestrian (0 when calm). Lets a crowd-panic
+## director read who is already bolting so panic can spread ped-to-ped.
+func fear() -> float:
+	return _fear
+
+
 func is_dead() -> bool:
 	return _dead
 

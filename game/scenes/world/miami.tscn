@@ -1,4 +1,4 @@
-[gd_scene load_steps=57 format=3]
+[gd_scene load_steps=64 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -54,6 +54,11 @@
 [ext_resource type="Script" path="res://scripts/systems/crime_reaction_director.gd" id="48_crimereact"]
 [ext_resource type="Script" path="res://scripts/systems/ambient_event_director.gd" id="49_ambient"]
 [ext_resource type="Script" path="res://scripts/world/contraband_dealer.gd" id="50_contraband"]
+[ext_resource type="Script" path="res://scripts/world/race_controller.gd" id="51_race"]
+[ext_resource type="Script" path="res://scripts/npc/crowd_panic_director.gd" id="52_crowdpanic"]
+[ext_resource type="Script" path="res://scripts/npc/loot_drop_director.gd" id="53_lootdrop"]
+[ext_resource type="Script" path="res://scripts/world/slot_machine.gd" id="54_slot"]
+[ext_resource type="Script" path="res://scripts/world/food_vendor.gd" id="55_food"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -66,6 +71,12 @@ size = Vector3(14, 6, 14)
 
 [sub_resource type="SphereShape3D" id="trigger_shape"]
 radius = 6.0
+
+[sub_resource type="BoxMesh" id="slot_body_mesh"]
+size = Vector3(0.8, 1.8, 0.6)
+
+[sub_resource type="BoxMesh" id="food_cart_mesh"]
+size = Vector3(1.4, 1.0, 0.9)
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("38_sky")
@@ -107,29 +118,29 @@ tonemap_white = 6.0
 ssr_enabled = true
 ssr_max_steps = 24
 ssao_enabled = true
-ssao_intensity = 1.8
+ssao_intensity = 1.0
 ssil_enabled = false
 glow_enabled = true
-glow_intensity = 0.58
-glow_strength = 0.76
-glow_bloom = 0.10
+glow_intensity = 0.5
+glow_strength = 0.45
+glow_bloom = 0.05
 glow_blend_mode = 1
-glow_hdr_threshold = 1.0
+glow_hdr_threshold = 1.1
 fog_enabled = true
 fog_light_color = Color(1.0, 0.72, 0.5, 1.0)
 fog_density = 0.00012
 fog_sky_affect = 0.0
 fog_aerial_perspective = 0.12
 volumetric_fog_enabled = true
-volumetric_fog_density = 0.0012
+volumetric_fog_density = 0.001
 volumetric_fog_albedo = Color(1.0, 0.86, 0.72, 1.0)
 volumetric_fog_emission = Color(0.4, 0.28, 0.3, 1.0)
-volumetric_fog_emission_energy = 0.3
+volumetric_fog_emission_energy = 0.18
 volumetric_fog_length = 900.0
 volumetric_fog_detail_spread = 1.6
 volumetric_fog_ambient_inject = 0.05
 adjustment_enabled = true
-adjustment_contrast = 1.08
+adjustment_contrast = 1.12
 adjustment_saturation = 1.12
 adjustment_brightness = 1.0
 
@@ -312,6 +323,7 @@ cull_radius = 70.0
 
 [node name="TrafficDirector" type="Node3D" parent="."]
 script = ExtResource("16_traffic")
+bake_nav = true
 target_count = 20
 spawn_max_radius = 60.0
 cull_radius = 82.0
@@ -350,6 +362,30 @@ script = ExtResource("48_crimereact")
 [node name="AmbientEventDirector" type="Node" parent="."]
 script = ExtResource("49_ambient")
 
+[node name="CrowdPanicDirector" type="Node" parent="."]
+script = ExtResource("52_crowdpanic")
+
+[node name="LootDropDirector" type="Node" parent="."]
+script = ExtResource("53_lootdrop")
+medkit_scene = ExtResource("26_medkit")
+armor_scene = ExtResource("27_armor")
+
+[node name="StreetRace" type="Node3D" parent="." groups=["race"]]
+script = ExtResource("51_race")
+base_reward = 2500
+
+[node name="CP0" type="Marker3D" parent="StreetRace"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0.5, 22)
+
+[node name="CP1" type="Marker3D" parent="StreetRace"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.5, 22)
+
+[node name="CP2" type="Marker3D" parent="StreetRace"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.5, 62)
+
+[node name="CP3" type="Marker3D" parent="StreetRace"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0.5, 62)
+
 [node name="MissionCampaign" type="Node" parent="."]
 script = ExtResource("30_campaign")
 
@@ -383,6 +419,22 @@ script = ExtResource("37_armorshop")
 
 [node name="ArmorShopShape" type="CollisionShape3D" parent="ArmorShop"]
 shape = SubResource("property_zone_shape")
+
+[node name="SlotMachine" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, 38)
+script = ExtResource("54_slot")
+
+[node name="Body" type="MeshInstance3D" parent="SlotMachine"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("slot_body_mesh")
+
+[node name="FoodVendor" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 50)
+script = ExtResource("55_food")
+
+[node name="Cart" type="MeshInstance3D" parent="FoodVendor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("food_cart_mesh")
 
 [node name="VehicleModGarage" type="Area3D" parent="." groups=["vehicle_mod_shop"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 1, 44)

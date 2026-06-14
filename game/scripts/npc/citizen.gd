@@ -30,6 +30,15 @@ const ACTIVITY_NEED: Dictionary = {
 # How long a frightened citizen keeps running, independent of the player. This is
 # Citizen-owned (Pedestrian's own flee only persists while the player is near).
 const PANIC_DURATION: float = 5.0
+## Caption budget: at most this many citizen speech bubbles visible at once, and
+## only citizens within this range of the camera speak, so a crowd reads as
+## ambient life instead of a wall of overlapping captions.
+const MAX_LIVE_BUBBLES: int = 2
+const BUBBLE_MAX_DISTANCE: float = 32.0
+## A fresh bubble is suppressed when another citizen is already captioning within
+## this many metres, so a tight crowd collapses to one readable line instead of
+## stacking billboards at the same screen spot (and never doubles a bark).
+const BUBBLE_MIN_SEPARATION: float = 5.0
 
 ## Seconds between proximity-reaction checks (cheap throttle on the O(n) player scan).
 @export var react_interval: float = 0.7
@@ -109,8 +118,11 @@ func _make_bubble() -> void:
 	_bubble = Label3D.new()
 	_bubble.name = "Bubble"
 	_bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_bubble.fixed_size = true
-	_bubble.pixel_size = 0.0007
+	# World-space (not fixed_size) so distant chatter shrinks into ambient
+	# background instead of stacking full-size captions over the whole crowd;
+	# only NPCs near the camera read large.
+	_bubble.fixed_size = false
+	_bubble.pixel_size = 0.005
 	_bubble.font_size = 64
 	_bubble.outline_size = 14
 	_bubble.position = Vector3(0.0, 2.15, 0.0)
@@ -350,9 +362,51 @@ func _maybe_witness_bark() -> void:
 func _say(text: String) -> void:
 	if _bubble == null:
 		return
+	# When starting a fresh bubble (not refreshing one already up), only speak if
+	# near the camera and under the citywide caption budget, so nearby NPCs do
+	# not talk over each other in a garbled stack.
+	if _bubble.modulate.a <= 0.0:
+		var player := _nearest_player()
+		if player == null:
+			return
+		if global_position.distance_to(player.global_position) > BUBBLE_MAX_DISTANCE:
+			return
+		if _live_caption_count() >= MAX_LIVE_BUBBLES:
+			return
+		if _caption_within(BUBBLE_MIN_SEPARATION):
+			return
 	_bubble.text = text
 	_bubble.modulate.a = 1.0
 	_bubble_left = bubble_seconds
+
+
+## True while this citizen's speech bubble is on screen (including its fade).
+func is_captioning() -> bool:
+	return _bubble != null and _bubble.modulate.a > 0.0
+
+
+## How many citizens citywide currently show a caption, for the shared budget.
+func _live_caption_count() -> int:
+	var count := 0
+	for node in get_tree().get_nodes_in_group("citizens"):
+		var citizen := node as Citizen
+		if citizen != null and citizen.is_captioning():
+			count += 1
+	return count
+
+
+## True when another citizen within radius metres is already captioning, so a
+## clustered NPC stays silent rather than drawing a bubble over a neighbour's.
+func _caption_within(radius: float) -> bool:
+	for node in get_tree().get_nodes_in_group("citizens"):
+		var citizen := node as Citizen
+		if citizen == null or citizen == self:
+			continue
+		if not citizen.is_captioning():
+			continue
+		if global_position.distance_to(citizen.global_position) <= radius:
+			return true
+	return false
 
 
 func _fade_bubble(delta: float) -> void:
