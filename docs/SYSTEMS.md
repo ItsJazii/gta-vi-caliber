@@ -33,8 +33,8 @@ Groups the live scene already publishes: `player`, `player_health`,
 | `Wardrobe` | buy/own/wear clothing that feeds `Disguise` | `buy`, `wear`, `worn_looks`, `worn_look`, `items_in_slot` | **wired live** via `WardrobeShop` (Node3D, group `interactables`): press interact at the storefront to buy + wear an outfit against `PlayerStats`. CI-guarded by `tests/wardrobe_shop_probe.gd`. TODO: push `worn_looks()` into `Disguise.set_appearance` per slot so the new outfit actually shifts recognition |
 | `PoliceEscalation` | response tier per star | `response_units`, `has_swat/helicopter/military`, `aggression`, `weapon_tier` | feed `PoliceSpawner`: pick the scene + count per `response_units(stars)` |
 | `PursuitTactics` | chase tactics | `intercept_point`, `should_ram`, `pit_side`, `choose_tactic` | drive `Police`/traffic-cop movement when chasing |
-| `GangTerritory` | turf control | `add_influence`, `take_over`, `controlled_fraction` | a per-district influence tracker + a turf-war trigger |
-| `FactionStanding` | per-faction reputation (-100 hostile..+100 allied) | `adjust`, `tier_of`, `will_attack`, `will_assist`, `to_dict` | adjust on player actions (rivalry bleeds onto enemies); NPC AI reads `will_attack`/`will_assist`; faction ids align with `GangTerritory` |
+| `GangTerritory` | turf control | `add_influence`, `take_over`, `controlled_fraction` | **surfaced to the player** via `TurfClaim` (Node3D, group `interactables`): a walk-up claim point where you spend cash to buy influence in a district and take it over at full influence. CI-guarded by `tests/turf_claim_probe.gd`. TODO: a district-wide influence tracker + visible turf-war state |
+| `FactionStanding` | per-faction reputation (-100 hostile..+100 allied) | `adjust`, `tier_of`, `will_attack`, `will_assist`, `to_dict` | `TurfClaim` calls `adjust()` on the rival crew when you muscle into their turf; NPC AI still reads `will_attack`/`will_assist`; faction ids align with `GangTerritory` |
 
 ## Combat
 
@@ -69,7 +69,7 @@ Groups the live scene already publishes: `player`, `player_health`,
 | `PedestrianTraffic` | peds dodge cars / cross safely | `nearest_threat`, `dodge_velocity`, `safe_to_cross` | blend `dodge_velocity` into `Pedestrian` steering near traffic |
 | `CrowdPanic` | gunfire panic ripples through a crowd | `initial_fear`, `update_crowd`, `flee_direction` | **wired live** via `CrowdPanicDirector` (Node): hooks `WeaponController.crime_committed` (group `weapon_controller`) and on a shooting calls `Pedestrian.scare()` on every ped within `scare_radius` (fear falloff from `initial_fear`). CI-guarded by `tests/crowd_panic_probe.gd`. TODO: panic contagion via `propagated_fear`, + spike on explosions |
 | `TrafficSignal` | junction light cycle + right-of-way | `tick`, `light_for`, `should_stop`, `yields_to` | place at intersections; gate `TrafficCar` at the stop line |
-| `EmergencyServices` | ambulance/fire dispatch | `service_for`, `nearest_responder`, response timer | spawn a responder on a wreck/fire/injury incident |
+| `EmergencyServices` | ambulance/fire dispatch | `service_for`, `nearest_responder`, `should_dispatch`, `eta`, response timer | **wired live** via `ResponderDispatcher` (Node): group-polls `weapon_controller`, and on a player kill rolls out an ambulance that drives in, treats the scene, and clears. CI-guarded by `tests/responder_dispatcher_probe.gd`. TODO: WRECK/FIRE incidents off `VehicleHealth.just_exploded`, + a visible on-scene treat dwell |
 | `WeatherEffects` | rain/fog gameplay impact | `grip_multiplier`, `visibility_range`, `ai_sight_multiplier` | feed `WeatherController` level into handling + detection |
 | `AmbientEvents` | weighted freeroam encounters (mugging/race/heist) | `trigger_next`, `eligible_ids`, `can_fire`, `trigger` | a world director calls `trigger_next(rng, now, {stars, district})` on a timer and spawns the returned encounter; per-event cooldowns + a global gap prevent spam |
 

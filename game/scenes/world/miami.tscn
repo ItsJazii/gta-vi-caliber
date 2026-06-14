@@ -1,4 +1,4 @@
-[gd_scene load_steps=77 format=3]
+[gd_scene load_steps=80 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -66,6 +66,8 @@
 [ext_resource type="Script" path="res://scripts/world/blackjack_table.gd" id="59_blackjack"]
 [ext_resource type="Script" path="res://scripts/world/taxi_stand.gd" id="60_taxi"]
 [ext_resource type="Script" path="res://scripts/world/savepoint.gd" id="61_savepoint"]
+[ext_resource type="Script" path="res://scripts/npc/responder_dispatcher.gd" id="62_responder"]
+[ext_resource type="Script" path="res://scripts/world/turf_claim.gd" id="63_turf"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -102,6 +104,9 @@ size = Vector3(1, 2.2, 1)
 
 [sub_resource type="BoxMesh" id="savepoint_mesh"]
 size = Vector3(1, 1.6, 1)
+
+[sub_resource type="BoxMesh" id="turf_mesh"]
+size = Vector3(2, 2.5, 2)
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("38_sky")
@@ -391,6 +396,9 @@ script = ExtResource("49_ambient")
 [node name="CrowdPanicDirector" type="Node" parent="."]
 script = ExtResource("52_crowdpanic")
 
+[node name="ResponderDispatcher" type="Node" parent="."]
+script = ExtResource("62_responder")
+
 [node name="LootDropDirector" type="Node" parent="."]
 script = ExtResource("53_lootdrop")
 medkit_scene = ExtResource("26_medkit")
@@ -509,6 +517,14 @@ script = ExtResource("61_savepoint")
 [node name="Body" type="MeshInstance3D" parent="Savepoint"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 mesh = SubResource("savepoint_mesh")
+
+[node name="TurfClaim" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, -20)
+script = ExtResource("63_turf")
+
+[node name="Body" type="MeshInstance3D" parent="TurfClaim"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+mesh = SubResource("turf_mesh")
 
 [node name="VehicleModGarage" type="Area3D" parent="." groups=["vehicle_mod_shop"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 1, 44)

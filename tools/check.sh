@@ -163,6 +163,8 @@ step "taxi stand probe"
 "$GODOT_BIN" --headless --path game --script res://tests/taxi_stand_probe.gd
 step "savepoint probe"
 "$GODOT_BIN" --headless --path game --script res://tests/savepoint_probe.gd
+step "turf claim probe"
+"$GODOT_BIN" --headless --path game --script res://tests/turf_claim_probe.gd
 
 # --- 7. systems wiring probes (scene-free: self-wiring nodes in a mock tree) --
 step "market event probe"
@@ -175,6 +177,8 @@ step "ambient event probe"
 "$GODOT_BIN" --headless --path game --script res://tests/ambient_event_probe.gd
 step "crowd contagion probe"
 "$GODOT_BIN" --headless --path game --script res://tests/crowd_contagion_probe.gd
+step "responder dispatcher probe"
+"$GODOT_BIN" --headless --path game --script res://tests/responder_dispatcher_probe.gd
 step "systems integration probe"
 "$GODOT_BIN" --headless --path game --script res://tests/systems_integration_probe.gd
 
