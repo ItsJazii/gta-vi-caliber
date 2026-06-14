@@ -268,7 +268,13 @@ func _traction_scale(speed: float, drive_force: float) -> float:
 	var transfer := WeightTransfer.longitudinal_shift(mass, _long_accel, cg_height, wheelbase)
 	var load := WeightTransfer.axle_load(static_load + downforce_share, transfer)
 	var grip := Traction.grip_limit(load, tire_friction)
-	var lateral_force := mass * absf(speed * angular_velocity.y)
+	# Charge only the DRIVEN axle's share of cornering force against the rear-axle
+	# grip budget above. Using the whole car's mass here spent ~double the lateral
+	# budget, cutting drive force roughly in half in a normal corner (and to zero
+	# past a moderate yaw rate) — the car bogged down mid-bend for no real reason.
+	var lateral_force := Traction.cornering_force(
+		mass, drive_axle_load_share, speed, angular_velocity.y
+	)
 	var available := Traction.longitudinal_grip(grip, lateral_force)
 	return Traction.traction_scale(drive_force, available)
 

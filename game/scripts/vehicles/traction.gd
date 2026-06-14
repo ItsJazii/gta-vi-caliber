@@ -47,3 +47,13 @@ static func traction_scale(demanded_force: float, available_grip: float) -> floa
 	if demand <= 0.0:
 		return 1.0
 	return clampf(maxf(available_grip, 0.0) / demand, 0.0, 1.0)
+
+
+## Lateral (cornering) force (N) the DRIVEN axle must hold: its share of the
+## car's mass times the lateral acceleration (≈ speed · yaw_rate). This MUST be
+## charged against the same per-axle grip budget grip_limit() is built from —
+## using the whole car's mass against a rear-axle budget spuriously eats ~half
+## the drive grip in an ordinary corner (and zeroes it past a moderate yaw rate).
+## mass floored at 0, share clamped to [0, 1].
+static func cornering_force(mass: float, axle_share: float, speed: float, yaw_rate: float) -> float:
+	return maxf(mass, 0.0) * clampf(axle_share, 0.0, 1.0) * absf(speed * yaw_rate)
