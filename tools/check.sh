@@ -91,6 +91,8 @@ step "headless import"
 # --- 4. smoke test (main scene boots, player rig present) --------------------
 step "smoke test"
 "$GODOT_BIN" --headless --path game --script res://tests/smoke_test.gd
+step "settings input remap probe"
+"$GODOT_BIN" --headless --path game --script res://tests/settings_input_remap_probe.gd
 
 # --- 5. gdUnit4 unit tests ----------------------------------------------------
 step "gdUnit4 unit tests"

@@ -41,9 +41,9 @@ Goal: moving around is *fun* before there is anything to do.
 - [x] Camera: collision probe, shoulder offset, FOV kick on sprint
 - [x] Footstep audio hooked to surface type
 - [x] Greybox "movement playground" scene with stairs, slopes, gaps, ladders
-- [ ] Gamepad support + rebindable input
-  - landed: gamepad default bindings + `InputRemap` save/load persistence.
-    TODO: expose binding controls in the settings UI.
+- [x] Gamepad support + rebindable input
+  - landed: gamepad default bindings, `InputRemap` save/load persistence, and
+    settings-screen binding controls with reset-to-defaults.
 
 ## M2 — Vehicles
 

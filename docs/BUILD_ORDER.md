@@ -55,8 +55,8 @@ Between **L1 and L2**. A vertical slice exists; the breadth above it does not.
 
 **L0 Foundation, nearly done, loose ends (Phase A):** land the Vice City pivot
 fully (retire legacy `los_angeles_*`/demo scenes), `main_menu` Play straight into
-`miami.tscn`, expose saved input rebinding in the settings UI, and route the
-premium cinematic lighting in behind a quality setting.
+`miami.tscn`, and route the premium cinematic lighting in behind a quality
+setting.
 
 **L1 World substrate, partial and the real bottleneck:** a GDScript tile
 streamer and floating origin exist, but city-scale streaming is **not proven**,
@@ -81,9 +81,8 @@ cinematic capture tooling that lives in the atmosphere/polish layers.
 
 ### 1. Close the foundation (L0 / Phase A)
 Everything rests on it, so finish it before widening. Land the pivot, wire
-`main_menu` to `miami.tscn`, add settings-screen controls for the saved input
-rebinding layer, and gate the cinematic lighting in for the dense district with
-a measured budget. See `plan.md` Phase A for the exact list.
+`main_menu` to `miami.tscn`, and gate the cinematic lighting in for the dense
+district with a measured budget. See `plan.md` Phase A for the exact list.
 
 ### 2. Wire the parts bin (L2 / Phase C): needs no streaming, so do it now
 Ordered by dependency, each wired with the `SYSTEMS.md` self-wiring-coordinator

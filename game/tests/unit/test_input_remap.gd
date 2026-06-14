@@ -123,6 +123,25 @@ func test_capture_keeps_mouse_button_defaults() -> bool:
 	)
 
 
+func test_project_defaults_reads_authored_jump() -> bool:
+	var defaults := InputRemap.project_defaults(PackedStringArray(["jump"]))
+	return defaults.has("jump") and not defaults["jump"].is_empty()
+
+
+func test_action_label_humanizes_action_id() -> bool:
+	return InputRemap.action_label("move_forward") == "Move Forward"
+
+
+func test_event_label_humanizes_mouse_button() -> bool:
+	return (
+		InputRemap.event_label({"type": "mouse_button", "index": MOUSE_BUTTON_LEFT}) == "Mouse Left"
+	)
+
+
+func test_first_event_label_handles_missing_action() -> bool:
+	return InputRemap.first_event_label({}, "jump") == "Unbound"
+
+
 func _delete_test_file() -> void:
 	if FileAccess.file_exists(TEST_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))

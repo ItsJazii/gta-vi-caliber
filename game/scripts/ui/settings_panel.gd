@@ -20,10 +20,15 @@ const MAX_DB: float = 0.0
 ## Below this slider value the bus is fully muted instead of a very low dB.
 const MUTE_THRESHOLD: float = 0.001
 
+var _binding_buttons: Dictionary = {}
+var _pending_action: String = ""
+
 @onready var _volume: HSlider = $Panel/Margin/VBox/VolumeRow/Volume
 @onready var _fullscreen: CheckButton = $Panel/Margin/VBox/FullscreenRow/Fullscreen
 @onready var _graphics: OptionButton = $Panel/Margin/VBox/GraphicsRow/Graphics
 @onready var _sensitivity: HSlider = $Panel/Margin/VBox/SensRow/Sensitivity
+@onready var _bindings: VBoxContainer = $Panel/Margin/VBox/BindingsScroll/Bindings
+@onready var _reset_bindings: Button = $Panel/Margin/VBox/ResetBindings
 @onready var _back: Button = $Panel/Margin/VBox/Back
 
 
@@ -34,12 +39,36 @@ func _ready() -> void:
 	_graphics.selected = cfg["graphics"]
 	_sensitivity.value = cfg["sensitivity"]
 	apply(cfg, get_tree())
+	_build_binding_rows()
+	_refresh_binding_rows()
 
 	_volume.value_changed.connect(func(_v): _on_changed())
 	_sensitivity.value_changed.connect(func(_v): _on_changed())
 	_fullscreen.toggled.connect(func(_v): _on_changed())
 	_graphics.item_selected.connect(func(_idx): _on_changed())
+	_reset_bindings.pressed.connect(_on_reset_bindings)
 	_back.pressed.connect(_on_back)
+
+
+func _input(event: InputEvent) -> void:
+	if _pending_action == "" or not visible:
+		return
+	if _is_cancel_event(event):
+		_finish_rebind("")
+		accept_event()
+		return
+	if not _is_rebind_event(event):
+		return
+	var cfg := InputRemap.event_to_dict(event)
+	if cfg.is_empty():
+		return
+	var overrides := InputRemap.load_overrides()
+	overrides[_pending_action] = [cfg]
+	if InputRemap.save_overrides(overrides) == OK:
+		InputRemap.apply_saved()
+	_finish_rebind("")
+	_refresh_binding_rows()
+	accept_event()
 
 
 func _on_changed() -> void:
@@ -58,8 +87,109 @@ func current() -> Dictionary:
 
 
 func _on_back() -> void:
+	_finish_rebind("")
 	hide()
 	closed.emit()
+
+
+func _build_binding_rows() -> void:
+	for child in _bindings.get_children():
+		child.queue_free()
+	_binding_buttons.clear()
+	for action in rebind_actions():
+		var row := HBoxContainer.new()
+		row.name = "%sRow" % action
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", 12)
+		var label := Label.new()
+		label.custom_minimum_size = Vector2(150, 0)
+		label.text = InputRemap.action_label(action)
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(label)
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(190, 34)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_begin_rebind.bind(action))
+		row.add_child(button)
+		_binding_buttons[action] = button
+		_bindings.add_child(row)
+
+
+func _begin_rebind(action: String) -> void:
+	_finish_rebind(action)
+	var button := _binding_buttons.get(action) as Button
+	if button != null:
+		button.text = "Press key/button"
+		button.grab_focus()
+
+
+func _finish_rebind(next_action: String) -> void:
+	if _pending_action != "" and _binding_buttons.has(_pending_action):
+		var button := _binding_buttons[_pending_action] as Button
+		if button != null:
+			button.text = _label_for_action(_pending_action)
+	_pending_action = next_action
+
+
+func _on_reset_bindings() -> void:
+	_finish_rebind("")
+	InputRemap.restore_defaults()
+	_refresh_binding_rows()
+
+
+func _refresh_binding_rows() -> void:
+	var current_bindings := InputRemap.capture(rebind_actions())
+	for action in _binding_buttons:
+		var button := _binding_buttons[action] as Button
+		if button != null:
+			button.text = InputRemap.first_event_label(current_bindings, action)
+
+
+func _label_for_action(action: String) -> String:
+	return InputRemap.first_event_label(InputRemap.capture(rebind_actions()), action)
+
+
+func _is_rebind_event(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		return key.pressed and not key.echo
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).pressed
+	if event is InputEventJoypadButton:
+		return (event as InputEventJoypadButton).pressed
+	if event is InputEventJoypadMotion:
+		return absf((event as InputEventJoypadMotion).axis_value) >= 0.5
+	return false
+
+
+func _is_cancel_event(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		return key.pressed and not key.echo and key.physical_keycode == KEY_ESCAPE
+	return false
+
+
+static func rebind_actions() -> PackedStringArray:
+	return PackedStringArray(
+		[
+			"move_forward",
+			"move_back",
+			"move_left",
+			"move_right",
+			"jump",
+			"sprint",
+			"interact",
+			"look_behind",
+			"fire",
+			"aim",
+			"reload",
+			"melee",
+			"dive",
+			"phone",
+			"weapon_wheel",
+			"throw_grenade",
+		]
+	)
 
 
 # --- Engine application ---------------------------------------------------

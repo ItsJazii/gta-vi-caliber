@@ -24,9 +24,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -250.0
-offset_top = -200.0
+offset_top = -300.0
 offset_right = 250.0
-offset_bottom = 200.0
+offset_bottom = 300.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -36,13 +36,13 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 28
+theme_override_constants/margin_top = 24
 theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 22
+theme_override_constants/separation = 14
 
 [node name="Header" type="Label" parent="Panel/Margin/VBox"]
 layout_mode = 2
@@ -129,8 +129,29 @@ popup/item_1/id = 1
 popup/item_2/text = "High"
 popup/item_2/id = 2
 
+[node name="BindingsHeader" type="Label" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Controls"
+
+[node name="BindingsScroll" type="ScrollContainer" parent="Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Bindings" type="VBoxContainer" parent="Panel/Margin/VBox/BindingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="ResetBindings" type="Button" parent="Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+text = "Reset Controls"
+
 [node name="Spacer2" type="Control" parent="Panel/Margin/VBox"]
-custom_minimum_size = Vector2(0, 10)
+custom_minimum_size = Vector2(0, 4)
 layout_mode = 2
 size_flags_vertical = 3
 
