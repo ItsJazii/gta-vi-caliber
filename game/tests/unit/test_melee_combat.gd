@@ -175,3 +175,96 @@ func test_blocking_flag() -> bool:
 	var up: bool = m.is_blocking()
 	m.block(false)
 	return not down and up and not m.is_blocking()
+
+
+# --- static: hitstop_for_strike ---
+# Assertions are grouped into one test to stay under gdlint's max-public-methods
+# cap (see test_weapon_ballistics.gd for the same convention). _hs is a private
+# helper, so it doesn't count toward the cap.
+
+
+func _hs(strike: int, killed: bool) -> Dictionary:
+	return MeleeCombat.hitstop_for_strike(strike, killed)
+
+
+func test_hitstop_for_strike() -> bool:
+	var jab := _hs(MeleeCombat.Strike.JAB, false)
+	var cross := _hs(MeleeCombat.Strike.CROSS, false)
+	var kick := _hs(MeleeCombat.Strike.KICK, false)
+	var heavy := _hs(MeleeCombat.Strike.HEAVY, false)
+	var kill := _hs(MeleeCombat.Strike.HEAVY, true)
+	var kill_light := _hs(MeleeCombat.Strike.JAB, true)
+	var bogus := _hs(999, false)
+
+	# Dwell rises and the time_scale floor drops jab -> cross -> kick -> heavy.
+	var dwell_rises := (
+		float(jab["seconds"]) < float(cross["seconds"])
+		and float(cross["seconds"]) < float(kick["seconds"])
+		and float(kick["seconds"]) < float(heavy["seconds"])
+	)
+	var scale_drops := (
+		float(jab["scale"]) > float(cross["scale"])
+		and float(cross["scale"]) > float(kick["scale"])
+		and float(kick["scale"]) > float(heavy["scale"])
+	)
+
+	# Jab floor and heavy ceiling are exactly their table entries.
+	var jab_floor := (
+		is_equal_approx(
+			float(jab["seconds"]), float(MeleeCombat.HITSTOP_SECONDS[MeleeCombat.Strike.JAB])
+		)
+		and is_equal_approx(
+			float(jab["scale"]), float(MeleeCombat.HITSTOP_SCALE[MeleeCombat.Strike.JAB])
+		)
+	)
+	var heavy_ceiling := (
+		is_equal_approx(
+			float(heavy["seconds"]), float(MeleeCombat.HITSTOP_SECONDS[MeleeCombat.Strike.HEAVY])
+		)
+		and is_equal_approx(
+			float(heavy["scale"]), float(MeleeCombat.HITSTOP_SCALE[MeleeCombat.Strike.HEAVY])
+		)
+	)
+
+	# A kill overrides any strike (light and heavy) to the kill freeze, which is
+	# meatier than a non-kill heavy: longer dwell, lower (harder) scale.
+	var kill_overrides := (
+		is_equal_approx(float(kill_light["seconds"]), MeleeCombat.HITSTOP_KILL_SECONDS)
+		and is_equal_approx(float(kill_light["scale"]), MeleeCombat.HITSTOP_KILL_SCALE)
+		and is_equal_approx(float(kill["seconds"]), MeleeCombat.HITSTOP_KILL_SECONDS)
+		and is_equal_approx(float(kill["scale"]), MeleeCombat.HITSTOP_KILL_SCALE)
+	)
+	var kill_meatiest := (
+		float(kill["seconds"]) > float(heavy["seconds"])
+		and float(kill["scale"]) < float(heavy["scale"])
+	)
+
+	# Every dose is sane: positive dwell, scale in [0,1].
+	var sane := true
+	for s in [
+		MeleeCombat.Strike.JAB,
+		MeleeCombat.Strike.CROSS,
+		MeleeCombat.Strike.KICK,
+		MeleeCombat.Strike.HEAVY,
+	]:
+		for k in [false, true]:
+			var d := _hs(s, k)
+			if float(d["seconds"]) <= 0.0 or float(d["scale"]) < 0.0 or float(d["scale"]) > 1.0:
+				sane = false
+
+	# An unknown strike id falls back to the lightest (jab) crunch.
+	var fallback := (
+		is_equal_approx(float(bogus["seconds"]), float(jab["seconds"]))
+		and is_equal_approx(float(bogus["scale"]), float(jab["scale"]))
+	)
+
+	return (
+		dwell_rises
+		and scale_drops
+		and jab_floor
+		and heavy_ceiling
+		and kill_overrides
+		and kill_meatiest
+		and sane
+		and fallback
+	)

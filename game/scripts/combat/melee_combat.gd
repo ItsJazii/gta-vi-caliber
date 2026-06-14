@@ -45,6 +45,29 @@ const BLOCK_FLOOR_FRACTION: Dictionary = {
 	Strike.KICK: 0.05,
 	Strike.HEAVY: 0.25,
 }
+## Impact hitstop per strike: a connecting blow briefly jams the clock so it reads
+## as contact, not a clean pass-through. Dwell (real seconds) grows jab → heavy so
+## a haymaker crunches longer than a poke; light hits barely hitch on purpose, so
+## a fast flurry doesn't stutter.
+const HITSTOP_SECONDS: Dictionary = {
+	Strike.JAB: 0.015,
+	Strike.CROSS: 0.025,
+	Strike.KICK: 0.040,
+	Strike.HEAVY: 0.060,
+}
+## The time_scale floor while frozen (lower = harder stop); heavier strikes stop
+## harder, so the scale drops jab → heavy as the dwell rises.
+const HITSTOP_SCALE: Dictionary = {
+	Strike.JAB: 0.45,
+	Strike.CROSS: 0.30,
+	Strike.KICK: 0.15,
+	Strike.HEAVY: 0.06,
+}
+## A kill is the meatiest freeze regardless of which blow landed it. Matched to the
+## gun's kill hitstop (WeaponController.hitstop_kill_seconds / _scale) so fists and
+## bullets read as one combat language.
+const HITSTOP_KILL_SECONDS: float = 0.10
+const HITSTOP_KILL_SCALE: float = 0.02
 
 var _max_stamina: float
 var _stamina: float
@@ -127,6 +150,20 @@ static func combo_continues(time_since_last: float, window: float) -> bool:
 	if window <= 0.0:
 		return false
 	return time_since_last >= 0.0 and time_since_last <= window
+
+
+## The hitstop dose a landed strike earns: {"seconds": dwell, "scale": time_scale
+## floor} for a MeleeController to feed Hitstop.hit(). A kill overrides to the
+## meatiest freeze; otherwise dwell and scale come from the per-strike tables, and
+## an unknown strike falls back to the lightest (jab) crunch so a missing mapping
+## can never over-freeze. Pure: no scene, no RNG, so it unit-tests deterministically.
+static func hitstop_for_strike(strike: int, killed: bool) -> Dictionary:
+	if killed:
+		return {"seconds": HITSTOP_KILL_SECONDS, "scale": HITSTOP_KILL_SCALE}
+	return {
+		"seconds": float(HITSTOP_SECONDS.get(strike, HITSTOP_SECONDS[Strike.JAB])),
+		"scale": float(HITSTOP_SCALE.get(strike, HITSTOP_SCALE[Strike.JAB])),
+	}
 
 
 ## Enough stamina in the tank to throw this strike.
