@@ -41,7 +41,11 @@ func _init(
 	fuse_seconds: float = DEFAULT_FUSE
 ) -> void:
 	max_health = maxf(starting_max_health, 0.0)
-	fire_threshold_fraction = clampf(fire_threshold, 0.0, 1.0)
+	# Cap the fire band below the SMOKING band so a fire_threshold > 0.33 can't
+	# route a merely-DAMAGED car (fraction in [0.33, 0.66)) straight to ON_FIRE,
+	# arming the explosion fuse at half health and skipping the documented
+	# DAMAGED/SMOKING states.
+	fire_threshold_fraction = clampf(fire_threshold, 0.0, SMOKING_FRACTION)
 	fuse_duration = maxf(fuse_seconds, 0.0)
 	_health = max_health
 	_refresh_state()

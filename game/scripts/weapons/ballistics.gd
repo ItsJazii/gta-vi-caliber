@@ -30,12 +30,16 @@ static func damage_at_range(
 	falloff_end: float,
 	min_fraction: float
 ) -> float:
+	# Clamp the floor to [0,1] (the WeaponBallistics twin already does): an
+	# out-of-range min_fraction > 1 would otherwise make a far shot deal MORE than
+	# point-blank, and a negative one would heal the target.
+	var mf := clampf(min_fraction, 0.0, 1.0)
 	if distance <= falloff_start:
 		return base_damage
 	if distance >= falloff_end or falloff_end <= falloff_start:
-		return base_damage * min_fraction
+		return base_damage * mf
 	var t: float = (distance - falloff_start) / (falloff_end - falloff_start)
-	return base_damage * lerpf(1.0, min_fraction, t)
+	return base_damage * lerpf(1.0, mf, t)
 
 
 ## Damage multiplier for where a shot landed on a target: a hit at or above

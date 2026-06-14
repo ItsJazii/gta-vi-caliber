@@ -23,6 +23,13 @@ static func encode(snapshot: Dictionary) -> String:
 ## cleanly instead of being rejected. Unknown future versions pass through
 ## untouched (best effort). Pure: returns a new Dictionary.
 static func migrate(snapshot: Dictionary, from_version: int) -> Dictionary:
+	# A failed/empty decode ({}) must stay empty: otherwise the v1->v2 section-fill
+	# below turns it into {stats:{}, progression:{}, properties:{}} — NON-empty —
+	# which slips past SaveManager.load_game's `if snapshot.is_empty(): return`
+	# guard and runs restore({}) on every tracker, silently wiping stats and
+	# progression XP from a corrupt or empty old-version save.
+	if snapshot.is_empty():
+		return {}
 	var out := snapshot.duplicate(true)
 	if from_version < 2:
 		for key in ["stats", "progression", "properties"]:

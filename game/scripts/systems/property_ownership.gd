@@ -191,8 +191,15 @@ func pending_income() -> float:
 ## returns the whole-money amount and zeroes the bank. The caller credits it
 ## (PlayerStats.add_money).
 func collect() -> int:
-	var amount := int(_pending) if is_finite(_pending) else 0
-	_pending = 0.0
+	# Pay every whole money unit and CARRY the sub-unit remainder to the next
+	# collection. int() truncation used to silently discard the fractional pending
+	# (e.g. 0.5/visit -> 0 forever), leaking income that accrues per-frame in
+	# fractional day-slices.
+	if not is_finite(_pending):
+		_pending = 0.0
+		return 0
+	var amount := int(floor(_pending))
+	_pending -= float(amount)
 	return amount
 
 

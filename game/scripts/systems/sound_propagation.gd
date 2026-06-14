@@ -43,8 +43,11 @@ const FALLOFF_REFERENCE_SQ: float = 400.0
 const NOTICED_AT: float = 0.08
 ## An alarming sound (gunshot, explosion...) reaches ALARMED at this intensity.
 const ALARMED_AT_ALARMING: float = 0.25
-## An ambient sound (engine, horn...) needs to be much louder to alarm.
-const ALARMED_AT_AMBIENT: float = 0.6
+## An ambient sound (engine, horn...) needs to be much louder to alarm. Kept
+## just below a point-blank CAR_HORN (base loudness 0.55) so the loudest ambient
+## sound can actually reach ALARMED — at 0.6 the tier was unreachable (dead code)
+## while quieter kinds (engine/footstep/silenced shot) stay below it.
+const ALARMED_AT_AMBIENT: float = 0.5
 ## Default audibility threshold (mirrors NOTICED_AT so "audible" == "not unheard").
 const DEFAULT_AUDIBLE: float = NOTICED_AT
 ## Night drops the ambient floor by this factor (quiet streets carry sound).
