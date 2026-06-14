@@ -165,6 +165,10 @@ step "savepoint probe"
 "$GODOT_BIN" --headless --path game --script res://tests/savepoint_probe.gd
 step "turf claim probe"
 "$GODOT_BIN" --headless --path game --script res://tests/turf_claim_probe.gd
+step "brokerage terminal probe"
+"$GODOT_BIN" --headless --path game --script res://tests/brokerage_terminal_probe.gd
+step "robbery target probe"
+"$GODOT_BIN" --headless --path game --script res://tests/robbery_target_probe.gd
 
 # --- 7. systems wiring probes (scene-free: self-wiring nodes in a mock tree) --
 step "market event probe"

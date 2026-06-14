@@ -1,4 +1,4 @@
-[gd_scene load_steps=80 format=3]
+[gd_scene load_steps=84 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -68,6 +68,8 @@
 [ext_resource type="Script" path="res://scripts/world/savepoint.gd" id="61_savepoint"]
 [ext_resource type="Script" path="res://scripts/npc/responder_dispatcher.gd" id="62_responder"]
 [ext_resource type="Script" path="res://scripts/world/turf_claim.gd" id="63_turf"]
+[ext_resource type="Script" path="res://scripts/world/brokerage_terminal.gd" id="64_brokerage"]
+[ext_resource type="Script" path="res://scripts/world/robbery_target.gd" id="65_robbery"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -107,6 +109,12 @@ size = Vector3(1, 1.6, 1)
 
 [sub_resource type="BoxMesh" id="turf_mesh"]
 size = Vector3(2, 2.5, 2)
+
+[sub_resource type="BoxMesh" id="brokerage_mesh"]
+size = Vector3(2, 2.2, 1)
+
+[sub_resource type="BoxMesh" id="robbery_mesh"]
+size = Vector3(3, 3, 3)
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("38_sky")
@@ -525,6 +533,22 @@ script = ExtResource("63_turf")
 [node name="Body" type="MeshInstance3D" parent="TurfClaim"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 mesh = SubResource("turf_mesh")
+
+[node name="BrokerageTerminal" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 44)
+script = ExtResource("64_brokerage")
+
+[node name="Body" type="MeshInstance3D" parent="BrokerageTerminal"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+mesh = SubResource("brokerage_mesh")
+
+[node name="RobberyTarget" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 0, 10)
+script = ExtResource("65_robbery")
+
+[node name="Body" type="MeshInstance3D" parent="RobberyTarget"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+mesh = SubResource("robbery_mesh")
 
 [node name="VehicleModGarage" type="Area3D" parent="." groups=["vehicle_mod_shop"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 1, 44)

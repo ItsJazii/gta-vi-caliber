@@ -98,7 +98,7 @@ Groups the live scene already publishes: `player`, `player_health`,
 | `PlayerProgression` | respect/XP + unlocks | `add_xp`, `level`, `unlocks_at`, `is_unlocked` | wired live via `ProgressionTracker` (missions grant XP) |
 | `PlayerSkills` | activity-based proficiency (drive/shoot/stamina...) | `train`, `level`, `tier`, `bonus`, `overall_mastery`, `to_dict` | call `train` from the matching activity (distance driven, shots landed); read `bonus(id)` to scale recoil/grip/sprint; persist via the save system |
 | `StatTracker` | lifetime stats + 100% | `add`, `is_achieved`, `completion_percent`, serialize | wired live via `StatsCoordinator` |
-| `StockMarket` | event-driven equities + tracked portfolio | `apply_rivalry_shock`, `apply_sector_event`, `price`, `buy`, `sell`, `unrealized_gain` | a brokerage/phone-app UI vs `PlayerStats`; feed mission kills, heists & district turf changes in as price shocks (the assassinate-a-rival-to-pump-the-stock loop) |
+| `StockMarket` | event-driven equities + tracked portfolio | `apply_rivalry_shock`, `apply_sector_event`, `price`, `buy`, `sell`, `unrealized_gain` | **surfaced to the player** via `BrokerageTerminal` (Node3D, group `interactables`): a walk-up trading terminal whose price drifts over time; first press buys a lot, a later press sells the position for realized P&L against `PlayerStats`. CI-guarded by `tests/brokerage_terminal_probe.gd`. TODO: a multi-company trade UI; feed mission kills/heists/turf changes in as price shocks via `apply_rivalry_shock` (the assassinate-a-rival-to-pump-the-stock loop) |
 
 ## Support
 
