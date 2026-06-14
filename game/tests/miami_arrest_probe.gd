@@ -13,6 +13,9 @@ const WARMUP_FRAMES: int = 40
 const CRIME_COUNT: int = 8
 ## Grapple is ~1.5s (~90 physics ticks); allow comfortable margin before failing.
 const BUST_FRAMES: int = 400
+## Keep the unrelated threaded crowd load outside this short probe. Quitting
+## while that request starts can leave a zero-reference loader object at exit.
+const CROWD_LOAD_DELAY: float = 30.0
 
 var _scene: Node = null
 var _frames: int = 0
@@ -31,6 +34,9 @@ func _initialize() -> void:
 		quit(1)
 		return
 	_scene = packed.instantiate()
+	var crowd := _scene.find_child("CrowdDirector", true, false)
+	if crowd != null and "pedestrian_load_delay" in crowd:
+		crowd.set("pedestrian_load_delay", CROWD_LOAD_DELAY)
 	root.add_child(_scene)
 
 
