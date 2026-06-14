@@ -15,7 +15,8 @@ var _death_cleared_wanted: bool = false
 
 
 func _ready() -> void:
-	_stats = StatTracker.new()
+	if _stats == null:
+		_stats = StatTracker.new()
 	add_to_group("stats")
 	var mission := get_tree().get_first_node_in_group("mission")
 	if mission != null and mission.has_signal("mission_completed"):
@@ -58,3 +59,18 @@ func stat(stat_id: String) -> float:
 ## Overall completion 0..100, for the pause-menu progress readout.
 func completion_percent() -> float:
 	return _stats.completion_percent() if _stats != null else 0.0
+
+
+# --- Persistence (SaveManager) ---------------------------------------------
+
+
+func serialize() -> Dictionary:
+	return _stats.serialize() if _stats != null else {}
+
+
+func restore(data: Dictionary) -> void:
+	if _stats == null:
+		_stats = StatTracker.new()
+	_stats.restore(data)
+	_was_wanted = false
+	_death_cleared_wanted = false

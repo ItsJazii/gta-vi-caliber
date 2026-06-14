@@ -9,7 +9,9 @@ extends RefCounted
 
 ## v2 added stats (money/armor), progression XP, property ownership and
 ## boat/bike vehicle entries on top of v1's position/health/wanted/cars.
-const VERSION: int = 2
+## v3 added lifetime/100%-completion stats as a separate section from the
+## player wallet/armor "stats" payload.
+const VERSION: int = 3
 
 
 ## Wrap a state snapshot with a version header and serialise to JSON text.
@@ -19,9 +21,9 @@ static func encode(snapshot: Dictionary) -> String:
 
 ## Bring an older snapshot up to the current shape. v1 saves predate the
 ## stats/progression/properties keys — they're normalised to empty dictionaries
-## (every restore() treats {} as "keep scene defaults"), so a v1 save loads
-## cleanly instead of being rejected. Unknown future versions pass through
-## untouched (best effort). Pure: returns a new Dictionary.
+## (every restore() treats {} as "no saved data"), so a v1 save loads cleanly
+## instead of being rejected. Unknown future versions pass through untouched
+## (best effort). Pure: returns a new Dictionary.
 static func migrate(snapshot: Dictionary, from_version: int) -> Dictionary:
 	# A failed/empty decode ({}) must stay empty: otherwise the v1->v2 section-fill
 	# below turns it into {stats:{}, progression:{}, properties:{}} — NON-empty —
@@ -35,6 +37,8 @@ static func migrate(snapshot: Dictionary, from_version: int) -> Dictionary:
 		for key in ["stats", "progression", "properties"]:
 			if not out.get(key) is Dictionary:
 				out[key] = {}
+	if from_version < 3 and not out.get("lifetime_stats") is Dictionary:
+		out["lifetime_stats"] = {}
 	return out
 
 

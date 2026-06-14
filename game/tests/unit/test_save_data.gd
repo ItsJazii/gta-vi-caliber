@@ -82,8 +82,8 @@ func test_number_or_falls_back() -> bool:
 	)
 
 
-func test_version_is_two() -> bool:
-	return SaveData.VERSION == 2
+func test_version_is_three() -> bool:
+	return SaveData.VERSION == 3
 
 
 func test_migrate_v1_fills_new_sections() -> bool:
@@ -94,8 +94,19 @@ func test_migrate_v1_fills_new_sections() -> bool:
 		and (migrated["stats"] as Dictionary).is_empty()
 		and migrated.get("progression") is Dictionary
 		and migrated.get("properties") is Dictionary
+		and migrated.get("lifetime_stats") is Dictionary
 		and migrated["player_pos"] == v1["player_pos"]
 		and migrated["health"] == v1["health"]
+	)
+
+
+func test_migrate_v2_fills_lifetime_stats() -> bool:
+	var v2 := {"stats": {"money": 900}, "progression": {"total_xp": 12}}
+	var migrated := SaveData.migrate(v2, 2)
+	return (
+		migrated.get("lifetime_stats") is Dictionary
+		and (migrated["lifetime_stats"] as Dictionary).is_empty()
+		and migrated["stats"] == v2["stats"]
 	)
 
 

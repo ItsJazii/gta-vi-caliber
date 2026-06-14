@@ -3,12 +3,13 @@ extends Node
 ## Quick-save ("quick_save", F5) / quick-load ("quick_load", F9) of game state.
 ##
 ## Gathers a snapshot from the player and the systems that own state (health,
-## wanted, stats, progression, properties) by group, serialises it via SaveData
-## (pure, tested, versioned with migration), and writes it to
-## user://savegame.json. Finds everything by group so it needs no edits to the
-## player scene. Player position, health, wanted level, money/armor, respect
-## XP, property ownership, and every vehicle's transform (+health where the
-## vehicle has one — cars and bikes; boats are transform-only) persist.
+## wanted, player stats, respect progression, lifetime stats, properties) by
+## group, serialises it via SaveData (pure, tested, versioned with migration),
+## and writes it to user://savegame.json. Finds everything by group so it needs
+## no edits to the player scene. Player position, health, wanted level,
+## money/armor, respect XP, 100%-completion counters, property ownership, and
+## every vehicle's transform (+health where the vehicle has one — cars and
+## bikes; boats are transform-only) persist.
 ## Vehicles are found through the "vehicles" group and matched by node name
 ## (unique within a scene), so this stays streaming-ready.
 
@@ -55,6 +56,7 @@ func _gather() -> Dictionary:
 		["wanted", "wanted"],
 		["stats", "player_stats"],
 		["progression", "progression"],
+		["lifetime_stats", "stats"],
 	]:
 		var holder := _first(entry[1])
 		if holder != null and holder.has_method("serialize"):
@@ -114,6 +116,7 @@ func _apply(snapshot: Dictionary) -> void:
 		["wanted", "wanted"],
 		["stats", "player_stats"],
 		["progression", "progression"],
+		["lifetime_stats", "stats"],
 	]:
 		var holder := _first(entry[1])
 		if holder != null and holder.has_method("restore"):

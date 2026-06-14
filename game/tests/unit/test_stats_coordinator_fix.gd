@@ -65,3 +65,22 @@ func test_death_while_clean_does_not_suppress_a_later_escape() -> void:
 	wanted.w = false
 	sc._process(0.0)  # genuine escape -> counts
 	assert_float(sc.stat("busts_evaded")).is_equal(1.0)
+
+
+func test_save_round_trip_preserves_lifetime_stats() -> void:
+	var sc: StatsCoordinator = auto_free(StatsCoordinator.new())
+	add_child(sc)
+	sc.restore({"stats": {"missions_passed": 4.0, "busts_evaded": 2.0}})
+	var snapshot := sc.serialize()
+	var loaded: StatsCoordinator = auto_free(StatsCoordinator.new())
+	loaded.restore(snapshot)
+	add_child(loaded)
+	assert_float(loaded.stat("missions_passed")).is_equal(4.0)
+	assert_float(loaded.stat("busts_evaded")).is_equal(2.0)
+
+
+func test_restore_before_tree_entry_survives_ready() -> void:
+	var sc: StatsCoordinator = auto_free(StatsCoordinator.new())
+	sc.restore({"stats": {"missions_passed": 3.0}})
+	add_child(sc)
+	assert_float(sc.stat("missions_passed")).is_equal(3.0)
