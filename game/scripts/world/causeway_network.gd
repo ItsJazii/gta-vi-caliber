@@ -114,6 +114,8 @@ static func deck_height(t: float, rise: float) -> float:
 
 ## Point on a polyline at arc-distance `dist` from the start (clamped to ends).
 static func sample(points: PackedVector2Array, dist: float) -> Vector2:
+	if points.is_empty():
+		return Vector2.ZERO  # guard: the fall-through return indexes points[-1]
 	if points.size() == 1:
 		return points[0]
 	if dist <= 0.0:
