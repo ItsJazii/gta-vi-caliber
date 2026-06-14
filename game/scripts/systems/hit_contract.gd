@@ -93,6 +93,14 @@ func reward_of(id: String) -> int:
 	return _contracts[id]["reward"]
 
 
+## Display target for a contract, or "" for an unknown id. Kept on the model so
+## boards/HUDs can label the active hit without duplicating contract data.
+func target_of(id: String) -> String:
+	if not _contracts.has(id):
+		return ""
+	return String(_contracts[id]["target"])
+
+
 ## The market shock a contract produces, as {company_id, magnitude, spillover} —
 ## feed it to StockMarket.apply_rivalry_shock(). Empty {} for an unknown id. Lets a
 ## caller preview the swing and invest before taking the job.

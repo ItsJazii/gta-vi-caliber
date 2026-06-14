@@ -72,16 +72,46 @@ func _verify_loop(board: HitContractBoard) -> String:
 
 	var next_id: String = str(board.contracts.available()[0])
 	var reward: int = board.contracts.reward_of(next_id)
+	var target: String = board.contracts.target_of(next_id)
 	var money0: int = int(stats.money)
 	var done0: int = board.contracts.completed_count()
 
 	board.interact(player)
-	if not board.has_active():
-		return "accept did not activate a hit (id %s)" % next_id
+	var accept_err := _verify_accept(board, stats, next_id, target)
+	if not accept_err.is_empty():
+		return accept_err
 
 	board.interact(player)
+	var complete_err := _verify_complete(board, stats, target, money0, reward, done0)
+	if not complete_err.is_empty():
+		return complete_err
+	print(
+		(
+			"hit contract board probe: OK (hit %s, money %d->%d, +$%d, earned %d)"
+			% [next_id, money0, int(stats.money), reward, board.earned()]
+		)
+	)
+	return ""
+
+
+func _verify_accept(board: HitContractBoard, stats: Node, id: String, target: String) -> String:
+	if not board.has_active():
+		return "accept did not activate a hit (id %s)" % id
+	if (
+		not ("objective_title" in stats)
+		or String(stats.objective_title) != "Complete hit: %s" % target
+	):
+		return "accept did not publish hit objective (got '%s')" % String(stats.objective_title)
+	return ""
+
+
+func _verify_complete(
+	board: HitContractBoard, stats: Node, target: String, money0: int, reward: int, done0: int
+) -> String:
 	if board.has_active():
 		return "complete left a hit active"
+	if "objective_title" in stats and String(stats.objective_title) == "Complete hit: %s" % target:
+		return "complete did not clear hit objective"
 	if int(stats.money) != money0 + reward:
 		return "reward not paid (money %d->%d, reward %d)" % [money0, int(stats.money), reward]
 	if board.contracts.completed_count() != done0 + 1 or board.earned() < reward:
@@ -89,10 +119,4 @@ func _verify_loop(board: HitContractBoard) -> String:
 			"completion not recorded (done %d, earned %d)"
 			% [board.contracts.completed_count(), board.earned()]
 		)
-	print(
-		(
-			"hit contract board probe: OK (hit %s, money %d->%d, +$%d, earned %d)"
-			% [next_id, money0, int(stats.money), reward, board.earned()]
-		)
-	)
 	return ""
