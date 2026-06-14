@@ -125,14 +125,18 @@ static func extrude_prism(
 		for p in ring:
 			vertices.append(Vector3(p.x, top, p.y))
 			normals.append(UP)
-		# Keep triangulate_polygon's winding so the roof's geometric normal points
-		# up (+Y) — a downward ray/footstep must hit the roof's front face, or it
-		# falls through to the ground plane below.
+		# REVERSE triangulate_polygon's winding so the roof's geometric normal
+		# points UP (+Y). For a CCW ring (extrude_prism normalises to CCW) the raw
+		# triangulation winds the roof cap DOWN (-Y) — verified by test — and the
+		# roof's ConcavePolygonShape3D collider is single-sided + winding-keyed, so
+		# a downward ray/footstep/landing passed straight through the roof to the
+		# ground. Swapping the last two indices flips the cap to face up; vertex and
+		# index COUNTS are unchanged so the geometry/count tests stay green.
 		var t := 0
 		while t + 2 < tri.size() + 1 and t + 2 < tri.size():
 			indices.append(roof_base + tri[t])
-			indices.append(roof_base + tri[t + 1])
 			indices.append(roof_base + tri[t + 2])
+			indices.append(roof_base + tri[t + 1])
 			t += 3
 
 	return {"vertices": vertices, "normals": normals, "indices": indices}
