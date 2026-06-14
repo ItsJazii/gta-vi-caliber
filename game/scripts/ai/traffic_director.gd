@@ -113,6 +113,20 @@ func _apply_flow() -> void:
 			pos, car.heading(), candidates, flow_range, flow_lane_half_width
 		)
 		car.speed_limit = TrafficFlow.follow_speed(car.speed, gap, flow_stop_gap, flow_safe_gap)
+		# Hold at a red/yellow signalled junction ahead — stop overrides the
+		# follow cap. No TrafficSignalField in the scene -> always false, so
+		# ambient traffic behaves exactly as before (issue #61).
+		if _hold_for_signal(car, pos):
+			car.speed_limit = 0.0
+
+
+## True if a signalled junction ahead shows red/yellow for this car's approach,
+## so the per-tick speed cap should drop to a stop. The batched TrafficSignalField
+## owns the junction clocks; no field in the scene means no holds, so ambient
+## traffic is unaffected.
+func _hold_for_signal(car: TrafficCar, pos: Vector3) -> bool:
+	var field := get_tree().get_first_node_in_group("traffic_signal_field") as TrafficSignalField
+	return field != null and field.must_hold(pos, car.heading(), car.speed)
 
 
 ## True once at least one district's building colliders exist. The bake reads the
