@@ -25,15 +25,18 @@ var _combat: MeleeCombat
 var _player: Node3D = null
 var _was_active: bool = false
 var _hitstop: Hitstop = null
+var _impact_audio: MeleeImpactAudio = null
 
 
 func _ready() -> void:
 	_attack = MeleeAttack.new()
 	_combat = MeleeCombat.new(max_stamina)
-	# Code-spawned so the melee impact crunch stays self-contained (mirrors
+	# Code-spawned so the melee impact crunch + sound stay self-contained (mirrors
 	# WeaponController). No scene wiring, no autoload.
 	_hitstop = Hitstop.new()
 	add_child(_hitstop)
+	_impact_audio = MeleeImpactAudio.new()
+	add_child(_impact_audio)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -97,6 +100,10 @@ func _strike() -> void:
 	if _hitstop != null:
 		var dose := MeleeCombat.hitstop_for_strike(strike, killed)
 		_hitstop.hit(dose["seconds"], dose["scale"])
+	# A connecting strike also plays a synthesized impact, weighted by strike and
+	# meatiest on a kill. Same connect branch as the hitstop, so a whiff is silent.
+	if _impact_audio != null:
+		_impact_audio.play(strike, killed)
 	var node := collider as Node
 	if node != null and (node.is_in_group("pedestrians") or node.is_in_group("police")):
 		_report_crime(killed, hit.position)
