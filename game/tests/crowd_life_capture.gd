@@ -10,6 +10,10 @@ extends SceneTree
 ## Citizens that are actually saying something.
 ## Run: godot --headless --path game --script res://tests/crowd_life_capture.gd
 
+const CityDirector = preload("res://scripts/npc/city_director.gd")
+const CrowdDirector = preload("res://scripts/npc/crowd_director.gd")
+const Citizen = preload("res://scripts/npc/citizen.gd")
+
 const POIS := {"office": Vector3(8, 0, 0), "diner": Vector3(-8, 0, 0), "bar": Vector3(0, 0, 8)}
 const SPAWN_TICKS := 12
 const SETTLE_FRAMES := 8

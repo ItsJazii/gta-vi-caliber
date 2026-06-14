@@ -5,6 +5,8 @@ extends SceneTree
 ## (the threshold math is unit-tested separately).
 ## Run: godot --headless --path game --script res://tests/panic_capture.gd
 
+const Citizen = preload("res://scripts/npc/citizen.gd")
+
 const COUNT := 4
 const SPREAD_FRAMES := 240
 const SETTLE_FRAMES := 10

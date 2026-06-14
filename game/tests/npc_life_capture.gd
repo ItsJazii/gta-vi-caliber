@@ -13,6 +13,9 @@ extends SceneTree
 ## (Citizen extends Pedestrian + CityDirector) that the unit runner can't reach.
 ## Run:  godot --headless --path game --script res://tests/npc_life_capture.gd
 
+const CityDirector = preload("res://scripts/npc/city_director.gd")
+const Citizen = preload("res://scripts/npc/citizen.gd")
+
 const POIS := {
 	"home": Vector3(-20, 0, -20),
 	"office": Vector3(20, 0, -20),

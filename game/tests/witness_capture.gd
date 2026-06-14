@@ -5,6 +5,9 @@ extends SceneTree
 ## test_npc_memory.gd; this proves the Citizen wiring (panic → memory → recognise).
 ## Run: godot --headless --path game --script res://tests/witness_capture.gd
 
+const Citizen = preload("res://scripts/npc/citizen.gd")
+const NpcMemory = preload("res://scripts/npc/npc_memory.gd")
+
 const SETTLE_FRAMES := 10
 const WITNESS_FRAMES := 150
 

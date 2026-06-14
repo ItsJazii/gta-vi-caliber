@@ -7,6 +7,10 @@ extends SceneTree
 ## walk straight (covered elsewhere); here we exercise the routed branch.
 ## Run: godot --headless --path game --script res://tests/nav_life_capture.gd
 
+const CityDirector = preload("res://scripts/npc/city_director.gd")
+const Citizen = preload("res://scripts/npc/citizen.gd")
+const NavGrid = preload("res://scripts/ai/nav_grid.gd")
+
 const MOVE_FRAMES := 1400
 const SETTLE_FRAMES := 8
 

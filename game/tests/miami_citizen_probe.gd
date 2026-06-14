@@ -6,6 +6,9 @@ extends SceneTree
 ## the BarkDirector pool capped. Run headless:
 ##   godot --headless --path game --script res://tests/miami_citizen_probe.gd
 
+const CityDirector = preload("res://scripts/npc/city_director.gd")
+const BarkDirector = preload("res://scripts/npc/bark_director.gd")
+
 const SCENE_PATH: String = "res://scenes/world/miami.tscn"
 const WARMUP_FRAMES: int = 480
 

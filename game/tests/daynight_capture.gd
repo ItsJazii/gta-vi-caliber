@@ -5,6 +5,9 @@ extends SceneTree
 ## math itself is unit-tested in test_sun_path.gd; this guards the node wiring.
 ## Run: godot --headless --path game --script res://tests/daynight_capture.gd
 
+const CityDirector = preload("res://scripts/npc/city_director.gd")
+const DayNightCycle = preload("res://scripts/world/day_night_cycle.gd")
+
 var _sun: DirectionalLight3D = null
 var _director: CityDirector = null
 var _cycle: DayNightCycle = null
