@@ -107,12 +107,15 @@ func _ready() -> void:
 	# self-contained and doesn't touch player.tscn.
 	_interact_prompt = InteractPrompt.new()
 	add_child(_interact_prompt)
+	# The pause menu is likewise code-spawned so the feature stays self-contained
+	# and doesn't touch the world scene; it pauses the tree itself (it runs with
+	# PROCESS_MODE_ALWAYS) and owns the mouse cursor while open.
+	var pause_menu := preload("res://scenes/ui/pause_menu.tscn").instantiate()
+	add_child(pause_menu)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
-		_toggle_mouse_capture()
-	elif event.is_action_pressed("interact") and not _on_phone():
+	if event.is_action_pressed("interact") and not _on_phone():
 		if not _toggle_vehicle():
 			_try_interact()
 
@@ -429,10 +432,3 @@ func _update_jump_timers(delta: float) -> void:
 		_time_since_jump_pressed = 0.0
 	else:
 		_time_since_jump_pressed += delta
-
-
-func _toggle_mouse_capture() -> void:
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	else:
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

@@ -50,7 +50,10 @@ streaming Vice City world, ready to walk, drive, and trigger the wanted system.
 | `F` | Melee (unarmed) |
 | `Tab` or `P` | Phone |
 | `F5` / `F9` | Quick-save / quick-load |
-| `Esc` | Pause / release mouse cursor |
+| `Esc` | Pause menu |
+
+The mouse cursor is handled automatically: captured while you play and
+freed while the pause menu is open, rather than toggled by hand.
 
 A gamepad works too: left stick moves, right trigger fires, left trigger
 aims, `A` jumps, `B` dives, `X` interacts, `Y` reloads, shoulders holster
