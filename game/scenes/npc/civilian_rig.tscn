@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="PackedScene" path="res://assets/characters/player_male_01/Superhero_Male_FullBody.gltf" id="1_model"]
+[ext_resource type="PackedScene" path="res://assets/characters/mc/Superhero_Male_FullBody.gltf" id="1_model"]
 [ext_resource type="Script" path="res://scripts/player/animated_rig.gd" id="2_rig"]
 [ext_resource type="PackedScene" path="res://assets/characters/coastal_residents/npc_man.glb" id="3_man"]
 [ext_resource type="PackedScene" path="res://assets/characters/coastal_residents/npc_woman.glb" id="4_woman"]

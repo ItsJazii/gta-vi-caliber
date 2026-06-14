@@ -8,7 +8,7 @@ path="res://.godot/imported/Hair_SimpleParted.gltf-4ff904029bf8660f96131b40de474
 
 [deps]
 
-source_file="res://assets/characters/player_male_01/Hair_SimpleParted.gltf"
+source_file="res://assets/characters/mc/Hair_SimpleParted.gltf"
 dest_files=["res://.godot/imported/Hair_SimpleParted.gltf-4ff904029bf8660f96131b40de474f42.scn"]
 
 [params]

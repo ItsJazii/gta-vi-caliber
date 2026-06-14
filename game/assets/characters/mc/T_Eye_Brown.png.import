@@ -2,9 +2,9 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccvnf4aastus3"
-path.s3tc="res://.godot/imported/T_Hair_1_BaseColor.png-4da57346d99a9c1d96812cc24974f6b0.s3tc.ctex"
-path.etc2="res://.godot/imported/T_Hair_1_BaseColor.png-4da57346d99a9c1d96812cc24974f6b0.etc2.ctex"
+uid="uid://d2lfien7vusar"
+path.s3tc="res://.godot/imported/T_Eye_Brown.png-e103cca9c63f0a230a91f3ab2ff82fe5.s3tc.ctex"
+path.etc2="res://.godot/imported/T_Eye_Brown.png-e103cca9c63f0a230a91f3ab2ff82fe5.etc2.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
@@ -12,8 +12,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/characters/player_male_01/T_Hair_1_BaseColor.png"
-dest_files=["res://.godot/imported/T_Hair_1_BaseColor.png-4da57346d99a9c1d96812cc24974f6b0.s3tc.ctex", "res://.godot/imported/T_Hair_1_BaseColor.png-4da57346d99a9c1d96812cc24974f6b0.etc2.ctex"]
+source_file="res://assets/characters/mc/T_Eye_Brown.png"
+dest_files=["res://.godot/imported/T_Eye_Brown.png-e103cca9c63f0a230a91f3ab2ff82fe5.s3tc.ctex", "res://.godot/imported/T_Eye_Brown.png-e103cca9c63f0a230a91f3ab2ff82fe5.etc2.ctex"]
 
 [params]
 

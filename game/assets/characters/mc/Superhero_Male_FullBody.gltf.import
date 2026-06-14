@@ -8,7 +8,7 @@ path="res://.godot/imported/Superhero_Male_FullBody.gltf-a9a01d321386fbec82f2572
 
 [deps]
 
-source_file="res://assets/characters/player_male_01/Superhero_Male_FullBody.gltf"
+source_file="res://assets/characters/mc/Superhero_Male_FullBody.gltf"
 dest_files=["res://.godot/imported/Superhero_Male_FullBody.gltf-a9a01d321386fbec82f25721cacd66c7.scn"]
 
 [params]
