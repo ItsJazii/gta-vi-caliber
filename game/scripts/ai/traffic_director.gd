@@ -77,7 +77,7 @@ func _physics_process(delta: float) -> void:
 	if player == null:
 		return
 	var center := player.global_position
-	if bake_nav and nav == null:
+	if bake_nav and nav == null and _skyline_is_solid():
 		_bake_nav(center)
 	_cull(center)
 	_repath(center)
@@ -113,6 +113,14 @@ func _apply_flow() -> void:
 			pos, car.heading(), candidates, flow_range, flow_lane_half_width
 		)
 		car.speed_limit = TrafficFlow.follow_speed(car.speed, gap, flow_stop_gap, flow_safe_gap)
+
+
+## True once at least one district's building colliders exist. The bake reads the
+## skyline off physics colliders, and the player is placed before the spawn
+## district's buildings are extruded, so baking earlier would miss them and route
+## cars straight through not-yet-built footprints.
+func _skyline_is_solid() -> bool:
+	return not get_tree().get_nodes_in_group("world_buildings").is_empty()
 
 
 ## Raycast a coarse grid of the area into a NavGrid, blocking cells whose ground

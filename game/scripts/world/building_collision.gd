@@ -20,6 +20,8 @@ static func build(buildings: Array, proj: GeoProjection) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = "Buildings_col"
 	body.collision_layer = WORLD_LAYER
+	# Lets directors wait for a solid skyline before baking nav off the colliders.
+	body.add_to_group("world_buildings")
 	var made := 0
 	for b in buildings:
 		var height := float(b.get("height_m", 0.0))

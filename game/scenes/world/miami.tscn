@@ -325,6 +325,7 @@ cull_radius = 70.0
 
 [node name="TrafficDirector" type="Node3D" parent="."]
 script = ExtResource("16_traffic")
+bake_nav = true
 target_count = 20
 spawn_max_radius = 60.0
 cull_radius = 82.0
