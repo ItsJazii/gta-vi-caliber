@@ -28,6 +28,8 @@ const FOG_SIGHT_BITE: float = 0.55
 const MIN_SIGHT: float = 0.3
 ## Traffic crawls to this fraction of its dry speed when fully soaked.
 const SOAKED_TRAFFIC_SPEED: float = 0.75
+## Rain adds extra murk on top of cloud fog for AI/gameplay visibility.
+const RAIN_FOG_GAIN: float = 0.35
 
 
 ## Clamp any external 0..1 level defensively. Genuinely NaN-safe: clampf(NaN)
@@ -60,12 +62,27 @@ static func visibility_range(base_range: float, fog: float) -> float:
 	return maxf(reduced, MIN_VISIBILITY)
 
 
+## Normalized gameplay fog from the front state: overcast fog comes from clouds,
+## while hard rain adds extra close-range murk. This is intentionally normalized
+## 0..1 so AI/traffic systems do not need to know the scene's authored fog
+## density values.
+static func fog_level(cloudiness: float, rain: float) -> float:
+	return clampf(_level(cloudiness) + _level(rain) * RAIN_FOG_GAIN, 0.0, 1.0)
+
+
 ## How far cops/NPCs can see, as a fraction of their clear-weather range: 1.0 in
 ## clear/dry, dropping with both rain and fog (fog bites harder), floored at
 ## MIN_SIGHT. Multiply a detection range by this. Monotonic in both inputs.
 static func ai_sight_multiplier(wetness: float, fog: float) -> float:
 	var loss := _level(wetness) * RAIN_SIGHT_BITE + _level(fog) * FOG_SIGHT_BITE
 	return clampf(1.0 - loss, MIN_SIGHT, 1.0)
+
+
+## Actual sight distance after weather. A negative/zero base range is treated as
+## the safe minimum so callers never accidentally produce blind AI.
+static func ai_sight_range(base_range: float, wetness: float, fog: float) -> float:
+	var base := maxf(base_range, MIN_VISIBILITY)
+	return maxf(base * ai_sight_multiplier(wetness, fog), MIN_VISIBILITY)
 
 
 ## Traffic cruise-speed scale: 1.0 dry, easing to SOAKED_TRAFFIC_SPEED soaked.

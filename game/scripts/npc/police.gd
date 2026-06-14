@@ -61,6 +61,7 @@ var _time_unseen: float = 0.0
 var _engaged: bool = false
 var _gave_up: bool = false
 var _flinch_until: float = 0.0
+var _weather: Node = null
 
 @onready var _rig: CharacterAnimator = $Rig
 
@@ -170,7 +171,10 @@ func _pursue(player: Node3D, delta: float) -> Dictionary:
 
 ## A clear line of sight to the player within spotting range.
 func _sees(player: Node3D, shot: Dictionary) -> bool:
-	if NpcBrain.planar_distance(global_position, player.global_position) > sight_range:
+	if (
+		NpcBrain.planar_distance(global_position, player.global_position)
+		> Police.weather_adjusted_sight_range(sight_range, _weather_node())
+	):
 		return false
 	return _los_clear(shot)
 
@@ -309,6 +313,24 @@ func _pick_patrol() -> void:
 func _nearest_player() -> Node3D:
 	var players := get_tree().get_nodes_in_group("player")
 	return players[0] as Node3D if not players.is_empty() else null
+
+
+func _weather_node() -> Node:
+	if _weather == null or not is_instance_valid(_weather):
+		_weather = get_tree().get_first_node_in_group("weather")
+	return _weather
+
+
+static func weather_adjusted_sight_range(base_range: float, weather: Node) -> float:
+	if weather == null:
+		return maxf(base_range, WeatherEffects.MIN_VISIBILITY)
+	var wet := 0.0
+	var fog := 0.0
+	if weather.has_method("wetness"):
+		wet = float(weather.wetness())
+	if weather.has_method("gameplay_fog"):
+		fog = float(weather.gameplay_fog())
+	return WeatherEffects.ai_sight_range(base_range, wet, fog)
 
 
 func _fall(delta: float) -> void:

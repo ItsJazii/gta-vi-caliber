@@ -74,6 +74,28 @@ func condition() -> String:
 	return _state.label()
 
 
+## Normalized 0..1 wetness for gameplay consumers (handling, sight, sound).
+func wetness() -> float:
+	return _state.wetness
+
+
+## Normalized 0..1 rain intensity for systems that care about the falling rain
+## itself rather than soaked surfaces.
+func rain_level() -> float:
+	return _state.rain
+
+
+## Normalized 0..1 murk level for AI/gameplay visibility. This stays separate
+## from authored Environment fog density, which varies per scene for art reasons.
+func gameplay_fog() -> float:
+	return WeatherEffects.fog_level(_state.cloudiness, _state.rain)
+
+
+## Convenience multiplier for NPC/police sight ranges.
+func ai_sight_multiplier() -> float:
+	return WeatherEffects.ai_sight_multiplier(wetness(), gameplay_fog())
+
+
 func _apply() -> void:
 	_apply_fog()
 	_apply_storm_atmosphere()
