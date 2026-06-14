@@ -140,6 +140,12 @@ func _build_timesliced(data: Dictionary) -> void:
 	if not await _next_stage(tree):
 		return
 	_commit_buildings(verts, norms, idx, colors)
+	# Solid per-building convex colliders, not a welded trimesh: a concave shell
+	# lets a fast sprint-jump tunnel inside with nothing to eject the capsule.
+	if build_collision:
+		var col_body := BuildingCollision.build(buildings, proj)
+		if col_body != null:
+			add_child(col_body)
 
 	# Remaining passes, one per frame.
 	var stages: Array[Callable] = [
@@ -676,9 +682,9 @@ func _project_ring(raw: Array, proj: GeoProjection) -> PackedVector2Array:
 	return ring
 
 
-## Weld the accumulated building geometry into the single "Buildings" mesh and
-## its trimesh collider — the one deliberately chunky stage of the time-sliced
-## build (collision cooking can't be split without splitting the mesh).
+## Weld the accumulated building geometry into the single "Buildings" mesh (one
+## draw call). Collision is built separately as solid per-building convex prisms
+## (see the BuildingCollision call in _build_timesliced), not a welded trimesh.
 func _commit_buildings(
 	verts: PackedVector3Array,
 	norms: PackedVector3Array,
@@ -695,8 +701,6 @@ func _commit_buildings(
 	mi.name = "Buildings"
 	mi.mesh = mesh
 	add_child(mi)
-	if build_collision:
-		mi.create_trimesh_collision()
 
 
 func _build_roads(roads: Array, proj: GeoProjection) -> void:
