@@ -13,7 +13,11 @@ var _progression: PlayerProgression
 
 
 func _ready() -> void:
-	_progression = PlayerProgression.new()
+	# Only allocate a fresh progression if one wasn't already supplied — a save
+	# load can call restore() before this node enters the tree, and an
+	# unconditional `new()` here would wipe that restored XP back to zero.
+	if _progression == null:
+		_progression = PlayerProgression.new()
 	add_to_group("progression")
 	var mission := get_tree().get_first_node_in_group("mission")
 	if mission == null:

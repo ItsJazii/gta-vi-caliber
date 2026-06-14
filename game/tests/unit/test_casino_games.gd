@@ -134,10 +134,19 @@ func test_is_bust_and_dealer_should_hit() -> bool:
 
 
 func test_blackjack_settle_win_and_natural() -> bool:
-	# 20 beats 18 -> 200; player 21 (natural) vs 20 -> 2.5x = 250.
+	# 20 beats 18 -> 200; player 21 (natural, default 2 cards) vs 20 -> 2.5x = 250.
 	return (
 		CasinoGames.blackjack_settle(20, 18, 100) == 200
 		and CasinoGames.blackjack_settle(21, 20, 100) == 250
+	)
+
+
+func test_blackjack_multicard_21_is_not_a_natural() -> bool:
+	# A 21 built from THREE cards is an ordinary win (2x), not the 2.5x natural;
+	# a two-card 21 still pays the natural bonus.
+	return (
+		CasinoGames.blackjack_settle(21, 20, 100, 3) == 200
+		and CasinoGames.blackjack_settle(21, 20, 100, 2) == 250
 	)
 
 

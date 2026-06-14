@@ -192,15 +192,22 @@ static func dealer_should_hit(value: int) -> bool:
 
 
 ## Total chips returned settling player vs dealer for the given stake.
-## Player blackjack (21 on two cards) returns 2.5x; an ordinary win 2x; a push
-## returns the stake (1x); a loss returns 0. A player bust always loses.
-static func blackjack_settle(player_value: int, dealer_value: int, bet: int) -> int:
+## A NATURAL blackjack — 21 on the first two cards — returns 2.5x; an ordinary
+## win (including a multi-card 21) returns 2x; a push returns the stake (1x); a
+## loss returns 0. A player bust always loses. `player_card_count` defaults to 2
+## (the freshly-dealt hand) so a bare 21 reads as a natural; pass the real count
+## (3+) for a hit-to-21 hand so it is paid as an ordinary win, not a natural.
+static func blackjack_settle(
+	player_value: int, dealer_value: int, bet: int, player_card_count: int = 2
+) -> int:
 	var stake := maxi(bet, 0)
 	if stake == 0:
 		return 0
 	if is_bust(player_value):
 		return 0
-	var player_natural := player_value == 21
+	# A natural is 21 on exactly two cards; a 21 built from three+ cards is just a
+	# strong ordinary win and must not collect the 3:2 natural bonus.
+	var player_natural := player_value == 21 and player_card_count == 2
 	if is_bust(dealer_value):
 		return _natural_or_even(player_natural, stake)
 	if player_value > dealer_value:
