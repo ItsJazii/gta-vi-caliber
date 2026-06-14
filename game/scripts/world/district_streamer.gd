@@ -78,7 +78,8 @@ func _camera_xz() -> Vector2:
 
 
 func _load_district(name: String) -> void:
-	for d in _districts:
+	for i in _districts.size():
+		var d: Dictionary = _districts[i]
 		if d["name"] != name:
 			continue
 		var node := Node3D.new()
@@ -89,6 +90,9 @@ func _load_district(name: String) -> void:
 		# nearest street so they don't start buried inside a building at the fixed
 		# scene spawn point. Later districts leave the player where they are.
 		node.set("place_player", _resident.is_empty())
+		# Stable per-district index for the loader's sub-visible road Y nudge, so
+		# neighbouring districts' coplanar road meshes don't z-fight at seams.
+		node.set("road_layer", i)
 		add_child(node)
 		_resident[name] = node
 		return

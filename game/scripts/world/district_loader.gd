@@ -59,6 +59,7 @@ const BUILDINGS_PER_SLICE: int = 220
 @export var place_player: bool = true
 ## Extra ground beyond the district footprint, in metres.
 @export var ground_margin: float = 90.0
+@export var road_layer: int = 0  # streamer-set; per-district road z-bias index
 
 var _building_mat: Material
 var _facade_glass_mat: StandardMaterial3D
@@ -721,6 +722,7 @@ func _build_roads(roads: Array, proj: GeoProjection) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Roads"
 	mi.mesh = mesh
+	mi.position.y = float(road_layer) * 0.0025  # sub-visible per-district anti z-fight nudge
 	add_child(mi)
 
 
