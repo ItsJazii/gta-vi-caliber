@@ -37,13 +37,17 @@ const COLORS := {
 
 @export_file("*.json") var manifest_path: String = "res://assets/world/districts.json"
 ## Max signalled junctions per district (a cap; grid coverage usually bounds it).
-@export var per_district: int = 90
-## Grid cell (m) for even coverage — roughly one signal per cell of road.
-@export var min_spacing: float = 70.0
+## Cap on signalled junctions per district. High by default so EVERY intersection
+## (a node where >= 3 driveable segments meet) gets a real light.
+@export var per_district: int = 100000
+## Grid cell (m): at most one signal per cell. Tiny so each separate intersection
+## gets its own light instead of being thinned for even spacing.
+@export var min_spacing: float = 1.0
 ## Metres from the junction centre to the kerb corner the mast stands on.
 @export var curb_offset: float = 6.0
-## Phase-clock interval lengths (s) for each light's green and yellow.
-@export var green_time: float = 8.0
+## Phase-clock interval lengths (s) for each light's green and yellow. Kept short
+## so a queue clears before the TrafficDirector's stuck-timeout would cull it.
+@export var green_time: float = 6.0
 @export var yellow_time: float = 2.0
 ## Only signal these districts (the dense urban cores); empty = every district.
 @export var districts: PackedStringArray = ["downtown_miami", "brickell"]

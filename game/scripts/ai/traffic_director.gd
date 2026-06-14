@@ -46,6 +46,9 @@ extends Node3D
 ## NavGrid below only when no road data is present (open sandbox).
 @export var lane_half_width: float = 2.0
 @export_file("*.json") var road_manifest: String = "res://assets/world/districts.json"
+## A car making no progress (gridlocked / boxed in) for longer than this is culled
+## and respawned on open road, so a pile-up can never persist.
+@export var stuck_timeout: float = 10.0
 var nav: NavGrid = null
 
 var _cars: Array[TrafficCar] = []
@@ -245,7 +248,13 @@ func _cull(center: Vector3) -> void:
 	for car in _cars:
 		if not is_instance_valid(car):
 			continue
-		if TrafficMotion.planar_distance(car.global_position, center) > cull_radius:
+		car.note_tick(tick_interval)
+		# Drop cars that fell far behind OR have been stuck (gridlocked / boxed in)
+		# past the timeout — a fresh one respawns on open road, so no jam persists.
+		if (
+			TrafficMotion.planar_distance(car.global_position, center) > cull_radius
+			or car.stuck_time() > stuck_timeout
+		):
 			car.queue_free()
 		else:
 			survivors.append(car)

@@ -26,6 +26,8 @@ var speed_limit: float = -1.0
 var _waypoints: PackedVector3Array = PackedVector3Array()
 var _index: int = 0
 var _heading: Vector3 = Vector3(0, 0, 1)
+var _tick_pos: Vector3 = Vector3.INF
+var _stuck_time: float = 0.0
 
 
 func _ready() -> void:
@@ -52,6 +54,21 @@ func is_done() -> bool:
 
 func heading() -> Vector3:
 	return _heading
+
+
+## Called once per TrafficDirector tick: accumulates how long the car has failed
+## to make progress (gridlocked or boxed in by other cars), reset the moment it
+## moves. The director culls cars stuck past its timeout so a jam can't persist.
+func note_tick(dt: float, progress: float = 0.5) -> void:
+	if _tick_pos == Vector3.INF or global_position.distance_to(_tick_pos) > progress:
+		_stuck_time = 0.0
+	else:
+		_stuck_time += dt
+	_tick_pos = global_position
+
+
+func stuck_time() -> float:
+	return _stuck_time
 
 
 func _physics_process(delta: float) -> void:
