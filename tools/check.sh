@@ -147,6 +147,8 @@ step "contraband bust probe"
 "$GODOT_BIN" --headless --path game --script res://tests/contraband_bust_probe.gd
 step "chop shop probe"
 "$GODOT_BIN" --headless --path game --script res://tests/chop_shop_probe.gd
+step "garage storage probe"
+"$GODOT_BIN" --headless --path game --script res://tests/garage_storage_probe.gd
 step "race probe"
 "$GODOT_BIN" --headless --path game --script res://tests/race_probe.gd
 step "crowd panic probe"
