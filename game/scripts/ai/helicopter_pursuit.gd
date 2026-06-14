@@ -40,7 +40,10 @@ static func cone_half_radians(degrees: float) -> float:
 ## Radius of the lit circle the searchlight casts on the ground, given the
 ## chopper's height above that ground and the cone half-angle.
 static func spotlight_ground_radius(altitude: float, cone_half: float) -> float:
-	return maxf(altitude, 0.0) * tan(clampf(cone_half, 0.0, 1.55))
+	# Clamp to the SAME ceiling cone_half_radians() produces (89°). A hard 1.55
+	# under-clamped a max-angle cone (deg_to_rad(89) ≈ 1.5533 > 1.55), shrinking
+	# the lit footprint ~16% below the true cone at wide angles.
+	return maxf(altitude, 0.0) * tan(clampf(cone_half, 0.0, deg_to_rad(89.0)))
 
 
 ## Whether the target (a ground position) stands inside the searchlight footprint

@@ -43,10 +43,16 @@ static func slip_angle(velocity: Vector3, forward: Vector3) -> float:
 ## Drift amount in [0, 1] derived from slip angle: 0 while gripping (aligned),
 ## ramping to 1 as the slip angle opens past `full_slip` (default ~35°). Handy
 ## for FX intensity, tyre-smoke, and the drift score — not for physics.
+## The slip angle is FOLDED about 90° (`minf(a, PI - a)`) so it measures lateral
+## slip regardless of travel direction: straight reverse (180°) reads 0 drift
+## (the car is aligned, just backing up) instead of saturating to 1.0 — otherwise
+## the drift score and tyre-smoke FX would fire while simply reversing.
 static func drift_factor(velocity: Vector3, forward: Vector3, full_slip: float = 0.61) -> float:
 	if full_slip <= 0.0:
 		return 0.0
-	return clampf(slip_angle(velocity, forward) / full_slip, 0.0, 1.0)
+	var a := slip_angle(velocity, forward)
+	a = minf(a, PI - a)
+	return clampf(a / full_slip, 0.0, 1.0)
 
 
 ## How strongly the tyres resist sideways slip this frame, as a rate in [0, 1].

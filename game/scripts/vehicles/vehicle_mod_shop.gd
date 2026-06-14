@@ -201,12 +201,14 @@ func _fail(balance: int, reason: String) -> Dictionary:
 
 ## Coerce a catalogue value into a clean Array[int] of positive tier prices.
 ## Returns an empty Array for malformed rows so a bad entry can't crash the shop.
+## A tier price must be strictly positive (per the contract above): a zero-cost
+## tier would hand out a free permanent upgrade, so reject the whole row.
 func _clean_tiers(tiers: Variant) -> Array:
 	if not (tiers is Array):
 		return []
 	var out: Array = []
 	for price in tiers:
-		if not (price is int) or price < 0:
+		if not (price is int) or price <= 0:
 			return []
 		out.append(price)
 	return out

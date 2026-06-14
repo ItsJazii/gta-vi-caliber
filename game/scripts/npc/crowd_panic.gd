@@ -121,13 +121,14 @@ static func update_crowd(
 	delta: float
 ) -> Array:
 	var next_fears: Array = []
-	for ped in peds:
+	for i in range(peds.size()):
+		var ped: Variant = peds[i]
 		var ped_dict := ped as Dictionary
 		var ped_pos := ped_dict.get("pos", Vector3.ZERO) as Vector3
 		var current := _read_fear(ped)
 
 		var direct := initial_fear(ped_pos, scare_pos, scare_radius)
-		var neighbors := _others(peds, ped)
+		var neighbors := _others(peds, i)
 		var caught := propagated_fear(ped_pos, neighbors, contagion_radius, contagion_strength)
 		var incoming := maxf(direct, caught)
 
@@ -149,11 +150,13 @@ static func _read_fear(ped: Variant) -> float:
 	return clampf(fear, 0.0, 1.0)
 
 
-## Every ped except `self_ped` (identity compare) — the local set a ped catches
-## panic from.
-static func _others(peds: Array, self_ped: Variant) -> Array:
+## Every ped except the one at `self_index` — the local set a ped catches panic
+## from. Skips by INDEX, not value: two peds with identical {pos, fear} are
+## distinct agents, so a value-compare (`!=`) would wrongly drop a real neighbour
+## and stall the wave in a tight clump (everyone at the same spot sees nobody).
+static func _others(peds: Array, self_index: int) -> Array:
 	var rest: Array = []
-	for ped in peds:
-		if ped != self_ped:
-			rest.append(ped)
+	for i in range(peds.size()):
+		if i != self_index:
+			rest.append(peds[i])
 	return rest

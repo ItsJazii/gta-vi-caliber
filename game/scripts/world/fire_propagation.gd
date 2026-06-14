@@ -152,7 +152,8 @@ static func update_fires(
 	delta: float
 ) -> Array:
 	var result: Array = []
-	for obj in objects:
+	for i in range(objects.size()):
+		var obj: Variant = objects[i]
 		var obj_dict := obj as Dictionary
 		var pos := obj_dict.get("pos", Vector3.ZERO) as Vector3
 		var current := _read_intensity(obj)
@@ -161,7 +162,7 @@ static func update_fires(
 		var caught := 0.0
 		# A spent object is ash — neighbours cannot reignite it (model invariant).
 		if not is_burnt_out(fuel):
-			var neighbors := _others(objects, obj)
+			var neighbors := _others(objects, i)
 			caught = spread_intensity(pos, neighbors, spread_radius, spread_rate, delta)
 
 		var next_intensity := step_intensity(current, caught, growth, burnout, fuel, delta)
@@ -191,10 +192,13 @@ static func _read_fuel(obj: Variant) -> float:
 	return maxf(fuel, 0.0)
 
 
-## Every object except `self_obj` (identity compare) — the local set it spreads from.
-static func _others(objects: Array, self_obj: Variant) -> Array:
+## Every object except the one at `self_index` — the local set it spreads from.
+## Skips by INDEX, not value: two objects with identical {pos, intensity, fuel}
+## are distinct, so a value-compare (`!=`) would wrongly drop a real neighbour and
+## stall fire spread between matching props (e.g. a row of identical crates).
+static func _others(objects: Array, self_index: int) -> Array:
 	var rest: Array = []
-	for obj in objects:
-		if obj != self_obj:
-			rest.append(obj)
+	for i in range(objects.size()):
+		if i != self_index:
+			rest.append(objects[i])
 	return rest
