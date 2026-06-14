@@ -64,11 +64,19 @@ static func count_witnesses(
 	for entry in observers:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var pos: Vector3 = entry.get("pos", Vector3.ZERO)
-		var facing: Vector3 = entry.get("facing", Vector3.ZERO)
+		var pos := _vec3(entry, "pos")
+		var facing := _vec3(entry, "facing")
 		if can_witness(pos, facing, crime_pos, sight_range, fov_radians):
 			count += 1
 	return count
+
+
+## Read a Vector3 field defensively: missing OR wrong-typed (a malformed observer
+## payload) yields ZERO instead of crashing the typed assignment, which would
+## otherwise abort the whole loop and silently drop every real witness.
+static func _vec3(d: Dictionary, key: String) -> Vector3:
+	var v: Variant = d.get(key, Vector3.ZERO)
+	return v if v is Vector3 else Vector3.ZERO
 
 
 ## Partition `observers` into the ones who actually saw a crime. Each entry is
@@ -92,8 +100,8 @@ static func collect_witnesses(
 			continue
 		var observer: Dictionary = entry
 		var is_police: bool = bool(observer.get("is_police", false))
-		var pos: Vector3 = observer.get("pos", Vector3.ZERO)
-		var facing: Vector3 = observer.get("facing", Vector3.ZERO)
+		var pos := _vec3(observer, "pos")
+		var facing := _vec3(observer, "facing")
 		var sight := police_range if is_police else ped_range
 		var fov := police_fov if is_police else ped_fov
 		if can_witness(pos, facing, crime_pos, sight, fov):
