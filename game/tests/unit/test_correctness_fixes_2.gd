@@ -40,9 +40,13 @@ func test_damaged_car_does_not_catch_fire() -> void:
 
 func test_loud_ambient_horn_can_alarm() -> void:
 	var horn := SoundPropagation.base_loudness(SoundPropagation.Sound.CAR_HORN)
-	assert_int(SoundPropagation.reaction_for(horn, false)).is_equal(SoundPropagation.Reaction.ALARMED)
+	assert_int(SoundPropagation.reaction_for(horn, false)).is_equal(
+		SoundPropagation.Reaction.ALARMED
+	)
 	# Boundary preserved: a quieter ambient sound still only gets NOTICED.
-	assert_int(SoundPropagation.reaction_for(0.4, false)).is_equal(SoundPropagation.Reaction.NOTICED)
+	assert_int(SoundPropagation.reaction_for(0.4, false)).is_equal(
+		SoundPropagation.Reaction.NOTICED
+	)
 
 
 func test_ballistics_clamps_min_fraction() -> void:
