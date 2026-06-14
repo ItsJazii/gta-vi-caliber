@@ -1,4 +1,4 @@
-[gd_scene load_steps=71 format=3]
+[gd_scene load_steps=77 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -63,6 +63,9 @@
 [ext_resource type="Script" path="res://scripts/world/wardrobe_shop.gd" id="56_wardrobe"]
 [ext_resource type="Script" path="res://scripts/world/business_venture_hub.gd" id="57_business"]
 [ext_resource type="Script" path="res://scripts/world/roulette_table.gd" id="58_roulette"]
+[ext_resource type="Script" path="res://scripts/world/blackjack_table.gd" id="59_blackjack"]
+[ext_resource type="Script" path="res://scripts/world/taxi_stand.gd" id="60_taxi"]
+[ext_resource type="Script" path="res://scripts/world/savepoint.gd" id="61_savepoint"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -90,6 +93,15 @@ size = Vector3(4, 3, 4)
 
 [sub_resource type="BoxMesh" id="roulette_mesh"]
 size = Vector3(2, 0.9, 1.2)
+
+[sub_resource type="BoxMesh" id="blackjack_mesh"]
+size = Vector3(2, 0.9, 1.2)
+
+[sub_resource type="BoxMesh" id="taxi_mesh"]
+size = Vector3(1, 2.2, 1)
+
+[sub_resource type="BoxMesh" id="savepoint_mesh"]
+size = Vector3(1, 1.6, 1)
 
 [sub_resource type="ShaderMaterial" id="sky_mat"]
 shader = ExtResource("38_sky")
@@ -473,6 +485,30 @@ script = ExtResource("58_roulette")
 [node name="Body" type="MeshInstance3D" parent="RouletteTable"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
 mesh = SubResource("roulette_mesh")
+
+[node name="BlackjackTable" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -34, 0, 30)
+script = ExtResource("59_blackjack")
+
+[node name="Body" type="MeshInstance3D" parent="BlackjackTable"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("blackjack_mesh")
+
+[node name="TaxiStand" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 30)
+script = ExtResource("60_taxi")
+
+[node name="Body" type="MeshInstance3D" parent="TaxiStand"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+mesh = SubResource("taxi_mesh")
+
+[node name="Savepoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 8)
+script = ExtResource("61_savepoint")
+
+[node name="Body" type="MeshInstance3D" parent="Savepoint"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("savepoint_mesh")
 
 [node name="VehicleModGarage" type="Area3D" parent="." groups=["vehicle_mod_shop"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 1, 44)

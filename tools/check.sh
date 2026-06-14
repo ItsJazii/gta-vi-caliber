@@ -157,6 +157,12 @@ step "business venture hub probe"
 "$GODOT_BIN" --headless --path game --script res://tests/business_venture_hub_probe.gd
 step "roulette table probe"
 "$GODOT_BIN" --headless --path game --script res://tests/roulette_table_probe.gd
+step "blackjack table probe"
+"$GODOT_BIN" --headless --path game --script res://tests/blackjack_table_probe.gd
+step "taxi stand probe"
+"$GODOT_BIN" --headless --path game --script res://tests/taxi_stand_probe.gd
+step "savepoint probe"
+"$GODOT_BIN" --headless --path game --script res://tests/savepoint_probe.gd
 
 # --- 7. systems wiring probes (scene-free: self-wiring nodes in a mock tree) --
 step "market event probe"
