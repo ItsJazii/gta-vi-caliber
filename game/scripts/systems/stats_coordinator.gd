@@ -9,6 +9,9 @@ extends Node
 
 var _stats: StatTracker
 var _was_wanted: bool = false
+# Armed when the player dies while wanted: the wanted level that clears on the
+# ensuing death/respawn is NOT an evasion and must not be counted as one.
+var _death_cleared_wanted: bool = false
 
 
 func _ready() -> void:
@@ -17,6 +20,16 @@ func _ready() -> void:
 	var mission := get_tree().get_first_node_in_group("mission")
 	if mission != null and mission.has_signal("mission_completed"):
 		mission.connect("mission_completed", _on_mission_passed)
+	var health := get_tree().get_first_node_in_group("player_health")
+	if health != null and health.has_signal("died"):
+		health.connect("died", _on_player_died)
+
+
+func _on_player_died() -> void:
+	# Only arm if currently wanted, so a death while clean can't suppress a later
+	# genuine evasion.
+	if _was_wanted:
+		_death_cleared_wanted = true
 
 
 func _process(_delta: float) -> void:
@@ -26,7 +39,10 @@ func _process(_delta: float) -> void:
 		return
 	var wanted: bool = tracker.is_wanted()
 	if _was_wanted and not wanted:
-		_stats.add("busts_evaded", 1)
+		if _death_cleared_wanted:
+			_death_cleared_wanted = false  # consume: this clear was a death, not an escape
+		else:
+			_stats.add("busts_evaded", 1)
 	_was_wanted = wanted
 
 
