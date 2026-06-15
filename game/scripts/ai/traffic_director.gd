@@ -386,13 +386,15 @@ func _route_car(car: TrafficCar, center: Vector3, heading_hint: Vector3) -> bool
 	return true
 
 
-## A destination roughly trip_radius..1.8x ahead of the car (a forward arc, so it
-## never picks somewhere behind it), in absolute coords. The car A*-routes here and
-## picks a fresh one on arrival, so it always drives somewhere on purpose.
+## A destination roughly trip_radius..1.8x ahead of the car, in absolute coords. The
+## arc is kept to a forward cone (±63°) so the goal is genuinely ahead — a goal off
+## to the side or behind would route the car on a U-turn/loop back past itself,
+## which read as cars circling. The car A*-routes here and picks a fresh one on
+## arrival, so it always drives somewhere on purpose.
 func _pick_goal(car_abs: Vector3, heading: Vector3) -> Vector3:
 	var fwd := Vector3(heading.x, 0.0, heading.z)
 	fwd = fwd.normalized() if fwd.length() > 0.1 else Vector3.FORWARD
-	var dir := fwd.rotated(Vector3.UP, _rng.randf_range(-PI * 0.6, PI * 0.6))
+	var dir := fwd.rotated(Vector3.UP, _rng.randf_range(-PI * 0.35, PI * 0.35))
 	return car_abs + dir * _rng.randf_range(trip_radius, trip_radius * 1.8)
 
 

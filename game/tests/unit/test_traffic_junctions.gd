@@ -24,6 +24,16 @@ func test_find_signalled_ignores_a_straight_road() -> bool:
 	return TrafficJunctions.find_signalled(net, 4, 5.0).is_empty()
 
 
+func test_find_signalled_skips_a_t_junction() -> bool:
+	var net := RoadNetwork.new(2.0)
+	# A straight street with a side road teeing in: the tee node has 3 arms (the
+	# through road's two + the side road's one) — a T-junction, NOT a 4-way crossing.
+	# Only real crossroads get a light, so this yields nothing.
+	net.add_polyline(PackedVector3Array([Vector3(-10, 0, 0), Vector3(0, 0, 0), Vector3(10, 0, 0)]))
+	net.add_polyline(PackedVector3Array([Vector3(0, 0, 0), Vector3(0, 0, 10)]))
+	return TrafficJunctions.find_signalled(net, 4, 5.0).is_empty()
+
+
 func test_find_signalled_respects_max_and_spacing() -> bool:
 	var net := _cross_network()
 	# A second crossing 8 m away.

@@ -1,17 +1,19 @@
 class_name TrafficJunctions
 extends RefCounted
 ## Pure junction-selection + approach helpers for the ambient-traffic signal layer
-## (issue #61, LC1/LC4). Reads a built RoadNetwork, finds real intersections
-## (nodes where >= JUNCTION_DEGREE driveable segments meet), and spaces a capped
-## set of them out so TrafficSignalField can drop one light per junction. Also
-## classifies a car's approach axis and decides, purely, whether a car must hold
-## for a light. Scene-free and deterministic so it unit-tests headless
+## (issue #61, LC1/LC4). Reads a built RoadNetwork, finds real CROSSROADS (nodes
+## where four or more roads meet), and spaces a capped set of them out so
+## TrafficSignalField can drop one light per junction. Also classifies a car's
+## approach axis and decides, purely, whether a car must hold for a light.
+## Scene-free and deterministic so it unit-tests headless
 ## (tests/unit/test_traffic_junctions.gd).
 
-## A node is an intersection when at least this many segments leave it. Two-way
-## polylines give an interior vertex degree 2 (next + prev); a real crossing of
-## two streets gives 4 and a T-junction gives 3.
-const JUNCTION_DEGREE := 3
+## Only a real crossroads gets a light — a node where at least this many segments
+## leave it. Two-way polylines give an interior vertex degree 2 (next + prev), a
+## T-junction degree 3, and a proper crossing of two streets degree 4. Signalling
+## only 4-way (and larger) crossings keeps lights at the intersections that need
+## them instead of peppering every T-junction and bend in the road.
+const JUNCTION_DEGREE := 4
 
 
 ## Pick up to `max_count` intersection nodes from `net`, busiest first and spaced

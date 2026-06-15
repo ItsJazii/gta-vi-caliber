@@ -36,11 +36,11 @@ const COLORS := {
 }
 
 @export_file("*.json") var manifest_path: String = "res://assets/world/districts.json"
-## Max signalled junctions per district (a cap; grid coverage usually bounds it).
-## Cap on signalled junctions per district. High by default so EVERY intersection
-## (a node where >= 3 driveable segments meet) gets a real light.
+## Cap on signalled junctions per district. High by default so EVERY 4-way
+## crossroads (see TrafficJunctions.JUNCTION_DEGREE) gets a real light; T-junctions
+## and bends are skipped, so the count stays sensible without a tight cap.
 @export var per_district: int = 100000
-## Grid cell (m): at most one signal per cell. Tiny so each separate intersection
+## Grid cell (m): at most one signal per cell. Tiny so each separate crossroads
 ## gets its own light instead of being thinned for even spacing.
 @export var min_spacing: float = 1.0
 ## Metres from the junction centre to the kerb corner the mast stands on.

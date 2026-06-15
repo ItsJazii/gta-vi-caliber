@@ -79,7 +79,10 @@ func _physics_process(delta: float) -> void:
 		else:
 			return
 	var target := _waypoints[_index]
-	var drive_speed := speed if speed_limit < 0.0 else minf(speed, speed_limit)
+	var cruise := speed if speed_limit < 0.0 else minf(speed, speed_limit)
+	# Ease off through corners so a sharp turn arc is tracked, not overshot.
+	var desired := TrafficMotion.planar_dir(global_position, target)
+	var drive_speed := cruise * TrafficMotion.corner_speed_scale(_heading, desired)
 	var r := TrafficMotion.step(
 		global_position, _heading, target, drive_speed, max_turn_rate, delta
 	)

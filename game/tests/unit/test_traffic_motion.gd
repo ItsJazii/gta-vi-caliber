@@ -68,3 +68,26 @@ func test_advance_waypoint_holds_when_far() -> bool:
 func test_advance_waypoint_finishes_route() -> bool:
 	var wp := PackedVector3Array([Vector3(0, 0, 0)])
 	return TrafficMotion.advance_waypoint(Vector3(0, 0, 0), wp, 0, 1.0) == 1
+
+
+func test_corner_speed_full_when_aligned() -> bool:
+	# Heading straight at the target → no slow-down.
+	return absf(TrafficMotion.corner_speed_scale(Vector3(1, 0, 0), Vector3(1, 0, 0)) - 1.0) < 0.01
+
+
+func test_corner_speed_floors_on_right_angle() -> bool:
+	# 90° off → clamp to the minimum so the car crawls through the tight arc.
+	return (
+		absf(TrafficMotion.corner_speed_scale(Vector3(1, 0, 0), Vector3(0, 0, 1), 0.4) - 0.4) < 0.01
+	)
+
+
+func test_corner_speed_floors_on_reverse() -> bool:
+	return (
+		absf(TrafficMotion.corner_speed_scale(Vector3(1, 0, 0), Vector3(-1, 0, 0), 0.4) - 0.4)
+		< 0.01
+	)
+
+
+func test_corner_speed_holds_on_zero_desired() -> bool:
+	return is_equal_approx(TrafficMotion.corner_speed_scale(Vector3(1, 0, 0), Vector3.ZERO), 1.0)
