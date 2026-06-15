@@ -28,24 +28,24 @@ func test_malformed_classes_dropped() -> bool:
 
 func test_base_value_lookup() -> bool:
 	var c := ChopShop.new()
-	return c.base_value_of("sports") == 60000 and c.base_value_of("nope") == -1
+	return c.base_value_of("sports") == 14000 and c.base_value_of("nope") == -1
 
 
 func test_pristine_value_is_base() -> bool:
 	var c := ChopShop.new()
-	return c.value("sports", 1.0) == 60000
+	return c.value("sports", 1.0) == 14000
 
 
 func test_wrecked_value_is_scrap_floor() -> bool:
 	var c := ChopShop.new()
-	# 60000 * 0.2 = 12000
-	return c.value("sports", 0.0) == 12000
+	# 14000 * 0.2 = 2800
+	return c.value("sports", 0.0) == 2800
 
 
 func test_mid_condition_value() -> bool:
 	var c := ChopShop.new()
-	# 60000 * (0.2 + 0.8*0.5) = 60000 * 0.6 = 36000
-	return c.value("sports", 0.5) == 36000
+	# 14000 * (0.2 + 0.8*0.5) = 14000 * 0.6 = 8400
+	return c.value("sports", 0.5) == 8400
 
 
 func test_value_unknown_is_zero() -> bool:
@@ -56,8 +56,8 @@ func test_value_unknown_is_zero() -> bool:
 func test_request_applies_demand_bonus() -> bool:
 	var c := ChopShop.new()
 	c.set_requests(["sports"])
-	# 60000 * 1.0 * 1.5 = 90000
-	return c.is_requested("sports") and c.value("sports", 1.0) == 90000
+	# 14000 * 1.0 * 1.5 = 21000
+	return c.is_requested("sports") and c.value("sports", 1.0) == 21000
 
 
 func test_set_requests_ignores_unknown() -> bool:
@@ -73,8 +73,8 @@ func test_deliver_pays_and_banks() -> bool:
 	var r := c.deliver("muscle", 1.0)
 	return (
 		r["accepted"]
-		and r["payout"] == 35000
-		and c.total_earned() == 35000
+		and r["payout"] == 8000
+		and c.total_earned() == 8000
 		and c.deliveries_count() == 1
 	)
 
@@ -88,21 +88,30 @@ func test_deliver_unknown_rejected() -> bool:
 func test_hot_vehicle_discounted() -> bool:
 	var c := ChopShop.new()
 	var r := c.deliver("sports", 1.0, true)
-	# 60000 * (1 - 0.25) = 45000
-	return r["payout"] == 45000
+	# 14000 * (1 - 0.25) = 10500
+	return r["payout"] == 10500
 
 
 func test_delivery_fulfils_request() -> bool:
 	var c := ChopShop.new()
 	c.set_requests(["sports"])
-	var first := c.deliver("sports", 1.0)  # 90000, was requested
-	var second := c.deliver("sports", 1.0)  # base 60000, request fulfilled
+	var first := c.deliver("sports", 1.0)  # 21000, was requested
+	var second := c.deliver("sports", 1.0)  # base 14000, request fulfilled
 	return (
 		first["was_requested"]
-		and first["payout"] == 90000
+		and first["payout"] == 21000
 		and not c.is_requested("sports")
-		and second["payout"] == 60000
+		and second["payout"] == 14000
 	)
+
+
+func test_hot_requested_and_damaged_round_once() -> bool:
+	# Combined path: demand bonus + condition + heat discount, rounded a single time.
+	# 14000 * (0.2 + 0.8*0.5) * 1.5 * 0.75 = 14000 * 0.6 * 1.5 * 0.75 = 9450
+	var c := ChopShop.new()
+	c.set_requests(["sports"])
+	var r := c.deliver("sports", 0.5, true)
+	return r["was_requested"] and r["payout"] == 9450
 
 
 func test_rotate_requests_deterministic() -> bool:
@@ -113,13 +122,21 @@ func test_rotate_requests_deterministic() -> bool:
 	return a.requested().size() == 2 and a.requested() == b.requested()
 
 
+func test_rotate_requests_skips_excluded() -> bool:
+	# Roll the whole pool but exclude the top tier: super never lands on the board, so its
+	# demand bonus can't fire (the 7-class catalogue yields 6 requestable classes).
+	var c := ChopShop.new()
+	c.rotate_requests(_rng(4), 7, ["super"])
+	return not c.is_requested("super") and c.requested().size() == 6
+
+
 func test_damaged_car_fences_for_less() -> bool:
 	# Composition: VehicleHealth.health_fraction feeds the condition.
 	var vh := VehicleHealth.new(1000.0)
 	var pristine := ChopShop.new().value("muscle", vh.health_fraction())
 	vh.apply_damage(500.0)  # half health
 	var damaged := ChopShop.new().value("muscle", vh.health_fraction())
-	return pristine == 35000 and damaged < pristine
+	return pristine == 8000 and damaged < pristine
 
 
 func _rng(seed_value: int) -> RandomNumberGenerator:

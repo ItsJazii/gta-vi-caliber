@@ -144,8 +144,9 @@ func test_armor_raises_armor_only() -> bool:
 	shop.upgrade("armor", 100000)
 	shop.upgrade("armor", 100000)
 	shop.upgrade("armor", 100000)
+	# 1.0 + 0.15 * 3 = 1.45 (armor leads the pack but is no longer 2.5x out of band).
 	return (
-		is_equal_approx(shop.armor_multiplier(), 1.75)
+		is_equal_approx(shop.armor_multiplier(), 1.45)
 		and is_equal_approx(shop.top_speed_multiplier(), 1.0)
 	)
 

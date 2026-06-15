@@ -107,11 +107,16 @@ func _on_body_entered(body: Node) -> void:
 	vehicle_upgraded.emit(vehicle_id, category, int(result["new_level"]), int(result["cost"]))
 
 
-## The cheapest category the player can both upgrade and afford right now, or ""
-## when nothing is affordable / everything is maxed. Cheapest-first keeps a visit
-## affordable and spreads upgrades across categories as the wallet grows.
-func _best_affordable(shop: VehicleModShop, money: int) -> String:
+## The next category to upgrade on this drive-in, or "" when nothing is affordable /
+## everything is maxed. Picks the LEAST-upgraded affordable category, breaking ties by
+## the cheaper next tier. Lowest-level-first genuinely spreads tuning across every stat
+## (engine/armor get bought too) instead of the old cheapest-first, which bought tires
+## and brakes all the way out before speed or armor ever got a look-in. Static + pure
+## (reads only the shop) so the selection policy is unit-tested without a node tree
+## (tests/unit/test_vehicle_mod_garage.gd).
+static func _best_affordable(shop: VehicleModShop, money: int) -> String:
 	var best := ""
+	var best_level := -1
 	var best_price := -1
 	for category: String in shop.categories():
 		if not shop.can_upgrade(category):
@@ -119,8 +124,10 @@ func _best_affordable(shop: VehicleModShop, money: int) -> String:
 		var price := shop.price_for(category, shop.level_of(category) + 1)
 		if price < 0 or price > money:
 			continue
-		if best_price < 0 or price < best_price:
+		var level := shop.level_of(category)
+		if best == "" or level < best_level or (level == best_level and price < best_price):
 			best = category
+			best_level = level
 			best_price = price
 	return best
 

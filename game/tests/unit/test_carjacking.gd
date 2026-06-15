@@ -73,6 +73,22 @@ func test_resist_modifier_range() -> bool:
 	)
 
 
+func test_resist_modifier_eases_in() -> bool:
+	# Quadratic ease-in (1 + t^2): a half-toughness driver lengthens the struggle by
+	# only 25% (1.25), not the linear 50% — most peds stay near base time, and only a
+	# genuinely tough driver ramps toward 2x.
+	return (
+		is_equal_approx(Carjacking.resist_modifier(0.5), 1.25)
+		and is_equal_approx(Carjacking.resist_modifier(0.25), 1.0625)
+	)
+
+
+func test_default_duration_is_snappy() -> bool:
+	# The no-arg jack (limp civilian) wrestles out in the snappy 0.8s base.
+	var j := Carjacking.new()
+	return is_equal_approx(j.jack_duration, 0.8)
+
+
 # --- struggle timer --------------------------------------------------------
 
 

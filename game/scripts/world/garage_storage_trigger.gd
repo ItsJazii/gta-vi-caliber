@@ -94,12 +94,18 @@ func _remove_from_world(car: Node3D) -> void:
 		car.set_physics_process(false)
 
 
-## Pull a car back into the world: the most-recently parked one (else the first the
-## model lists). Public + signal-free for the probe + the interact path. Returns the
-## retrieved id, or "" when nothing is parked or the (positive) fee can't be paid.
-func retrieve_vehicle(_player: Node = null) -> String:
-	var id := _next_to_retrieve()
-	if id.is_empty():
+## Pull a car back into the world. With no `vehicle_id` it hands back the most-recently
+## parked car (LIFO); pass an explicit id to pull a SPECIFIC stored car (so a future
+## garage UI can let the player choose, not just take the newest). Public + signal-free
+## for the probe + the interact path. Returns the retrieved id, or "" when nothing
+## matches or the (positive) fee can't be paid.
+##
+## The fee is charged only AFTER confirming the car is actually parked in THIS garage,
+## so a retrieve that the model would reject can never silently pocket the player's money
+## and hand back no car.
+func retrieve_vehicle(_player: Node = null, vehicle_id: String = "") -> String:
+	var id := vehicle_id if not vehicle_id.is_empty() else _next_to_retrieve()
+	if id.is_empty() or storage.garage_of(id) != garage_id:
 		return ""
 	if not _charge_fee():
 		return ""
@@ -111,14 +117,16 @@ func retrieve_vehicle(_player: Node = null) -> String:
 
 
 ## The id to hand back next: the most-recently parked node we still hold, falling back
-## to the first id the model lists for this garage (e.g. after a restore).
+## to the most-recently stored id the model lists for this garage (e.g. after a restore,
+## once the live _parked node map is gone). Both paths agree on LIFO so the same press
+## doesn't flip to handing back the OLDEST car after a save/load.
 func _next_to_retrieve() -> String:
 	var keys := _parked.keys()
 	if not keys.is_empty():
 		return str(keys[keys.size() - 1])
 	var contents := storage.contents(garage_id)
 	if not contents.is_empty():
-		return str(contents[0])
+		return str(contents[contents.size() - 1])
 	return ""
 
 

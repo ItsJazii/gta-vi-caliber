@@ -19,16 +19,20 @@ extends RefCounted
 ##   engine  -> +8% top speed AND +6% acceleration per level
 ##   tires   -> +7% grip per level
 ##   brakes  -> +10% brake per level
-##   armor   -> +25% armor per level
+##   armor   -> +15% armor per level
 ## A category only feeds its own stat(s); untouched categories leave their
-## multiplier at exactly 1.0.
+## multiplier at exactly 1.0. The steps are deliberately kept in one band so no
+## single category is a runaway no-brainer: maxed (3 tiers) gives +24% speed,
+## +21% grip, +30% brake, +45% armor — armor still leads (survivability should),
+## but it used to be +75% (a 0.25 step), ~2.5x every other stat for a comparable
+## price, which made it the only upgrade worth buying.
 
 ## Per-level stat steps (fraction added to the 1.0 base for each level owned).
 const ENGINE_SPEED_STEP: float = 0.08
 const ENGINE_ACCEL_STEP: float = 0.06
 const TIRES_GRIP_STEP: float = 0.07
 const BRAKES_STEP: float = 0.10
-const ARMOR_STEP: float = 0.25
+const ARMOR_STEP: float = 0.15
 
 ## category -> Array[int] of per-tier prices. Built once in _init.
 var _catalogue: Dictionary = {}
@@ -135,7 +139,7 @@ func brake_multiplier() -> float:
 	return 1.0 + BRAKES_STEP * float(level_of("brakes"))
 
 
-## Armor multiplier from armor level (1.0 stock, +25% per armor level).
+## Armor multiplier from armor level (1.0 stock, +15% per armor level).
 func armor_multiplier() -> float:
 	return 1.0 + ARMOR_STEP * float(level_of("armor"))
 

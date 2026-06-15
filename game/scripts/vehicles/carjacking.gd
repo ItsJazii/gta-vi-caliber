@@ -15,7 +15,10 @@ extends RefCounted
 ## car is theft-lite: still grand-theft-auto, but no eyewitness victim, so this
 ## model draws zero heat for it (the wanted system can score the theft elsewhere).
 
-## Default heat a witnessed occupied carjack feeds the wanted system.
+## Default heat a witnessed occupied carjack feeds the wanted system. Deliberately a
+## flat one-star event: it clears WantedSystem's 1.0 one-star line but sits under the
+## 3.0 two-star line, so a single witnessed jack draws exactly one star — hotter than a
+## punch, cooler than a kill. Feed it RAW (no witnessed-crime doubling) to keep that.
 const DEFAULT_JACK_HEAT: float = 2.0
 
 var jack_duration: float
@@ -27,7 +30,9 @@ var _complete: bool = false
 ## `duration` = seconds to wrestle the driver out; a resisting NPC takes longer
 ## (scale it up front with `resist_modifier`). Non-positive durations are floored
 ## to a tiny positive value so progress can't divide by zero and completes at once.
-func _init(duration: float = 1.2) -> void:
+## Default 0.8s: the iconic civilian yank should feel snappy, near-instant — the old
+## 1.2s base made the common case (most peds have ~0 toughness) sluggish.
+func _init(duration: float = 0.8) -> void:
 	jack_duration = maxf(duration, 0.0001)
 
 
@@ -78,8 +83,12 @@ static func heat_for_jack(car_has_driver: bool, base_heat: float = DEFAULT_JACK_
 ## resistance rating; returns a multiplier in 1.0..2.0 you apply to the base
 ## duration BEFORE `_init` (e.g. `Carjacking.new(base * resist_modifier(t))`), so a
 ## limp civilian (0.0) jacks in base time and a brawler (1.0) takes twice as long.
+## Eases in quadratically (1 + t^2) rather than linearly, so the bulk of peds (low
+## toughness) still jack near base time and only a genuinely tough driver ramps toward
+## 2x — a sharper "this one fights back" moment than the old mushy linear ramp.
 static func resist_modifier(driver_toughness: float) -> float:
-	return 1.0 + clampf(driver_toughness, 0.0, 1.0)
+	var t := clampf(driver_toughness, 0.0, 1.0)
+	return 1.0 + t * t
 
 
 ## Start (or restart) the struggle from zero. Idempotent re-arm: clears a prior

@@ -36,16 +36,26 @@ func _init(classes: Array = []) -> void:
 		_register(entry)
 
 
-## The built-in class price list (pristine fence values).
+## The built-in class price list (pristine FENCE values, not showroom prices).
+## A fence pays a fraction of street value, so these sit well below the shop's
+## retail tags (a Sports Car sells for 60000 in ShopModel) — fencing a stolen one
+## pristine pays 14000, scaling down with damage and the hot/heat discount. Tuned
+## against the wider economy so a routine chop lands near a robbery/race payout
+## (500-2500) for the common classes, while a clean super tops out at its 30000 base
+## (hit-contract tier). The top tier is held off the most-wanted demand board (see
+## ChopShopTrigger.non_requestable_classes), so the 1.5x REQUEST_BONUS can't push a super
+## into heist territory — it stays a rare hit-contract-tier spike rather than the old
+## values that dwarfed every other earner. Ordering (compact < bike < sedan < suv <
+## muscle < sports < super) is preserved.
 static func default_classes() -> Array:
 	return [
-		{"id": "compact", "base": 8000},
-		{"id": "sedan", "base": 15000},
-		{"id": "bike", "base": 12000},
-		{"id": "suv", "base": 22000},
-		{"id": "muscle", "base": 35000},
-		{"id": "sports", "base": 60000},
-		{"id": "super", "base": 150000},
+		{"id": "compact", "base": 2000},
+		{"id": "sedan", "base": 3500},
+		{"id": "bike", "base": 3000},
+		{"id": "suv", "base": 5000},
+		{"id": "muscle", "base": 8000},
+		{"id": "sports", "base": 14000},
+		{"id": "super", "base": 30000},
 	]
 
 
@@ -72,12 +82,20 @@ func base_value_of(id: String) -> int:
 ## base, scaled from SCRAP_FLOOR (wrecked) up to full (pristine), times the demand
 ## bonus if the class is currently requested. 0 for an unknown class.
 func value(id: String, condition: float) -> int:
+	return int(round(_value_exact(id, condition, 1.0)))
+
+
+## The unrounded fence value: base * condition_factor * demand * heat_factor.
+## Both value() and deliver() round THIS once, so the hot discount no longer
+## double-rounds (round(round(x) * 0.75)) and a wrecked/discounted/requested combo
+## is computed in a single exact pass. 0.0 for an unknown class.
+func _value_exact(id: String, condition: float, heat_factor: float) -> float:
 	if not _classes.has(id):
-		return 0
+		return 0.0
 	var cond := clampf(condition, 0.0, 1.0)
 	var condition_factor := SCRAP_FLOOR + (1.0 - SCRAP_FLOOR) * cond
 	var demand := REQUEST_BONUS if is_requested(id) else 1.0
-	return int(round(float(_classes[id]["base"]) * condition_factor * demand))
+	return float(_classes[id]["base"]) * condition_factor * demand * heat_factor
 
 
 ## Whether a class is on the current most-wanted orders list.
@@ -99,12 +117,19 @@ func set_requests(class_ids: Array) -> void:
 			_requests[id] = true
 
 
-## Roll a fresh set of `count` distinct most-wanted classes using rng. Deterministic
-## for a given seed. No-op without an rng.
-func rotate_requests(rng: RandomNumberGenerator, count: int) -> void:
+## Roll a fresh set of `count` distinct most-wanted classes using rng, skipping any class
+## in `exclude` (e.g. a top tier you never want demand-boosted, so its chop value can't be
+## pushed past its base). Deterministic for a given seed. No-op without an rng.
+func rotate_requests(rng: RandomNumberGenerator, count: int, exclude: Array = []) -> void:
 	if rng == null:
 		return
-	var pool: Array = _classes.keys()
+	var skip: Dictionary = {}
+	for raw: Variant in exclude:
+		skip[str(raw)] = true
+	var pool: Array = []
+	for id: Variant in _classes.keys():
+		if not skip.has(str(id)):
+			pool.append(id)
 	_shuffle(rng, pool)
 	_requests.clear()
 	for i in range(mini(maxi(count, 0), pool.size())):
@@ -118,9 +143,8 @@ func deliver(id: String, condition: float, hot: bool = false) -> Dictionary:
 	if not _classes.has(id):
 		return {"accepted": false, "payout": 0, "was_requested": false, "reason": "unknown class"}
 	var was_requested := is_requested(id)
-	var payout := value(id, condition)
-	if hot:
-		payout = int(round(float(payout) * (1.0 - HEAT_DISCOUNT)))
+	var heat_factor := (1.0 - HEAT_DISCOUNT) if hot else 1.0
+	var payout := int(round(_value_exact(id, condition, heat_factor)))
 	_requests.erase(id)
 	_earned += payout
 	_deliveries += 1

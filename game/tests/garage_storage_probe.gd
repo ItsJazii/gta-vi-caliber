@@ -3,24 +3,49 @@ extends SceneTree
 ## trip. Drives the trigger directly in a mock tree (a "World" with the trigger and two
 ## mock cars under it) so it needs no miami.tscn: parking a car must store its id, hide
 ## it, and pull it out of the world (no longer a child of World); retrieving must hand the
-## SAME node back, visible and reparented into the world; and a third car must be refused
-## once the garage is full. Run headless:
+## SAME node back, visible and reparented into the world; a third car must be refused once
+## the garage is full; and a retrieve fee must be charged ONLY when a car is actually
+## pulled out — never silently pocketed for a retrieve that the model would reject. Run
+## headless:
 ##   godot --headless --path game --script res://tests/garage_storage_probe.gd
 
 ## Let the trigger's _ready() (group join, StoreZone wiring) settle before driving it.
 const WARMUP_FRAMES: int = 3
+## Wallet charge configured for the fee phase, and the wallet the mock starts with.
+const RETRIEVE_FEE: int = 250
+const START_MONEY: int = 1000
 
 var _world: Node3D = null
 var _trigger: GarageStorageTrigger = null
+var _stats: MockStats = null
 var _car_a: Node3D = null
 var _car_b: Node3D = null
 var _frames: int = 0
+
+
+## A mock PlayerStats (group player_stats) with the same guarded spend_money the trigger's
+## fee path bills against: false (no debit) on a non-positive or unaffordable charge.
+class MockStats:
+	extends Node
+	var money: int = 0
+
+	func _ready() -> void:
+		add_to_group("player_stats")
+
+	func spend_money(amount: int) -> bool:
+		if amount <= 0 or money < amount:
+			return false
+		money -= amount
+		return true
 
 
 func _initialize() -> void:
 	_world = Node3D.new()
 	_world.name = "World"
 	root.add_child(_world)
+	_stats = MockStats.new()
+	_stats.money = START_MONEY
+	root.add_child(_stats)
 	_trigger = GarageStorageTrigger.new()
 	_world.add_child(_trigger)
 	# StoreZone child so _ready() finds + wires it the same way the live scene would.
@@ -47,7 +72,12 @@ func _process(_delta: float) -> bool:
 		return false
 	var err := _run()
 	if err.is_empty():
-		print("garage storage probe: OK (parked 2, retrieved 1, capacity refusal held)")
+		print(
+			(
+				"garage storage probe: OK (parked 2, retrieved 1, capacity refusal held, fee charged once for $%d)"
+				% RETRIEVE_FEE
+			)
+		)
 		quit(0)
 	else:
 		push_error("garage storage probe FAIL: " + err)
@@ -55,8 +85,9 @@ func _process(_delta: float) -> bool:
 	return true
 
 
-## Full round trip: park both cars, retrieve one, then prove the capacity cap refuses an
-## over-full park. Returns "" on success, else a one-line failure reason.
+## Full round trip: park both cars, retrieve one, prove the capacity cap refuses an
+## over-full park, then prove the retrieve fee is charged on success but not lost on a
+## reject. Returns "" on success, else a one-line failure reason.
 func _run() -> String:
 	var park_err := _verify_park()
 	if not park_err.is_empty():
@@ -64,7 +95,10 @@ func _run() -> String:
 	var retrieve_err := _verify_retrieve()
 	if not retrieve_err.is_empty():
 		return retrieve_err
-	return _verify_capacity()
+	var capacity_err := _verify_capacity()
+	if not capacity_err.is_empty():
+		return capacity_err
+	return _verify_fee()
 
 
 ## Park both cars: each store returns true, the count grows, and each car is hidden and
@@ -111,6 +145,34 @@ func _verify_capacity() -> String:
 		return (
 			"stored count moved on a refused over-capacity park (count %d)"
 			% _trigger.stored_count()
+		)
+	return ""
+
+
+## Retrieve fee: with a positive fee, a successful retrieve debits the wallet by exactly
+## the fee; and retrieving an id NOT parked here is refused WITHOUT charging — money is
+## never pocketed for a retrieve the model would reject (the fee is the last fallible step).
+func _verify_fee() -> String:
+	_trigger.retrieve_fee = RETRIEVE_FEE
+	var before := _stats.money
+	var count_before := _trigger.stored_count()
+	var id := _trigger.retrieve_vehicle()
+	if id.is_empty():
+		return "fee retrieve returned no id with cars parked"
+	if _stats.money != before - RETRIEVE_FEE:
+		return (
+			"fee not charged on success (%d -> %d, fee %d)" % [before, _stats.money, RETRIEVE_FEE]
+		)
+	if _trigger.stored_count() != count_before - 1:
+		return "stored count did not drop on a paid retrieve (count %d)" % _trigger.stored_count()
+	# A car that isn't parked in this garage must be refused with no charge (no money loss).
+	var guarded := _stats.money
+	var ghost := _trigger.retrieve_vehicle(null, "not-a-parked-car#0")
+	if not ghost.is_empty():
+		return "retrieve of an unparked id unexpectedly succeeded (%s)" % ghost
+	if _stats.money != guarded:
+		return (
+			"fee charged for a retrieve that returned no car (%d -> %d)" % [guarded, _stats.money]
 		)
 	return ""
 
