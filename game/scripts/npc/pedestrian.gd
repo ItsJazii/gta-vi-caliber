@@ -32,6 +32,8 @@ var _dead: bool = false
 var _hp: Damageable
 var _rng := RandomNumberGenerator.new()
 var _flinch_until: float = 0.0
+# Optional road keep-out from the crowd director — keeps wander on the sidewalk.
+var _keepout: RoadKeepout = null
 
 @onready var _rig: AnimatedRig = $Rig
 
@@ -76,6 +78,8 @@ func _physics_process(delta: float) -> void:
 				speed = 0.0
 			else:
 				desired_dir = NpcBrain.planar_dir(global_position, _target)
+				if _keepout != null:
+					desired_dir = _keepout.deflect(global_position, desired_dir)
 		NpcBrain.State.IDLE:
 			_idle_left -= delta
 			if _idle_left <= 0.0:
@@ -185,9 +189,32 @@ func _respawn() -> void:
 	_pick_new_target()
 
 
+## Receive the shared road keep-out from the crowd director (called right after
+## the ped is positioned). Re-homes to the final spawn point and re-rolls the
+## first wander target so the ped never starts life already walking into a lane.
+func set_road_keepout(keepout: RoadKeepout) -> void:
+	_keepout = keepout
+	_home = global_position
+	_pick_new_target()
+
+
 func _pick_new_target() -> void:
 	_state = NpcBrain.State.WANDER
-	_target = NpcBrain.wander_target(_home, wander_radius, _rng.randf(), _rng.randf())
+	_target = _road_safe_wander()
+
+
+## Roll a wander target that stays off the carriageway: try a few annulus samples
+## for one already clear, then push the last out of the road if none were. With
+## no keep-out (sandbox/tests) it's a plain wander roll, unchanged.
+func _road_safe_wander() -> Vector3:
+	var t := NpcBrain.wander_target(_home, wander_radius, _rng.randf(), _rng.randf())
+	if _keepout == null:
+		return t
+	var tries := 0
+	while tries < 4 and not _keepout.is_clear(t):
+		t = NpcBrain.wander_target(_home, wander_radius, _rng.randf(), _rng.randf())
+		tries += 1
+	return t if _keepout.is_clear(t) else _keepout.push_clear(t)
 
 
 func _nearest_player() -> Node3D:

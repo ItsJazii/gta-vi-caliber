@@ -81,11 +81,28 @@ extends Node3D
 ## tower. Must clear the tallest building in range.
 @export var nav_probe_height: float = 400.0
 
+## Keep the crowd off the carriageway: spawns are rejected on the road and each
+## ped is handed a RoadKeepout so its wander stays on the sidewalk/verge (peds
+## belong by the trees, not in the lanes). Off = flat-sandbox behaviour, no roads.
+@export var avoid_roads: bool = true
+## District manifest whose merged driveable roads define the keep-out. Must be the
+## world's road set — the traffic director reads this same file, so peds avoid
+## exactly the roads cars drive on, across every streamed district.
+@export_file("*.json") var road_manifest: String = "res://assets/world/districts.json"
+## Metres pedestrians keep clear of a road centreline. ~half a wide carriageway
+## plus a kerb buffer; tune up if peds clip wide arterials, down to hug the kerb.
+@export var road_clearance: float = 7.0
+
 ## Optional walkability map. Assigned by bake_nav, or set in code (stamp
 ## building/water footprints with NavGrid.block_world_rect). When present, spawns
 ## are rejected on blocked cells so pedestrians appear on streets and sidewalks,
 ## never inside a wall. Null = spawn anywhere (flat-sandbox behaviour).
 var nav: NavGrid = null
+
+## The shared road keep-out, built once on the first tick. Null until built, when
+## avoid_roads is off, or when the manifest has no roads (then peds spawn freely).
+var _keepout: RoadKeepout = null
+var _keepout_built: bool = false
 
 var _peds: Array[Node3D] = []
 var _rng := RandomNumberGenerator.new()
@@ -131,6 +148,9 @@ func _physics_process(delta: float) -> void:
 	var player := _player()
 	if player == null:
 		return
+	_ensure_keepout()
+	if _keepout != null:
+		_keepout.set_origin_offset(_read_origin_offset())
 	if bake_nav and nav == null:
 		_bake_nav(player.global_position)
 	_cull(player.global_position)
@@ -192,6 +212,8 @@ func _spawn(center: Vector3) -> void:
 		_apply_variety(ped)
 		add_child(ped)
 		ped.global_position = pos
+		if _keepout != null and ped.has_method("set_road_keepout"):
+			ped.set_road_keepout(_keepout)
 		_peds.append(ped)
 
 
@@ -255,6 +277,8 @@ func _find_spawn(center: Vector3) -> Vector3:
 			pos.y = gy
 		else:
 			pos.y = center.y
+		if _keepout != null and not _keepout.is_clear(pos):
+			continue  # on the carriageway — keep peds on the sidewalk/verge
 		return pos
 	return Vector3.INF
 
@@ -286,6 +310,56 @@ func _ground_probe(at: Vector3, base_y: float, up: float = ground_probe_up) -> f
 	var query := PhysicsRayQueryParameters3D.create(from, to, ground_mask)
 	var hit := space.intersect_ray(query)
 	return hit.position.y if hit.has("position") else NAN
+
+
+## Build the road keep-out once, lazily, on the first tick the crowd runs — so it
+## shares startup with the streamer rather than blocking _ready. The crowd simply
+## spawns without it for the first tick or two while the (one-off) merge runs.
+func _ensure_keepout() -> void:
+	if _keepout_built:
+		return
+	_keepout_built = true
+	if not avoid_roads:
+		return
+	var net := _build_road_net()
+	if net != null:
+		_keepout = RoadKeepout.new(net, road_clearance)
+
+
+## Merge every district's driveable roads (the same manifest the traffic reads)
+## into one map-wide RoadNetwork in absolute coordinates, pre-indexed for fast
+## nearest-road queries. Null when there is no manifest or no roads in it.
+func _build_road_net() -> RoadNetwork:
+	var manifest := _load_json(road_manifest)
+	var net := RoadNetwork.new(2.0)
+	for d in manifest.get("districts", []):
+		var data := _load_json(String(d.get("data", "")))
+		if data.is_empty() or not data.has("origin"):
+			continue
+		var origin: Dictionary = data["origin"]
+		net.add_district(
+			data.get("roads", []),
+			GeoProjection.new(origin["lat"], origin["lon"]),
+			RoadNetwork.DRIVEABLE
+		)
+	if net.segment_count() == 0:
+		return null
+	net.build_spatial_index()
+	return net
+
+
+func _load_json(path: String) -> Dictionary:
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return {}
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	return parsed if parsed is Dictionary else {}
+
+
+## The world's floating-origin shift, so the keep-out can map scene-space ped
+## positions onto the absolute road graph. Zero when no origin node is present.
+func _read_origin_offset() -> Vector3:
+	var fo := get_tree().get_first_node_in_group("floating_origin")
+	return fo.origin_offset if fo != null and "origin_offset" in fo else Vector3.ZERO
 
 
 ## Current live crowd size — handy for a streaming-debug HUD and for tests that
