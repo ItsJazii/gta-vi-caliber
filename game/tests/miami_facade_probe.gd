@@ -1,14 +1,15 @@
 extends SceneTree
-## Runtime facade-detail probe for the main playable map.
+## Runtime facade-detail probe for the streamed Miami districts.
 ##
 ## The unit tests prove the facade-panel generator can produce windows from a
-## footprint. This boots the main map and verifies streamed districts actually
-## attach the batched dark glass and lit window MultiMeshes.
+## footprint. This boots a district-only harness and verifies the streamed
+## district builders actually attach the batched dark glass and lit window
+## MultiMeshes without depending on unrelated player/UI/NPC scene scripts.
 ## Run headless:
 ##   godot --headless --path game --script res://tests/miami_facade_probe.gd
 
-const SCENE_PATH: String = "res://scenes/world/miami.tscn"
-const WARMUP_FRAMES: int = 150
+const SCENE_PATH: String = "res://scenes/world/miami_facade_probe_world.tscn"
+const WARMUP_FRAMES: int = 12
 const MIN_FACADE_ROOTS: int = 1
 const MIN_DARK_PANELS: int = 1000
 const MIN_LIT_PANELS: int = 250

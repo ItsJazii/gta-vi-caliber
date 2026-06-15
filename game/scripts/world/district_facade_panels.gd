@@ -4,6 +4,8 @@ extends RefCounted
 
 const DARK_CAP := 2600
 const LIT_CAP := 900
+const GeoProjection = preload("res://scripts/world/geo_projection.gd")
+const CityBuilder = preload("res://scripts/world/city_builder.gd")
 
 
 static func build(parent: Node3D, buildings: Array, proj: GeoProjection) -> void:

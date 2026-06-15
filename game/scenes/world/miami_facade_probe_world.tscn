@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/support/miami_facade_probe_world.gd" id="1_world"]
+
+[node name="MiamiFacadeProbeWorld" type="Node3D" groups=["world"]]
+script = ExtResource("1_world")
