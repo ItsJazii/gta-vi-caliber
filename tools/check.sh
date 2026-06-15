@@ -193,6 +193,8 @@ step "character switch probe"
 "$GODOT_BIN" --headless --path game --script res://tests/character_switch_probe.gd
 step "ambient event probe"
 "$GODOT_BIN" --headless --path game --script res://tests/ambient_event_probe.gd
+step "ambient street race probe"
+"$GODOT_BIN" --headless --path game --script res://tests/ambient_street_race_probe.gd
 step "crowd contagion probe"
 "$GODOT_BIN" --headless --path game --script res://tests/crowd_contagion_probe.gd
 step "disguise evasion probe"

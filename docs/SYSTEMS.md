@@ -71,7 +71,7 @@ Groups the live scene already publishes: `player`, `player_health`,
 | `TrafficSignal` | junction light cycle + right-of-way | `tick`, `light_for`, `should_stop`, `yields_to` | place at intersections; gate `TrafficCar` at the stop line |
 | `EmergencyServices` | ambulance/fire dispatch | `service_for`, `nearest_responder`, `should_dispatch`, `eta`, response timer | **wired live** via `ResponderDispatcher` (Node): group-polls `weapon_controller`, and on a player kill rolls out an ambulance that drives in, treats the scene, and clears. CI-guarded by `tests/responder_dispatcher_probe.gd`. TODO: WRECK/FIRE incidents off `VehicleHealth.just_exploded`, + a visible on-scene treat dwell |
 | `WeatherEffects` | rain/fog gameplay impact | `grip_multiplier`, `visibility_range`, `ai_sight_multiplier`, `ai_sight_range` | `WeatherController` exposes normalized wetness/fog, and `Police` now shortens spotting range in heavy rain/fog. TODO: feed wetness into vehicle grip/traffic speed |
-| `AmbientEvents` | weighted freeroam encounters (mugging/race/heist) | `trigger_next`, `eligible_ids`, `can_fire`, `trigger` | a world director calls `trigger_next(rng, now, {stars, district})` on a timer and spawns the returned encounter; per-event cooldowns + a global gap prevent spam |
+| `AmbientEvents` | weighted freeroam encounters (mugging/race/heist) | `trigger_next`, `eligible_ids`, `can_fire`, `trigger` | **wired live** via `AmbientEventDirector` (timer rolls by stars+district) + `AmbientEncounterSpawner` (handles `street_race` by activating the live `RaceController` and setting a `PlayerStats` objective). CI-guarded by `tests/ambient_event_probe.gd` + `tests/ambient_street_race_probe.gd`. TODO: spawn handlers for the remaining default ids (`mugging`, `getaway_driver`, …) |
 
 ## Missions / activities
 
@@ -156,5 +156,7 @@ headless by `tests/character_switch_probe.gd`.
 `{stars (from the wanted group), district}`, rolls `trigger_next`, and emits
 `encounter_triggered(id, kind)`. Node logic CI-gated headless by
 `tests/ambient_event_probe.gd`; live in-scene connection asserted by
-`tests/miami_wiring_probe.gd`. Remaining to make encounters appear: connect
-`encounter_triggered` to scene spawn logic (mugging/race/heist actors).
+`tests/miami_wiring_probe.gd`. `AmbientEncounterSpawner` listens for those signals
+and, for `street_race`, calls `RaceController.start_challenge()` plus a HUD
+objective on `PlayerStats` — CI-guarded by `tests/ambient_street_race_probe.gd`.
+Remaining to wire: spawn/act handlers for the other default encounter ids.
