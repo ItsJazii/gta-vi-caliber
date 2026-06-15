@@ -54,6 +54,8 @@ func _begin() -> bool:
 	if _player == null or _stats == null:
 		return _fail("no live player / player_stats node")
 	_money0 = int(_stats.money)
+	if _race.has_method("start_challenge"):
+		_race.start_challenge()
 	_started = true
 	return false
 
