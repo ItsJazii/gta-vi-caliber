@@ -31,6 +31,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	add_to_group("ambient_event_director")
 	_rng.randomize()
 	call_deferred("_connect_wanted")
 
