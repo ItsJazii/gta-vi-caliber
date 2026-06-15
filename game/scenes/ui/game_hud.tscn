@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scripts/ui/crosshair.gd" id="2_cross"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/ui/wanted_stars.gd" id="5_stars"]
 [ext_resource type="PackedScene" path="res://scenes/ui/weapon_wheel.tscn" id="6_wheel"]
 [ext_resource type="Script" path="res://scripts/ui/full_map.gd" id="7_fullmap"]
+[ext_resource type="Script" path="res://scripts/ui/radio_readout.gd" id="8_radio"]
 
 [sub_resource type="StyleBoxFlat" id="quest_bg"]
 bg_color = Color(0.02, 0.03, 0.05, 0.62)
@@ -18,6 +19,17 @@ corner_radius_bottom_right = 5
 corner_radius_bottom_left = 3
 shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="radio_bg"]
+bg_color = Color(0.015, 0.02, 0.025, 0.58)
+border_width_left = 3
+border_color = Color(0.25, 0.77, 1, 0.88)
+corner_radius_top_left = 3
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 3
+shadow_color = Color(0, 0, 0, 0.42)
+shadow_size = 5
 
 [node name="GameHud" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -162,6 +174,52 @@ theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_font_sizes/font_size = 14
 text = ""
+
+[node name="RadioReadout" type="Panel" parent="."]
+visible = false
+custom_minimum_size = Vector2(292, 60)
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -330.0
+offset_right = 316.0
+offset_bottom = -270.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("radio_bg")
+script = ExtResource("8_radio")
+
+[node name="Margin" type="MarginContainer" parent="RadioReadout"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 7
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 7
+
+[node name="VBox" type="VBoxContainer" parent="RadioReadout/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 1
+
+[node name="Source" type="Label" parent="RadioReadout/Margin/VBox"]
+modulate = Color(0.55, 0.86, 1, 0.9)
+layout_mode = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.7)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 11
+text = "RADIO"
+
+[node name="Line" type="Label" parent="RadioReadout/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.86)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 15
+text = ""
+clip_text = true
+text_overrun_behavior = 3
 
 [node name="Weapon" type="VBoxContainer" parent="."]
 anchor_left = 1.0

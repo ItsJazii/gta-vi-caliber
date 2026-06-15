@@ -16,7 +16,14 @@ extends Node
 
 signal action_finished(canonical: String)
 
-enum Mode { GROUND, AIR, ACTION }
+enum Mode { GROUND, AIR, ACTION, AIM }
+
+## Canonical clip used for the held aiming/shooting stance. The Meshy MC set has no
+## static aim pose, so the run-and-gun clip doubles as the gun-up stance.
+const AIM_CLIP := "run_and_gun"
+## Frame (0-1 of the clip) frozen for a standing aim: far enough in that the gun is
+## fully raised and two-handed, before the run stride swings the torso.
+const AIM_HOLD_FRACTION := 0.2
 
 ## Canonical action/state name -> clip name as it imports from the Meshy GLB.
 ## Add a row here when a new Meshy clip lands; callers only ever use the keys.
@@ -31,6 +38,7 @@ const CLIPS := {
 	"jump": "Regular_Jump",
 	"fall": "Fall2",
 	"reload": "Standing_Reload",
+	"reload_run": "Running_Reload",
 	"run_and_gun": "Run_and_Shoot",
 	"melee": "Punch_Combo",
 	"melee_1": "Punch_Combo_1",
@@ -69,6 +77,7 @@ const LOOPING := ["idle", "walk", "run", "run_alt", "fall", "walk_back"]
 var _ap: AnimationPlayer = null
 var _mode: int = Mode.GROUND
 var _loco: String = ""  # canonical locomotion clip currently requested
+var _aim_moving: bool = false  # last aim stance: looped (moving) vs frozen (standing)
 var _resolved: Dictionary = {}  # canonical -> actual AnimationPlayer clip name
 
 
@@ -96,11 +105,63 @@ func update_locomotion(speed: float, grounded: bool) -> void:
 			if not _play("fall"):
 				_play("jump")
 		return
-	if _mode == Mode.AIR:
-		_mode = Mode.GROUND
-		_loco = ""  # force a fresh locomotion pick now that we have landed
+	# Leaving the air or a (possibly frozen) aim stance: clear the cached
+	# locomotion clip so _ground always re-issues play(), which also unpauses the
+	# AnimationPlayer if a standing aim had paused it on a held frame.
+	if _mode == Mode.AIR or _mode == Mode.AIM:
+		_loco = ""
 	_mode = Mode.GROUND
 	_ground(speed)
+
+
+## Hold the run-and-gun aiming stance while the player aims. Standing freezes a
+## settled gun-up frame (no leg shuffle or root-motion drift); moving loops the
+## run-and-gun cycle so the legs carry the stance. A one-shot action (reload) is
+## left to finish — the caller re-aims once it ends. Call every frame the player
+## is aiming, in place of update_locomotion; clearing aim simply routes back to
+## update_locomotion, which resumes locomotion from the held pose.
+func aim(speed: float) -> void:
+	if _ap == null or _mode == Mode.ACTION or not has_clip(AIM_CLIP):
+		return
+	var clip_name: String = _resolved[AIM_CLIP]
+	var moving := speed > idle_speed
+	if _mode != Mode.AIM:
+		_mode = Mode.AIM
+		_aim_moving = moving
+		if moving:
+			_play(AIM_CLIP, action_blend)
+		else:
+			_freeze_aim(clip_name)
+		return
+	if moving != _aim_moving:
+		_aim_moving = moving
+		if moving:
+			_ap.play(clip_name, action_blend)
+		else:
+			_freeze_aim(clip_name)
+		return
+	# Sustain a moving aim: the clip is LOOP_NONE (so it can serve as a one-shot
+	# fire burst too), so replay it once it runs out to keep the gun up.
+	if moving and not _ap.is_playing():
+		_ap.play(clip_name)
+
+
+## Snap to a representative gun-up frame and hold it, for a standing aim.
+func _freeze_aim(clip_name: String) -> void:
+	var clip := _ap.get_animation(clip_name)
+	if clip == null:
+		return
+	_ap.play(clip_name)
+	_ap.advance(clip.length * AIM_HOLD_FRACTION)
+	_ap.pause()
+
+
+## True while a one-shot action of `canonical` is the clip currently playing, so a
+## caller can avoid restarting it every frame (e.g. sustained auto-fire).
+func is_action_playing(canonical: String) -> bool:
+	if _ap == null or _mode != Mode.ACTION or not _resolved.has(canonical):
+		return false
+	return _ap.current_animation == _resolved[canonical] and _ap.is_playing()
 
 
 ## Play a one-shot action by canonical name (melee, reload, wave, talk, react...).

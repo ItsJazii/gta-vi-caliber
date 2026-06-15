@@ -5,9 +5,9 @@ extends RefCounted
 ##
 ## Everything is generated deterministically from a seed and the friend handles,
 ## so the same seed always yields the same scroll of posts — no text/image assets
-## in the repo, and the feeds are unit-testable headless (mirrors the no-binaries
-## approach of FootstepAudioModel). The Phone node owns presentation; this only
-## produces plain data dictionaries. Covered by tests/unit/test_social_feed.gd.
+## in the repo, and the feeds are unit-testable headless (pure data, no scene
+## access). The Phone node owns presentation; this only produces plain data
+## dictionaries. Covered by tests/unit/test_social_feed.gd.
 
 ## Caption fragments for photo posts, combined deterministically per post.
 const CAPTIONS: PackedStringArray = [

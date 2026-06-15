@@ -69,6 +69,9 @@ const HITSTOP_SCALE: Dictionary = {
 const HITSTOP_KILL_SECONDS: float = 0.10
 const HITSTOP_KILL_SCALE: float = 0.02
 
+## Sentinel for "no melee target found" (mirrors Interaction.NONE).
+const NO_TARGET: int = -1
+
 var _max_stamina: float
 var _stamina: float
 var _combo: int = 0
@@ -134,6 +137,38 @@ static func is_in_range(attacker_pos: Vector3, target_pos: Vector3, reach: float
 	if reach < 0.0:
 		return false
 	return attacker_pos.distance_to(target_pos) <= reach
+
+
+## Pick the best melee target among `candidates` (world positions) for an
+## attacker at `attacker_pos` facing planar unit `forward`: the most head-on
+## body within `reach`, ties broken toward the closer one. A near-overlapping
+## target counts as dead ahead. Candidates more than `min_facing` off-axis (dot
+## below it) are ignored so you can't punch someone behind you. Returns
+## NO_TARGET when nothing qualifies. Pure, so the controller's shape query stays
+## unit-testable headless.
+static func best_target(
+	candidates: PackedVector3Array,
+	attacker_pos: Vector3,
+	forward: Vector3,
+	reach: float,
+	min_facing: float
+) -> int:
+	var best := NO_TARGET
+	var best_score := -INF
+	for i in candidates.size():
+		var to_target := candidates[i] - attacker_pos
+		to_target.y = 0.0
+		var dist := to_target.length()
+		if dist > reach:
+			continue
+		var facing := 1.0 if dist < 0.0001 else forward.dot(to_target / dist)
+		if facing < min_facing:
+			continue
+		var score := facing - dist * 0.1
+		if score > best_score:
+			best_score = score
+			best = i
+	return best
 
 
 ## Whether a hit of `damage` overwhelms a target's poise and staggers them. A

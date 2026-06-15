@@ -9,6 +9,16 @@ const PLAYER_VISUAL := "res://assets/characters/mc/mc_shirtless_full_anims.glb"
 const LEATHER_TEX := "res://assets/textures/leather.png"
 
 
+class MockRepairableVehicle:
+	extends Node3D
+	var health: float = 25.0
+	var max_health: float = 100.0
+
+
+class MockUnrepairableVehicle:
+	extends Node3D
+
+
 func test_player_uses_meshy_rig() -> bool:
 	var player := _player_instance()
 	if player == null:
@@ -82,6 +92,33 @@ func test_player_camera_supports_character_inspection() -> bool:
 
 func test_player_has_ledgered_leather_texture() -> bool:
 	return load(LEATHER_TEX) is Texture2D
+
+
+func test_player_mechanic_service_repairs_current_vehicle() -> bool:
+	var player := _player_instance() as Player
+	if player == null:
+		return false
+	var vehicle := MockRepairableVehicle.new()
+	player.set("_vehicle", vehicle)
+	var ok := (
+		player.service_current_vehicle() and is_equal_approx(vehicle.health, vehicle.max_health)
+	)
+	vehicle.free()
+	player.free()
+	return ok
+
+
+func test_player_mechanic_service_noops_without_repairable_vehicle() -> bool:
+	var player := _player_instance() as Player
+	if player == null:
+		return false
+	var empty := player.service_current_vehicle()
+	var vehicle := MockUnrepairableVehicle.new()
+	player.set("_vehicle", vehicle)
+	var unrepairable := player.service_current_vehicle()
+	vehicle.free()
+	player.free()
+	return not empty and not unrepairable
 
 
 func _player_instance() -> Node:

@@ -51,19 +51,32 @@ var _gun_rest_z: float = 0.0
 var _player_rid: RID
 var _rng := RandomNumberGenerator.new()
 var _hitstop: Hitstop = null
+var _weapon_audio: WeaponAudio = null
+
+# Resolved in _ready (not @onready): the rig may reparent GunMount onto a hand
+# bone during its own _ready, which invalidates the authored node paths.
+var _muzzle: Node3D = null
+var _gun_mount: Node3D = null
+# The owner's rig node, driven for the draw/aim/shoot/reload poses. Typed loosely
+# (Node3D) and called by name: the player uses McPlayerRig, but any rig exposing
+# set_armed/set_aiming/play_shoot/play_reload works, with no AnimatedRig coupling.
+var _rig: Node3D = null
 
 @onready var _camera: Camera3D = get_node_or_null(camera_path)
-@onready var _muzzle: Node3D = get_node_or_null(muzzle_path)
-@onready var _gun_mount: Node3D = get_node_or_null(gun_mount_path)
 @onready var _camera_rig: OrbitCamera = _resolve_camera_rig()
 
 
 func _ready() -> void:
 	_rng.randomize()
 	add_to_group("weapon_controller")
+	_resolve_gun_nodes()
 	# Hitstop is code-spawned so the punch-on-impact feature stays self-contained.
 	_hitstop = Hitstop.new()
 	add_child(_hitstop)
+	# Gunshot audio is code-spawned the same way, so the firing sound travels with
+	# this controller and needs no scene wiring.
+	_weapon_audio = WeaponAudio.new()
+	add_child(_weapon_audio)
 	for stats in [
 		WeaponStats.pistol(), WeaponStats.smg(), WeaponStats.rifle(), WeaponStats.shotgun()
 	]:
@@ -82,10 +95,33 @@ func _ready() -> void:
 func facing_override() -> float:
 	if not _armed or _camera == null:
 		return NAN
-	var fwd := -_camera.global_transform.basis.z
-	# The rig's forward (face) is local -Z, so point -Z along the camera forward
-	# by negating both components — matching CharacterAnimator's travel-facing.
-	return atan2(-fwd.x, -fwd.z)
+	return aim_yaw_for(-_camera.global_transform.basis.z)
+
+
+## Yaw that points the visual's forward along `forward` (camera look direction).
+## The rig's forward is local +Z (Vector3.BACK — see test_anim_router_facing), so
+## this uses the same atan2(x, z) as the travel-facing. Pure + tested because the
+## old negated form was 180° off and spun the character to face the camera while
+## aiming — invisible until the gun and aim pose actually rendered.
+static func aim_yaw_for(forward: Vector3) -> float:
+	return atan2(forward.x, forward.z)
+
+
+## Camera look pitch mapped to [-1, 1] for the aim-pose blend (looking up = +1).
+## Scaled so a modest tilt reaches the full up/down aim clips.
+func _camera_pitch() -> float:
+	if _camera == null:
+		return 0.0
+	return clampf(-_camera.global_transform.basis.z.y * 2.0, -1.0, 1.0)
+
+
+## Whether a holstered weapon should auto-draw this frame: a fire or aim press
+## while holstered with a weapon in hand. Pure so the draw-on-first-click rule is
+## unit-tested without the input/scene plumbing.
+static func should_auto_draw(
+	armed: bool, has_weapon: bool, fire_pressed: bool, aim_pressed: bool
+) -> bool:
+	return not armed and has_weapon and (fire_pressed or aim_pressed)
 
 
 func is_armed() -> bool:
@@ -172,14 +208,32 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("weapon_next"):
 		_cycle_weapon()
 
+	# Auto-draw: pressing fire or aim while holstered pulls the gun out and then
+	# falls through to aim/fire the same frame, so the very first click shoots
+	# instead of silently doing nothing.
+	if should_auto_draw(
+		_armed,
+		weapon != null,
+		Input.is_action_just_pressed("fire"),
+		Input.is_action_just_pressed("aim")
+	):
+		_set_armed(true)
+
 	if not _armed or weapon == null:
 		_set_camera_aim(false)
+		if _rig != null:
+			_rig.call(&"set_armed", false)
 		return
 
 	_aiming = Input.is_action_pressed("aim")
 	_set_camera_aim(_aiming)
+	if _rig != null:
+		_rig.call(&"set_armed", true)
+		_rig.call(&"set_aiming", _aiming, _camera_pitch())
 
 	if Input.is_action_just_pressed("reload") and weapon.start_reload():
+		if _rig != null:
+			_rig.call(&"play_reload")
 		_emit_state()
 
 	var trigger := (
@@ -194,6 +248,8 @@ func _process(delta: float) -> void:
 func _try_fire(weapon: Weapon) -> void:
 	if not weapon.fire():
 		return
+	if _rig != null:
+		_rig.call(&"play_shoot")
 	var space := get_world_3d().direct_space_state
 	var cam := _camera.global_transform
 	var origin := cam.origin
@@ -218,6 +274,8 @@ func _try_fire(weapon: Weapon) -> void:
 			_apply_damage(weapon, origin, hit)
 
 	_spawn_muzzle_flash(muzzle_pos, -basis.z)
+	if _weapon_audio != null:
+		_weapon_audio.fire(weapon.stats.sound_key, muzzle_pos)
 	_gun_recoil = recoil_gun_kick
 	if _camera_rig != null:
 		_camera_rig.add_recoil(weapon.stats.recoil_kick)
@@ -320,6 +378,21 @@ func _resolve_camera_rig() -> OrbitCamera:
 			return node
 		node = node.get_parent()
 	return null
+
+
+## Resolve the held-gun nodes. Prefer the authored paths, but fall back to a
+## name search under the player because the rig may have reparented GunMount onto
+## a hand bone during its own _ready (which runs before this controller's).
+func _resolve_gun_nodes() -> void:
+	var owner_node := get_parent()
+	_gun_mount = get_node_or_null(gun_mount_path) as Node3D
+	if _gun_mount == null and owner_node != null:
+		_gun_mount = owner_node.find_child("GunMount", true, false) as Node3D
+	_muzzle = get_node_or_null(muzzle_path) as Node3D
+	if _muzzle == null and _gun_mount != null:
+		_muzzle = _gun_mount.find_child("Muzzle", true, false) as Node3D
+	if owner_node != null:
+		_rig = owner_node.get_node_or_null("Rig") as Node3D
 
 
 # --- procedural FX: short-lived nodes, freed by a one-shot timer ----------

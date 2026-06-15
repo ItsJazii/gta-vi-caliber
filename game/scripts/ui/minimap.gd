@@ -28,6 +28,7 @@ const POI_COLORS: Dictionary = {
 
 const GPS_ARRIVE_RADIUS: float = 2.0
 const ROUTE_POINT_EPS_SQ: float = 0.0001
+const GPS_ROUTE_COORDINATOR_SCRIPT := preload("res://scripts/ui/gps_route_coordinator.gd")
 
 ## World metres mapped to one screen pixel's worth of zoom.
 @export var pixels_per_meter: float = 1.6
@@ -74,6 +75,8 @@ var _gps_route: Array = []
 
 
 func _ready() -> void:
+	var route_coordinator := GPS_ROUTE_COORDINATOR_SCRIPT.new()
+	add_child(route_coordinator)
 	call_deferred("_bind")
 	set_process(true)
 	for group in ["pedestrians", "police", "vehicles"]:

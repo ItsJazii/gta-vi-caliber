@@ -11,7 +11,8 @@ extends RefCounted
 ## boat/bike vehicle entries on top of v1's position/health/wanted/cars.
 ## v3 added lifetime/100%-completion stats as a separate section from the
 ## player wallet/armor "stats" payload.
-const VERSION: int = 3
+## v4 added activity-based player skills.
+const VERSION: int = 4
 
 
 ## Wrap a state snapshot with a version header and serialise to JSON text.
@@ -39,6 +40,8 @@ static func migrate(snapshot: Dictionary, from_version: int) -> Dictionary:
 				out[key] = {}
 	if from_version < 3 and not out.get("lifetime_stats") is Dictionary:
 		out["lifetime_stats"] = {}
+	if from_version < 4 and not out.get("player_skills") is Dictionary:
+		out["player_skills"] = {}
 	return out
 
 

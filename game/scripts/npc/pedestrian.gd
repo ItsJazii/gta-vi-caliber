@@ -143,10 +143,10 @@ func is_dead() -> bool:
 	return _dead
 
 
-## A quick recoil jolt of the rig when hit — the visible "ow" that sells a bullet
-## or punch landing. Pitches the body back briefly, then settles. Self-limiting so
-## a burst of fire can't stack tweens into a seizure, and inert once dead (the
-## death topple owns the rig then). `_dir` is reserved for a directional flinch.
+## A visible "ow" when hit — plays the rig's hit-reaction one-shot so a bullet or
+## punch lands with a flinch. Self-limiting so a burst of fire can't restart the
+## clip every frame, and inert once dead (the death pose owns the rig then).
+## `_dir` is reserved for a future directional flinch.
 func flinch(_dir: Vector3) -> void:
 	if _dead or _rig == null:
 		return
@@ -154,9 +154,7 @@ func flinch(_dir: Vector3) -> void:
 	if now < _flinch_until:
 		return
 	_flinch_until = now + 0.22
-	var tween := create_tween()
-	tween.tween_property(_rig, "rotation:x", deg_to_rad(-13.0), 0.05)
-	tween.tween_property(_rig, "rotation:x", 0.0, 0.17)
+	_rig.play_hit()
 
 
 func _fall(delta: float) -> void:
@@ -169,18 +167,19 @@ func _fall(delta: float) -> void:
 
 func _die() -> void:
 	_dead = true
-	var tween := create_tween()
-	tween.tween_property(_rig, "rotation:z", deg_to_rad(88.0), 0.4)
+	if _rig != null:
+		_rig.play_death()
 	if respawn_delay > 0.0:
-		tween.tween_interval(respawn_delay)
-		tween.tween_callback(_respawn)
+		get_tree().create_timer(respawn_delay).timeout.connect(_respawn)
 
 
 func _respawn() -> void:
 	_hp.revive()
 	_dead = false
 	_fear = 0.0
-	_rig.rotation = Vector3.ZERO
+	if _rig != null:
+		_rig.revive()
+		_rig.rotation = Vector3.ZERO
 	global_position = _home
 	velocity = Vector3.ZERO
 	_pick_new_target()

@@ -43,6 +43,24 @@ static func turn_toward(heading: Vector3, desired: Vector3, max_step: float) -> 
 	return h.rotated(UP, sign_dir * max_step).normalized()
 
 
+## Speed multiplier for how hard the car must turn to face `desired` from its
+## current `heading`: full speed when already lined up, easing down to `min_scale`
+## for a sharp (>=90°) turn. Real drivers brake into corners — this keeps a car
+## from overshooting a tight junction arc and wandering off the far side. Pure.
+static func corner_speed_scale(
+	heading: Vector3, desired: Vector3, min_scale: float = 0.45
+) -> float:
+	if desired.length() < 0.0001:
+		return 1.0
+	var h := Vector3(heading.x, 0.0, heading.z)
+	if h.length() < 0.0001:
+		return 1.0
+	var dot := clampf(h.normalized().dot(desired.normalized()), -1.0, 1.0)
+	# dot 1 (aligned) -> full; dot <= 0 (>=90° off) -> min; cos(30°)≈0.87 -> full.
+	var t := clampf(dot / 0.87, 0.0, 1.0)
+	return lerpf(min_scale, 1.0, t)
+
+
 ## Advance one frame toward `target`: swing the heading (capped by max_turn_rate)
 ## then step forward along the new heading by speed·delta. Returns the updated
 ## {position, heading}. Pure — the caller owns the state.

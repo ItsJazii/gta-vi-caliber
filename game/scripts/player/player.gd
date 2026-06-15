@@ -13,6 +13,7 @@ extends CharacterBody3D
 signal footstep(surface: String, is_left: bool)
 
 const DISGUISE_TRACKER_SCRIPT := preload("res://scripts/systems/disguise_tracker.gd")
+const SKILLS_COORDINATOR_SCRIPT := preload("res://scripts/systems/skills_coordinator.gd")
 
 @export var walk_speed: float = 5.0
 @export var sprint_speed: float = 8.5
@@ -98,12 +99,15 @@ func _ready() -> void:
 	_rig.foot_planted.connect(_on_foot_planted)
 	var disguise_tracker := DISGUISE_TRACKER_SCRIPT.new()
 	add_child(disguise_tracker)
+	var skills_coordinator := SKILLS_COORDINATOR_SCRIPT.new()
+	add_child(skills_coordinator)
 	# The phone (UI + its own input + holding pose) is likewise code-spawned so
 	# the feature is self-contained and doesn't touch player.tscn.
 	_phone_ui = Phone.new()
 	add_child(_phone_ui)
 	_phone_ui.active_changed.connect(_on_phone_active)
 	_phone_ui.friend_called.connect(_on_friend_called)
+	_phone_ui.service_requested.connect(_on_phone_service_requested)
 	_water_cache = GroupCache.for_group(get_tree(), "water")
 	_ladder_cache = GroupCache.for_group(get_tree(), "ladders")
 	_health_cache = GroupCache.for_group(get_tree(), "player_health")
@@ -141,6 +145,32 @@ func _on_friend_called(_friend_name: String) -> void:
 	var ped := _nearest_pedestrian(30.0)
 	if ped != null and ped.has_method("greet"):
 		ped.greet(6.0)
+
+
+func _on_phone_service_requested(_id: String, kind: String, _contact: String, _cost: int) -> void:
+	if kind == "vehicle":
+		service_current_vehicle()
+
+
+## Mechanic phone service: patch up the car the player is currently driving.
+## Returns whether a vehicle was present and repairable.
+func service_current_vehicle() -> bool:
+	if _vehicle == null:
+		return false
+	if not (_has_property(_vehicle, "health") and _has_property(_vehicle, "max_health")):
+		return false
+	var max_value: Variant = _vehicle.get("max_health")
+	if not (max_value is float or max_value is int):
+		return false
+	_vehicle.set("health", maxf(float(max_value), 0.0))
+	return true
+
+
+func _has_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if String(property.get("name", "")) == property_name:
+			return true
+	return false
 
 
 func _nearest_pedestrian(max_range: float) -> Node3D:

@@ -9,6 +9,9 @@ extends Resource
 ## launch archetypes until balance .tres files exist.
 
 @export var display_name: String = "Weapon"
+## Audio class -> assets/audio/weapons/<sound_key>.wav, picked by WeaponAudio.
+## Decoupled from display_name so renaming/branding a weapon never mutes it.
+@export var sound_key: String = "pistol"
 ## Held down to keep firing (true) vs one shot per trigger pull (false).
 @export var automatic: bool = false
 ## Rounds per second; the inverse is the per-shot cooldown.
@@ -41,6 +44,7 @@ extends Resource
 static func pistol() -> WeaponStats:
 	var s := WeaponStats.new()
 	s.display_name = "Pistol"
+	s.sound_key = "pistol"
 	s.automatic = false
 	s.fire_rate = 5.0
 	s.mag_size = 12
@@ -59,6 +63,7 @@ static func pistol() -> WeaponStats:
 static func smg() -> WeaponStats:
 	var s := WeaponStats.new()
 	s.display_name = "SMG"
+	s.sound_key = "smg"
 	s.automatic = true
 	s.fire_rate = 13.0
 	s.mag_size = 30
@@ -77,6 +82,7 @@ static func smg() -> WeaponStats:
 static func rifle() -> WeaponStats:
 	var s := WeaponStats.new()
 	s.display_name = "Rifle"
+	s.sound_key = "rifle"
 	s.automatic = true
 	s.fire_rate = 9.0
 	s.mag_size = 30
@@ -95,6 +101,7 @@ static func rifle() -> WeaponStats:
 static func shotgun() -> WeaponStats:
 	var s := WeaponStats.new()
 	s.display_name = "Shotgun"
+	s.sound_key = "shotgun"
 	s.automatic = false
 	s.fire_rate = 1.6
 	s.mag_size = 6

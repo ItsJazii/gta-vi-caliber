@@ -39,6 +39,7 @@ func _run_checks() -> void:
 	_expect_one("player")
 	_expect_one("player_health")
 	_expect_one("player_stats")
+	_expect_one("player_skills")
 	_expect_one("wanted")
 	_expect_one("mission")
 	_expect_one("bark_director")

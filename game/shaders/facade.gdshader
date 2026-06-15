@@ -23,6 +23,19 @@ uniform float window_step = 2.7;
 // procedural masonry fill at close range. White default = neutral (greybox
 // fallback and tests behave identically without the texture).
 uniform sampler2D detail_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D masonry_albedo_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D masonry_roughness_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D concrete_albedo_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D concrete_roughness_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tower_albedo_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tower_roughness_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tower_metallic_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D roof_albedo_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D roof_roughness_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform float masonry_uv_scale = 0.21;
+uniform float concrete_uv_scale = 0.18;
+uniform float tower_uv_scale = 0.24;
+uniform float roof_uv_scale = 0.16;
 
 varying vec3 v_pos; // mesh-local position
 varying vec3 v_nrm; // mesh-local normal (flat per wall face)
@@ -63,8 +76,19 @@ void fragment() {
 	vec3 tang = normalize(vec3(-v_nrm.z, 0.0, v_nrm.x) + vec3(1e-4, 0.0, 0.0));
 	float u = dot(v_pos, tang);
 	float v = v_pos.y;
+	vec2 wall_uv = vec2(u, v);
+	vec2 roof_uv = v_pos.xz;
 	// Per-face seed so parallel/opposite facades don't mirror each other.
 	float fseed = dot(round(v_nrm.xz * 4.0), vec2(17.0, 59.0)) + v_tint.r * 91.0;
+	vec3 masonry_tex = texture(masonry_albedo_tex, wall_uv * masonry_uv_scale).rgb;
+	float masonry_rough_tex = texture(masonry_roughness_tex, wall_uv * masonry_uv_scale).r;
+	vec3 concrete_tex = texture(concrete_albedo_tex, wall_uv * concrete_uv_scale).rgb;
+	float concrete_rough_tex = texture(concrete_roughness_tex, wall_uv * concrete_uv_scale).r;
+	vec3 tower_tex = texture(tower_albedo_tex, wall_uv * tower_uv_scale).rgb;
+	float tower_rough_tex = texture(tower_roughness_tex, wall_uv * tower_uv_scale).r;
+	float tower_metal_tex = texture(tower_metallic_tex, wall_uv * tower_uv_scale).r;
+	vec3 roof_tex = texture(roof_albedo_tex, roof_uv * roof_uv_scale).rgb;
+	float roof_rough_tex = texture(roof_roughness_tex, roof_uv * roof_uv_scale).r;
 
 	// Glass curtain-wall towers when the packed seed is high (tall buildings);
 	// masonry otherwise. Soft edge so the transition band isn't a hard cutoff.
@@ -88,12 +112,14 @@ void fragment() {
 	float streak = (hash21(vec2(floor(u * 0.7), 0.0) + fseed) - 0.5) * 0.035;
 	float ledge = 1.0 - 0.16 * (1.0 - smoothstep(0.0, 0.07, mf.y)) * wall;
 	float grime = 1.0 - 0.13 * (1.0 - smoothstep(0.0, 2.6, v));
-	vec3 mwall_col = (v_tint + vec3(patch + streak)) * ledge * grime;
+	vec3 masonry_color = masonry_tex * v_tint;
+	vec3 mwall_col = mix(v_tint + vec3(patch + streak), masonry_color, 0.58) * ledge * grime;
 	float mgl = 0.6 + 0.7 * hash21(mcell + vec2(fseed + 11.0));
 	float mrecess = 1.0 - 0.45 * smoothstep(0.45, 0.78, mf.y);
 	vec3 mglass_col = vec3(0.10, 0.12, 0.15) * mgl * mrecess;
 	vec3 m_albedo = mix(mwall_col, mglass_col, mwin);
-	float m_rough = mix(0.78 + 0.18 * hash21(mcell - vec2(fseed)), 0.14, mwin);
+	float masonry_wall_rough = mix(0.78 + 0.18 * hash21(mcell - vec2(fseed)), masonry_rough_tex, 0.65);
+	float m_rough = mix(masonry_wall_rough, 0.14, mwin);
 	float m_metal = 0.0;
 	float m_spec = mix(0.4, 0.6, mwin);
 
@@ -124,6 +150,9 @@ void fragment() {
 	float g_metal = mix(0.92, 0.15, spandrel);
 	float g_rough = mix(0.08, 0.45, spandrel);
 	float g_spec = 0.85;
+	g_albedo = mix(g_albedo, tower_tex * (0.72 + 0.22 * gtint), 0.52);
+	g_metal = mix(g_metal, tower_metal_tex, 0.78);
+	g_rough = mix(g_rough, tower_rough_tex, 0.74);
 	g_albedo = mix(g_albedo, mullion_col, mull);
 	g_metal = mix(g_metal, 0.5, mull);
 	g_rough = mix(g_rough, 0.5, mull);
@@ -155,22 +184,24 @@ void fragment() {
 	float sf_frame = 1.0 - smoothstep(0.0, 0.16, fract(u / 3.4));
 	wall_albedo = mix(wall_albedo, vec3(0.07, 0.08, 0.10), ground * 0.85);
 	wall_albedo = mix(wall_albedo, vec3(0.03, 0.03, 0.035), ground * sf_frame);
-	wall_rough = mix(wall_rough, 0.12, ground * 0.7);
+	wall_albedo = mix(wall_albedo, concrete_tex * vec3(0.42), ground * 0.28);
+	wall_rough = mix(wall_rough, mix(0.12, concrete_rough_tex, 0.45), ground * 0.7);
 	wall_metal = mix(wall_metal, 0.5, ground * 0.5);
 
 	// Art-Deco belt course: a crisp pale trim band capping the storefront level,
 	// a near-universal South Beach Deco cue. Masonry only (glass towers skip it).
 	float belt = smoothstep(5.0, 5.18, v) * (1.0 - smoothstep(5.5, 5.7, v)) * wall * (1.0 - is_glass);
 	wall_albedo = mix(wall_albedo, vec3(0.97, 0.95, 0.90), belt * 0.85);
-	wall_rough = mix(wall_rough, 0.55, belt);
+	wall_albedo = mix(wall_albedo, concrete_tex * vec3(1.08), belt * 0.32);
+	wall_rough = mix(wall_rough, mix(0.55, concrete_rough_tex, 0.35), belt);
 	wall_metal = mix(wall_metal, 0.0, belt);
 
-	// Roof: darker gravel-toned version of the wall colour.
-	float roof_n = (hash21(floor(v_pos.xz * 0.8)) - 0.5) * 0.06;
-	vec3 roof_col = v_tint * 0.45 + vec3(roof_n);
+	// Roof: terracotta / brick breakup instead of a flat grey cap.
+	float roof_n = (hash21(floor(v_pos.xz * 0.8)) - 0.5) * 0.04;
+	vec3 roof_col = mix(v_tint * 0.45 + vec3(roof_n), roof_tex * vec3(0.85, 0.62, 0.55), 0.74);
 
 	ALBEDO = mix(roof_col, wall_albedo, wall);
-	ROUGHNESS = mix(0.95, wall_rough, wall);
+	ROUGHNESS = mix(mix(0.95, roof_rough_tex, 0.6), wall_rough, wall);
 	METALLIC = wall_metal * wall;
 	SPECULAR = mix(0.3, wall_spec, wall);
 

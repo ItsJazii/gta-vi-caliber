@@ -11,7 +11,30 @@ engine needs to be pushed further.
 > assets, code, or content from any Grand Theft Auto product. "GTA-VI-caliber"
 > describes our *quality benchmark*, nothing more.
 
-## Quickstart (60 seconds)
+## Play in one command (no GitHub or Godot needed)
+
+Never used GitHub? Don't want to install anything? Paste one line into a
+terminal. It fetches the Godot engine and the game (assets included) into a
+local folder and launches straight into play. Re-run it any time to update and
+play again.
+
+**macOS / Linux:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/duolahypercho/gta-vi-caliber/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+iwr https://raw.githubusercontent.com/duolahypercho/gta-vi-caliber/main/install.ps1 | iex
+```
+
+Everything lands in `~/gta-vi-caliber` (engine cached separately). The only
+prerequisite the installer can't fetch for you is `git` itself — preinstalled
+on nearly every Mac, and a one-line install on Linux/Windows if missing.
+
+## Quickstart (60 seconds, for contributors)
 
 ```bash
 # 1. Install Godot 4.6+ and git-lfs

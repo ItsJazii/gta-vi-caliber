@@ -213,10 +213,16 @@ step "miami citizen probe"
 run_godot_checked "miami citizen probe" "$GODOT_BIN" --headless --path game --script res://tests/miami_citizen_probe.gd
 step "miami traffic law probe"
 run_godot_checked "miami traffic law probe" "$GODOT_BIN" --headless --path game --script res://tests/miami_traffic_law_probe.gd
+step "miami traffic road probe"
+run_godot_checked "miami traffic road probe" "$GODOT_BIN" --headless --path game --script res://tests/miami_traffic_road_probe.gd
 step "contraband market probe"
 run_godot_checked "contraband market probe" "$GODOT_BIN" --headless --path game --script res://tests/contraband_market_probe.gd
 step "contraband bust probe"
 run_godot_checked "contraband bust probe" "$GODOT_BIN" --headless --path game --script res://tests/contraband_bust_probe.gd
+step "chop shop probe"
+run_godot_checked "chop shop probe" "$GODOT_BIN" --headless --path game --script res://tests/chop_shop_probe.gd
+step "garage storage probe"
+run_godot_checked "garage storage probe" "$GODOT_BIN" --headless --path game --script res://tests/garage_storage_probe.gd
 step "race probe"
 run_godot_checked "race probe" "$GODOT_BIN" --headless --path game --script res://tests/race_probe.gd
 step "crowd panic probe"
@@ -273,5 +279,27 @@ step "systems integration probe"
 run_godot_checked "systems integration probe" "$GODOT_BIN" --headless --path game --script res://tests/systems_integration_probe.gd
 step "phone contact services probe"
 run_godot_checked "phone contact services probe" "$GODOT_BIN" --headless --path game --script res://tests/phone_contact_services_probe.gd
+step "phone mechanic probe"
+run_godot_checked "phone mechanic probe" "$GODOT_BIN" --headless --path game --script res://tests/phone_mechanic_probe.gd
+
+# --- 8. combat audio + death-pose + weapon-mount + aim-pose probes -----------
+# The CC0 weapon/footstep samples all resolve and the audio nodes voice known /
+# fallback / bogus events without error; the rig's death/hit reactions are
+# one-shots (LOOP_NONE) so they hold their last frame instead of looping; a downed
+# NPC topples over and rests flat on the floor instead of freezing upright in the
+# air (the "corpse flying / upside-down" bug); the player's gun is moved onto the
+# MC right-hand bone at world scale instead of floating behind the player; and the
+# MC rig answers the WeaponController combat API with the right run-and-gun / reload
+# clips instead of silently no-opping (the cast-to-AnimatedRig dead pose path).
+step "audio assets probe"
+run_godot_checked "audio assets probe" "$GODOT_BIN" --headless --path game --script res://tests/audio_assets_probe.gd
+step "anim loop probe"
+run_godot_checked "anim loop probe" "$GODOT_BIN" --headless --path game --script res://tests/anim_loop_probe.gd
+step "corpse settle probe"
+run_godot_checked "corpse settle probe" "$GODOT_BIN" --headless --path game --script res://tests/corpse_settle_probe.gd
+step "mc weapon mount probe"
+run_godot_checked "mc weapon mount probe" "$GODOT_BIN" --headless --path game --script res://tests/mc_weapon_mount_probe.gd
+step "mc combat pose probe"
+run_godot_checked "mc combat pose probe" "$GODOT_BIN" --headless --path game --script res://tests/mc_combat_pose_probe.gd
 
 printf '\nAll checks passed ✔\n'
