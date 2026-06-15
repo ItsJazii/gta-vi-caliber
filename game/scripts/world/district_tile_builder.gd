@@ -72,6 +72,7 @@ static func build(data: Dictionary, tile_size: float) -> Dictionary:
 		"road_count": roads.size(),
 		"spawn_position": spawn["position"],
 		"spawn_yaw": spawn["yaw"],
+		"spawn_width": spawn["width"],
 	}
 
 
@@ -388,6 +389,7 @@ static func _find_spawn(
 ) -> Dictionary:
 	var best := centre
 	var best_yaw := 0.0
+	var best_width := VehicleSpawnLayout.DEFAULT_ROAD_WIDTH
 	var best_score := INF
 	var centre_xz := Vector2(centre.x, centre.z)
 	var building_rings: Array[PackedVector2Array] = []
@@ -433,8 +435,9 @@ static func _find_spawn(
 				best_score = score
 				best = Vector3(midpoint.x, 1.0, midpoint.y)
 				best_yaw = yaw
+				best_width = width
 	best.y = 1.0
-	return {"position": best, "yaw": best_yaw}
+	return {"position": best, "yaw": best_yaw, "width": best_width}
 
 
 static func _building_clearance(point: Vector2, building_rings: Array[PackedVector2Array]) -> float:

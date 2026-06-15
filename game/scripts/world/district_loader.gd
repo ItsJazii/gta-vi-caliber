@@ -37,6 +37,10 @@ const STREETLIGHT_RADIUS_M: float = 250.0
 const STREET_VISUAL_Y: float = 0.32
 const SIDEWALK_VISUAL_Y: float = 0.28
 const GROUND_SURFACE_Y: float = 0.4
+## Keep parked cars at least this far (m) from an intersection, so none is dropped
+## in the junction — where the kerb is interrupted by the crossing road and a
+## perpendicular kerb-offset lands the car on the main road.
+const PARKED_JUNCTION_CLEAR: float = 12.0
 const ROOFTOP_KEYS := [
 	"rooftop_ac", "rooftop_tanks", "rooftop_houses", "rooftop_masts", "rooftop_beacons"
 ]
@@ -145,7 +149,11 @@ func stream_one_step(observer: Vector3, velocity: Vector3) -> bool:
 		return false
 	if _spawn_pending:
 		var spawn_start := Time.get_ticks_usec()
-		_apply_spawn(_plan["spawn_position"], float(_plan["spawn_yaw"]))
+		_apply_spawn(
+			_plan["spawn_position"],
+			float(_plan["spawn_yaw"]),
+			float(_plan.get("spawn_width", VehicleSpawnLayout.DEFAULT_ROAD_WIDTH))
+		)
 		_spawn_pending = false
 		_record_step(spawn_start, "spawn")
 		return true
@@ -521,6 +529,8 @@ func _build_parked_cars(
 	var coupe_transforms: Array[Transform3D] = []
 	var sedan_transforms: Array[Transform3D] = []
 	var placed := 0
+	# Intersections to steer parked cars clear of (the kerb is interrupted there).
+	var junctions := _road_junctions(roads, proj)
 	for road: Dictionary in roads:
 		if placed >= limit:
 			break
@@ -528,7 +538,11 @@ func _build_parked_cars(
 		if width < 7.0:
 			continue
 		var path := _project_ring(road.get("path", []), proj)
-		var offset := width * 0.5 - 1.1
+		# Park BEYOND the carriageway edge (width/2), out on the kerb by the trees —
+		# the car's inner edge lands at the road edge and its body sits over the
+		# kerb, so parked cars never block a driving lane (they used to sit width/2 -
+		# 1.1 IN from the centre, which dropped them in the lane on narrower roads).
+		var offset := width * 0.5 + 1.0
 		for index in path.size() - 1:
 			var start := path[index]
 			var segment := path[index + 1] - start
@@ -540,7 +554,12 @@ func _build_parked_cars(
 			var yaw := atan2(direction.x, direction.y)
 			var distance := 5.0
 			while distance < segment_length - 4.0 and placed < limit:
-				var point := start + direction * distance + normal * offset
+				var centre := start + direction * distance
+				# Skip spots near an intersection so a car never lands on the crossing road.
+				if _near_junction(centre, junctions, PARKED_JUNCTION_CLEAR):
+					distance += 14.0
+					continue
+				var point := centre + normal * offset
 				var transform := Transform3D(
 					Basis.from_euler(Vector3(0.0, yaw, 0.0)),
 					Vector3(
@@ -555,27 +574,67 @@ func _build_parked_cars(
 					sedan_transforms.append(transform)
 				placed += 1
 				distance += 14.0
-	_add_parked_car_layer(_parked_coupe_mesh, coupe_transforms, "ParkedSportCoupes", target_parent)
 	_add_parked_car_layer(
-		_parked_sedan_mesh, sedan_transforms, "ParkedClassicSedans", target_parent
+		_parked_coupe_mesh,
+		coupe_transforms,
+		"ParkedSportCoupes",
+		VehicleVisualLibrary.Variant.SPORT_COUPE,
+		target_parent
+	)
+	_add_parked_car_layer(
+		_parked_sedan_mesh,
+		sedan_transforms,
+		"ParkedClassicSedans",
+		VehicleVisualLibrary.Variant.CLASSIC_SEDAN,
+		target_parent
 	)
 
 
+## A batch of parked cars on one street: a ParkedCarLayer keeps the cheap MultiMesh
+## visual but makes them solid and jackable (the player can hop into any one).
 func _add_parked_car_layer(
-	mesh: Mesh, transforms: Array[Transform3D], node_name: String, parent: Node3D
+	mesh: Mesh, transforms: Array[Transform3D], node_name: String, variant: int, parent: Node3D
 ) -> void:
 	if transforms.is_empty():
 		return
-	var multimesh := MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.mesh = mesh
-	multimesh.instance_count = transforms.size()
-	for index in transforms.size():
-		multimesh.set_instance_transform(index, transforms[index])
-	var instance := MultiMeshInstance3D.new()
-	instance.name = node_name
-	instance.multimesh = multimesh
-	parent.add_child(instance)
+	var layer := ParkedCarLayer.new()
+	layer.name = node_name + "Layer"
+	(parent if parent != null else self).add_child(layer)
+	layer.build(mesh, transforms, variant, node_name)
+
+
+## World-XZ points where two or more roads meet or cross — parked cars steer clear
+## of these so none is dropped into an intersection. A junction is a small grid
+## cell that at least two DIFFERENT road polylines touch (OSM splits roads at a
+## crossing, so their vertices coincide there).
+func _road_junctions(roads: Array, proj: GeoProjection) -> PackedVector2Array:
+	var cell := 4.0
+	var owner := {}
+	var hits := {}
+	for ri in roads.size():
+		var path := _project_ring(roads[ri].get("path", []), proj)
+		var seen := {}
+		for p in path:
+			var key := "%d_%d" % [floori(p.x / cell), floori(p.y / cell)]
+			if seen.has(key):
+				continue
+			seen[key] = true
+			if owner.has(key) and owner[key] != ri:
+				hits[key] = p
+			else:
+				owner[key] = ri
+	var out := PackedVector2Array()
+	for key in hits:
+		out.append(hits[key])
+	return out
+
+
+## True if `point` is within `radius` of any junction.
+func _near_junction(point: Vector2, junctions: PackedVector2Array, radius: float) -> bool:
+	for j in junctions:
+		if point.distance_to(j) <= radius:
+			return true
+	return false
 
 
 func _build_streetlights(
@@ -666,7 +725,7 @@ func set_night_amount(amount: float) -> void:
 		shaded.set_shader_parameter("night_mix", amount)
 
 
-func _apply_spawn(spawn: Vector3, yaw: float) -> void:
+func _apply_spawn(spawn: Vector3, yaw: float, road_width: float) -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
@@ -679,13 +738,13 @@ func _apply_spawn(spawn: Vector3, yaw: float) -> void:
 			var camera_rig := (player as Node).get_node_or_null("CameraRig") as Node3D
 			if camera_rig != null:
 				camera_rig.rotation.y = yaw
-	_place_starter_vehicles(spawn, yaw)
+	_place_starter_vehicles(spawn, yaw, road_width)
 	_build_spawn_vista(spawn, yaw)
 
 
-func _place_starter_vehicles(spawn: Vector3, yaw: float) -> void:
+func _place_starter_vehicles(spawn: Vector3, yaw: float, road_width: float) -> void:
 	var vehicle_spawn := Vector3(spawn.x, STREET_VISUAL_Y + 0.6, spawn.z)
-	var transforms := VehicleSpawnLayout.starter_transforms(vehicle_spawn, yaw)
+	var transforms := VehicleSpawnLayout.starter_transforms(vehicle_spawn, yaw, road_width)
 	var vehicles := get_tree().get_nodes_in_group("starter_vehicles")
 	for index in mini(vehicles.size(), transforms.size()):
 		var vehicle := vehicles[index] as Node3D
