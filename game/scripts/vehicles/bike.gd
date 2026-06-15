@@ -4,16 +4,20 @@ extends Car
 ## upright stabilization that leans into the current steering angle.
 
 ## Wheelie: forward acceleration (m/s²) past which the front lifts, the torque
-## per excess m/s², and its cap — keeps a hard launch popping a wheelie.
-@export var wheelie_threshold: float = 6.0
-@export var wheelie_scale: float = 8.0
-@export var wheelie_max_torque: float = 90.0
+## per excess m/s², and its cap. The bike is permanently traction-limited (it
+## inherits a car-sized engine at a fraction of the mass), so its steady launch
+## accel with the lower CG sits near ~16 m/s²; a threshold of 16 keeps part-
+## throttle launches planted and pops only a measured wheelie on a full launch.
+@export var wheelie_threshold: float = 16.0
+@export var wheelie_scale: float = 5.0
+@export var wheelie_max_torque: float = 60.0
 ## Spring strength toward the lean target (rad-ish error -> torque).
 @export var upright_stiffness: float = 90.0
-## Roll-rate damping so the bike settles instead of wobbling.
-@export var upright_damping: float = 12.0
+## Roll-rate damping so the bike settles instead of wobbling. ~0.84 of critical
+## (16 / (2·√90)) so a flick settles fast with minimal bounce.
+@export var upright_damping: float = 16.0
 ## How far the bike leans into a full-lock turn (fraction of tilt).
-@export var lean_per_steer: float = 0.5
+@export var lean_per_steer: float = 0.85
 
 
 func _physics_process(delta: float) -> void:

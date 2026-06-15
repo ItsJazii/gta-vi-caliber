@@ -14,10 +14,14 @@ const FLOAT_POINTS: Array[Vector3] = [
 
 ## World-space height of the water surface this boat floats on.
 @export var water_level: float = 0.5
-## Buoyancy spring per float point, in g-per-meter-of-submersion terms.
-@export var buoyancy_strength: float = 30.0
-@export var max_thrust: float = 9000.0
-@export var rudder_torque_max: float = 6000.0
+## Buoyancy spring per float point, in g-per-meter-of-submersion terms. The level
+## waterline sits at g/buoyancy_strength; 45 floats the hull ~0.22 m deep (≈27% of
+## the 0.8 m hull) so it planes rather than wallowing half-submerged.
+@export var buoyancy_strength: float = 45.0
+@export var max_thrust: float = 13000.0
+## Yaw authority of the rudder. Kept well below thrust so the boat carves a
+## deliberate, steerable arc (~66°/s) instead of spinning on the spot.
+@export var rudder_torque_max: float = 2400.0
 
 var _driver: Node3D = null
 var _ocean: Ocean = null

@@ -41,13 +41,13 @@ static func slip_angle(velocity: Vector3, forward: Vector3) -> float:
 
 
 ## Drift amount in [0, 1] derived from slip angle: 0 while gripping (aligned),
-## ramping to 1 as the slip angle opens past `full_slip` (default ~35°). Handy
+## ramping to 1 as the slip angle opens past `full_slip` (default ~40°). Handy
 ## for FX intensity, tyre-smoke, and the drift score — not for physics.
 ## The slip angle is FOLDED about 90° (`minf(a, PI - a)`) so it measures lateral
 ## slip regardless of travel direction: straight reverse (180°) reads 0 drift
 ## (the car is aligned, just backing up) instead of saturating to 1.0 — otherwise
 ## the drift score and tyre-smoke FX would fire while simply reversing.
-static func drift_factor(velocity: Vector3, forward: Vector3, full_slip: float = 0.61) -> float:
+static func drift_factor(velocity: Vector3, forward: Vector3, full_slip: float = 0.70) -> float:
 	if full_slip <= 0.0:
 		return 0.0
 	var a := slip_angle(velocity, forward)
@@ -70,12 +70,13 @@ static func lateral_grip(
 	var brake := clampf(handbrake, 0.0, 1.0)
 	var cut := clampf(handbrake_cut, 0.0, 1.0)
 	# A standing car can't really slide, so the handbrake's grip-cut only bites
-	# once the car is actually moving — ramping in over the first few m/s, which
-	# keeps it from snapping grip to zero on a parked car. `_forward` rounds out
-	# the (velocity, forward, ...) signature shared with the rest of the layer
-	# and is reserved for future load-/heading-sensitive grip.
+	# once the car is actually moving — ramping in over the first ~2 m/s, which
+	# keeps it from snapping grip to zero on a parked car but bites quickly enough
+	# for tight low-speed handbrake turns / J-turns. `_forward` rounds out the
+	# (velocity, forward, ...) signature shared with the rest of the layer and is
+	# reserved for future load-/heading-sensitive grip.
 	var speed := ground(velocity).length()
-	var moving := clampf(speed / 3.0, 0.0, 1.0)
+	var moving := clampf(speed / 2.0, 0.0, 1.0)
 	return clampf(grip * (1.0 - brake * cut * moving), 0.0, 1.0)
 
 
@@ -129,10 +130,10 @@ class DriftScorer:
 	var score: float = 0.0
 	var gain: float = 100.0
 	var decay: float = 200.0
-	var engage: float = 0.2
+	var engage: float = 0.45
 
 	func _init(
-		gain_per_sec: float = 100.0, decay_per_sec: float = 200.0, engage_threshold: float = 0.2
+		gain_per_sec: float = 100.0, decay_per_sec: float = 200.0, engage_threshold: float = 0.45
 	) -> void:
 		gain = maxf(gain_per_sec, 0.0)
 		decay = maxf(decay_per_sec, 0.0)

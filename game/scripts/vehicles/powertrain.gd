@@ -12,12 +12,14 @@ extends RefCounted
 ## tests/unit/test_powertrain.gd.
 
 ## Fraction of peak torque lost at the extreme ends of the rev range (idle and
-## redline). 0.0 = flat curve, 1.0 = torque falls to zero at the edges. 0.55
-## gives a broad, streetable powerband that still rewards staying near peak.
-const CURVE_FALLOFF: float = 0.55
+## redline). 0.0 = flat curve, 1.0 = torque falls to zero at the edges. 0.45
+## keeps the curve fat through the working range so the engine stays on the boil
+## across a shift instead of deflating, while still rewarding revs near peak.
+const CURVE_FALLOFF: float = 0.45
 ## Torque never drops below this fraction of peak, so a lugging or over-revving
-## engine still produces usable force instead of stalling to nothing.
-const MIN_TORQUE_FRACTION: float = 0.35
+## engine still produces usable force instead of stalling to nothing. 0.45 also
+## firms up the off-the-line bite (the idle clamp sits on this floor).
+const MIN_TORQUE_FRACTION: float = 0.45
 
 
 ## Crankshaft RPM implied by road speed in the given gear. Drivetrain runs

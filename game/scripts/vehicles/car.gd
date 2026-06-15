@@ -16,56 +16,73 @@ const GRAVITY: float = 9.81
 ## Peak crankshaft torque (N·m). Tuned with the gearing below so first gear
 ## launches this 1200 kg coupe at a sporty ~11 m/s² rather than a rocket.
 @export var peak_torque: float = 420.0
-@export var idle_rpm: float = 850.0
-## RPM where the torque curve peaks; the powerband centres here.
-@export var peak_rpm: float = 4000.0
-@export var redline_rpm: float = 6500.0
+## Raised idle so the off-the-line rev clamp sits higher on the curve — firmer
+## initial bite without touching peak_torque.
+@export var idle_rpm: float = 950.0
+## RPM where the torque curve peaks. Lowered so the peak lands in the band the
+## auto-box actually uses and below where each upshift drops the revs, so the
+## engine stays on the boil instead of deflating after a shift.
+@export var peak_rpm: float = 3600.0
+@export var redline_rpm: float = 6800.0
 ## Forward gear ratios, tallest (1st) to shortest (top). Multiplied by the final
-## drive into wheel torque.
-@export var gear_ratios: Array[float] = [3.40, 2.10, 1.40, 1.05, 0.85]
-@export var final_drive: float = 3.70
+## drive into wheel torque. The two lowest steps are tightened so a 1st->2nd /
+## 2nd->3rd shift lands at or above peak_rpm (no bog); 5th is slightly taller to
+## hold top speed against the shorter lower gears + higher final drive.
+@export var gear_ratios: Array[float] = [3.10, 1.95, 1.40, 1.05, 0.82]
+@export var final_drive: float = 3.90
 @export var reverse_ratio: float = 3.40
 @export var wheel_radius: float = 0.35
-@export var drivetrain_efficiency: float = 0.9
+@export var drivetrain_efficiency: float = 0.92
 ## Auto-shift points. Keep upshift well above downshift: the gap is the
 ## hysteresis band that stops the gearbox hunting at a steady cruise.
-@export var upshift_rpm: float = 5600.0
-@export var downshift_rpm: float = 2600.0
+@export var upshift_rpm: float = 5900.0
+@export var downshift_rpm: float = 3000.0
 
 @export var max_brake: float = 55.0
-## Gentle braking from engine drag when coasting off-throttle in gear.
-@export var max_engine_brake: float = 6.0
-@export var max_steer: float = 0.55
-## Speed (m/s) at which available steering lock is halved.
-@export var steer_falloff_speed: float = 18.0
+## Braking from engine drag when coasting off-throttle in gear — a clear
+## lift-off decel that's strongest in the low gears, still well under the brake.
+@export var max_engine_brake: float = 14.0
+@export var max_steer: float = 0.60
+## Speed (m/s) at which available steering lock is halved. Raised so the smooth
+## falloff (not the rollover clamp) governs lock through the mid-speed range,
+## giving more usable steering at speed.
+@export var steer_falloff_speed: float = 26.0
 ## How fast the wheels track the steering target (rad/s).
 @export var steer_speed: float = 4.5
 @export var max_health: float = 100.0
 ## Velocity change (m/s) in a single physics tick that starts counting as a
 ## crash — normal driving, braking, and landings stay below this.
-@export var impact_threshold: float = 6.0
-@export var impact_damage_scale: float = 4.0
+@export var impact_threshold: float = 7.0
+@export var impact_damage_scale: float = 6.0
 ## Crash camera shake: velocity jump (m/s) mapped to a full jolt, and its peak
 ## trauma. Below impact_threshold (the damage floor) there's no shake either.
-@export var crash_shake_full_dv: float = 25.0
-@export_range(0.0, 1.0) var crash_shake_max_trauma: float = 0.9
+## full_dv lowered so a ~40 km/h prang already reads as a real hit and a big one
+## saturates the jolt.
+@export var crash_shake_full_dv: float = 16.0
+@export_range(0.0, 1.0) var crash_shake_max_trauma: float = 1.0
 ## Air control: while all wheels are off the ground, a righting torque levels the
 ## car (stiffness) and damps its tumble (damping) so jumps land wheels-down.
-@export var air_right_stiffness: float = 4.0
-@export var air_right_damping: float = 0.8
+## Stiffer + better damped so jumps reliably land flat instead of tumbling into
+## an accidental crash.
+@export var air_right_stiffness: float = 7.0
+@export var air_right_damping: float = 2.0
 ## Engine output fraction left when barely alive (limp-home floor).
 @export var limp_floor: float = 0.25
 ## Drag area Cd·A (m²): the squared-speed drag that actually caps top speed once
-## the gearbox runs out of pull. ~0.7 m² is a typical small saloon.
-@export var drag_area: float = 0.7
+## the gearbox runs out of pull. 0.62 is a slippery sport coupe — pulls cleanly
+## to ~270 km/h, still drag-limited (not rev-limited) at the top.
+@export var drag_area: float = 0.62
 ## Downforce area Cl·A (m²): presses the car into the road harder with speed.
-@export var downforce_area: float = 0.4
+## Raised so high-speed grip/stability climbs noticeably (≈26% of weight at top
+## speed) — the car feels planted, not floaty, through fast sweepers.
+@export var downforce_area: float = 0.9
 ## Peak grip coefficient of the tyres. ~1.6 is a sticky sport-street tyre; the
 ## traction limiter pulls drive force that would exceed grip · load.
 @export var tire_friction: float = 1.6
 ## Fraction of weight (and downforce) statically over the driven axle. Rear-drive
-## so rear-biased; weight transfer adds the dynamic squat on top.
-@export var drive_axle_load_share: float = 0.55
+## so rear-biased; weight transfer adds the dynamic squat on top. Nudged up so the
+## rear lays a touch more power down on corner exit before the friction circle bites.
+@export var drive_axle_load_share: float = 0.58
 ## Centre-of-gravity height (m) and wheelbase (m): set how much load squats onto
 ## the rear under acceleration. A low CG over a long wheelbase transfers least.
 @export var cg_height: float = 0.5
@@ -73,18 +90,23 @@ const GRAVITY: float = 9.81
 ## Distance (m) between left and right wheels; with cg_height it sets the
 ## cornering force that would lift the inside wheels.
 @export var track_width: float = 1.7
-## Fraction of the theoretical rollover threshold steering may use. Below 1
-## leaves lateral grip headroom so hard swerves slide instead of flipping.
-@export_range(0.1, 1.0) var rollover_margin: float = 0.8
+## Fraction of the theoretical rollover threshold steering may use. Raised to 1.0
+## so the anti-flip clamp recedes toward the smooth speed-falloff curve, freeing
+## up usable lock at speed; the tyres still slide (via wheel grip) well before the
+## ~2.8 g flip ceiling, so hard swerves break away rather than tip.
+@export_range(0.1, 1.0) var rollover_margin: float = 1.0
 ## Handbrake power-slide (Space): instead of a dead-stop full brake, pulling the
 ## handbrake cuts the rear tyres' lateral grip so the back steps out into a
 ## controllable slide. The grip cut is decided by the pure VehicleHandling layer
 ## and throttle stays live so you can hold the drift. `handbrake_cut` is how hard
 ## grip drops, `handbrake_min_slip` the rear wheel_friction_slip at a full slide,
 ## and `handbrake_brake_scale` the gentle brake blended in only when you lift off.
-@export_range(0.0, 1.0) var handbrake_cut: float = 0.85
-@export var handbrake_min_slip: float = 0.4
-@export_range(0.0, 1.0) var handbrake_brake_scale: float = 0.35
+@export_range(0.0, 1.0) var handbrake_cut: float = 0.90
+## Rear wheel_friction_slip at a full slide. 0.7 is a real, tuned slide floor —
+## the old 0.4 was unreachable through the speed-ramped grip cut, so the slide
+## depth was an accident of the cut rather than a chosen value.
+@export var handbrake_min_slip: float = 0.7
+@export_range(0.0, 1.0) var handbrake_brake_scale: float = 0.30
 
 var health: float = 100.0
 var gear: int = 1
@@ -214,7 +236,9 @@ func _drive(delta: float) -> void:
 		brake = max_brake * handbrake_brake_scale * handbrake * (1.0 - pedal)
 	elif throttle < 0.0 and forward_speed >= REVERSE_SPEED_THRESHOLD:
 		# "Back" while still rolling forward = service brake, not reverse yet.
-		brake = max_brake * 0.7
+		# Use the full brake force for firm, confident stopping; max_brake is the
+		# master stopping-power knob (tuned outside this stream).
+		brake = max_brake
 	elif is_zero_approx(pedal):
 		# Coasting off-throttle in gear: let engine drag slow the car.
 		brake = Powertrain.engine_brake(
