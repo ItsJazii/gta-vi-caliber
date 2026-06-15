@@ -68,6 +68,32 @@ func _run_checks() -> void:
 	if not field.must_hold(c + Vector3(-10.0, 0.0, 0.0), Vector3(1, 0, 0), 8.0):
 		_failures.append("car not held on red (EW) — should stop")
 
+	# All-red clearance: between the NS and EW greens every approach is held for a
+	# beat so the box empties. From the reset NS-green, step through NS green + yellow
+	# into the all-red interval and assert BOTH a NS-bound and an EW-bound car hold.
+	field.reset_all()
+	field.advance_all(field.green_time + field.yellow_time + 0.5 * field.all_red_time)
+	if not field.must_hold(c + Vector3(0.0, 0.0, 10.0), Vector3(0, 0, -1), 8.0):
+		_failures.append("car not held during all-red (NS) — box should be clearing")
+	if not field.must_hold(c + Vector3(-10.0, 0.0, 0.0), Vector3(1, 0, 0), 8.0):
+		_failures.append("car not held during all-red (EW) — box should be clearing")
+
+	# Timings must clear before the director's stuck cull: a car can stop at the start
+	# of its yellow and then wait its yellow + the cross green + cross yellow + both
+	# all-reds before its own green. If that worst-case standstill reaches the cull
+	# timeout, a car waiting out a normal cycle gets despawned mid-wait. Guard the LIVE
+	# field's actual exports so a future retune past the budget fails here.
+	var stuck_timeout := 10.0  # mirror of TrafficDirector.stuck_timeout
+	var restart_slack := 1.0  # release-to-first-qualifying-move tail before stuck resets
+	var worst_wait := field.green_time + 2.0 * field.yellow_time + 2.0 * field.all_red_time
+	if worst_wait >= stuck_timeout - restart_slack:
+		_failures.append(
+			(
+				"signal worst-case wait %.2fs too close to the %.0fs stuck cull"
+				% [worst_wait, stuck_timeout]
+			)
+		)
+
 
 func _finish() -> bool:
 	if _failures.is_empty():

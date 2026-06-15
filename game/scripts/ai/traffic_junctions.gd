@@ -15,6 +15,13 @@ extends RefCounted
 ## them instead of peppering every T-junction and bend in the road.
 const JUNCTION_DEGREE := 4
 
+## Green-wave progression rates: seconds of phase offset per metre along X and along
+## Z. The two differ so the sweep runs on a true 2-D diagonal — junctions that share
+## x+z (an anti-diagonal corridor) still get distinct offsets instead of flipping in
+## unison. Used by phase_offset() to stagger a grid of signals (see there).
+const WAVE_SECONDS_PER_M_X := 0.08
+const WAVE_SECONDS_PER_M_Z := 0.037
+
 
 ## Pick up to `max_count` intersection nodes from `net`, busiest first and spaced
 ## at least `min_spacing` metres apart so lights don't cluster on one block.
@@ -75,6 +82,17 @@ static func junction_frame(net: RoadNetwork, node: int, curb: float) -> Dictiona
 	if absf(a2.dot(a1)) > 0.95:
 		a2 = Vector3(-a1.z, 0.0, a1.x)
 	return {"center": center, "corner_offset": a1 * curb + a2 * curb}
+
+
+## A "green-wave" start offset (seconds into the signal cycle) for a junction at
+## `center`, so a grid of lights never flips in unison: the phase sweeps smoothly
+## across the map along a fixed diagonal, the way a coordinated arterial's green wave
+## progresses. Deterministic and wrapped into [0, period); TrafficSignalField layers
+## a little random jitter on top. `period` is the signal's full cycle length.
+static func phase_offset(center: Vector3, period: float) -> float:
+	if period <= 0.0:
+		return 0.0
+	return fposmod(center.x * WAVE_SECONDS_PER_M_X + center.z * WAVE_SECONDS_PER_M_Z, period)
 
 
 ## Which signal phase a heading travels along: NS (world Z) when it points more

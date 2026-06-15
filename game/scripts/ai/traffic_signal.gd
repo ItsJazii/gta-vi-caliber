@@ -9,24 +9,30 @@ extends RefCounted
 ## car's approach axis, and uses should_stop/is_clear_to_go to gate entry. Car-
 ## following gaps stay in TrafficFlow; converging-car priority stays in TrafficRules.
 ##
-## Cycle order: NS_GREEN -> NS_YELLOW -> EW_GREEN -> EW_YELLOW -> NS_GREEN. While one
-## axis shows GREEN or YELLOW the cross axis is RED.
+## Cycle order: NS_GREEN -> NS_YELLOW -> NS_ALL_RED -> EW_GREEN -> EW_YELLOW ->
+## EW_ALL_RED -> NS_GREEN. While one axis shows GREEN or YELLOW the cross axis is
+## RED; in the two all-red clearance intervals BOTH axes are RED, so the box empties
+## before the cross street gets its green.
 
-enum Phase { NS_GREEN, NS_YELLOW, EW_GREEN, EW_YELLOW }
+enum Phase { NS_GREEN, NS_YELLOW, NS_ALL_RED, EW_GREEN, EW_YELLOW, EW_ALL_RED }
 enum Light { GREEN, YELLOW, RED }
 enum Axis { NS, EW }
 
 var _green_time: float
 var _yellow_time: float
+var _all_red_time: float
 var _phase: int = Phase.NS_GREEN
 var _elapsed: float = 0.0
 
 
-## green_time/yellow_time are seconds per coloured interval; both clamped to a small
-## positive minimum so the cycle always advances.
-func _init(green_time: float = 8.0, yellow_time: float = 2.0) -> void:
+## Seconds per interval, each clamped to a small positive minimum so the cycle always
+## advances. all_red_time is the all-red clearance interval inserted between the NS
+## and EW greens (set it to a small value for effectively no clearance). Defaults
+## mirror TrafficSignalField's cull-safe timings; see there for the budget.
+func _init(green_time: float = 4.0, yellow_time: float = 1.5, all_red_time: float = 0.75) -> void:
 	_green_time = maxf(green_time, 0.001)
 	_yellow_time = maxf(yellow_time, 0.001)
+	_all_red_time = maxf(all_red_time, 0.001)
 
 
 ## Advance the cycle by delta seconds, rolling over to the next phase (and possibly
@@ -52,6 +58,12 @@ func time_in_phase() -> float:
 	return _elapsed
 
 
+## Total seconds for one full NS+EW cycle: both greens, both yellows and both
+## all-red clearance intervals.
+func cycle_length() -> float:
+	return 2.0 * (_green_time + _yellow_time + _all_red_time)
+
+
 ## Light shown to the given axis (Axis.NS or Axis.EW) -> Light.GREEN/YELLOW/RED.
 func light_for(axis: int) -> int:
 	match _phase:
@@ -63,6 +75,7 @@ func light_for(axis: int) -> int:
 			return Light.GREEN if axis == Axis.EW else Light.RED
 		Phase.EW_YELLOW:
 			return Light.YELLOW if axis == Axis.EW else Light.RED
+	# NS_ALL_RED / EW_ALL_RED (and any unexpected phase): every approach stops.
 	return Light.RED
 
 
@@ -127,8 +140,11 @@ static func yields_to(my_dir: Vector3, other_dir: Vector3) -> bool:
 
 
 func _duration(phase_id: int) -> float:
-	if phase_id == Phase.NS_YELLOW or phase_id == Phase.EW_YELLOW:
-		return _yellow_time
+	match phase_id:
+		Phase.NS_YELLOW, Phase.EW_YELLOW:
+			return _yellow_time
+		Phase.NS_ALL_RED, Phase.EW_ALL_RED:
+			return _all_red_time
 	return _green_time
 
 
@@ -137,7 +153,11 @@ func _next_phase(phase_id: int) -> int:
 		Phase.NS_GREEN:
 			return Phase.NS_YELLOW
 		Phase.NS_YELLOW:
+			return Phase.NS_ALL_RED
+		Phase.NS_ALL_RED:
 			return Phase.EW_GREEN
 		Phase.EW_GREEN:
 			return Phase.EW_YELLOW
+		Phase.EW_YELLOW:
+			return Phase.EW_ALL_RED
 	return Phase.NS_GREEN

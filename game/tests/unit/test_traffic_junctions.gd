@@ -62,6 +62,19 @@ func test_junction_frame_offsets_pole_off_the_carriageway() -> bool:
 	)
 
 
+func test_phase_offset_is_deterministic_and_bounded() -> bool:
+	var period := 22.0
+	var a := TrafficJunctions.phase_offset(Vector3(10, 0, -10), period)
+	var a_again := TrafficJunctions.phase_offset(Vector3(10, 0, -10), period)
+	# Anti-diagonal neighbour (same x + z) must still land on a different phase, or a
+	# whole NW-SE corridor of lights would flip in unison.
+	var anti := TrafficJunctions.phase_offset(Vector3(-10, 0, 10), period)
+	var deterministic := is_equal_approx(a, a_again)
+	var bounded := a >= 0.0 and a < period
+	var distinct_from_anti := not is_equal_approx(a, anti)
+	return deterministic and bounded and distinct_from_anti
+
+
 func test_axis_for_classifies_ns_and_ew() -> bool:
 	return (
 		TrafficJunctions.axis_for(Vector3(0, 0, -1)) == TrafficSignal.Axis.NS

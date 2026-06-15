@@ -45,10 +45,18 @@ const COLORS := {
 @export var min_spacing: float = 1.0
 ## Metres from the junction centre to the kerb corner the mast stands on.
 @export var curb_offset: float = 6.0
-## Phase-clock interval lengths (s) for each light's green and yellow. Kept short
-## so a queue clears before the TrafficDirector's stuck-timeout would cull it.
-@export var green_time: float = 6.0
-@export var yellow_time: float = 2.0
+## Phase-clock interval lengths (s). The TrafficDirector culls a car that makes no
+## progress for stuck_timeout (10 s), and a car legitimately stopped at a light is
+## "no progress" — note_tick measures movement, not light colour. The worst-case
+## standstill is a car that stops at the START of its yellow and then waits its
+## yellow + the cross axis's green + yellow + both all-red clearances before its own
+## green: green + 2·yellow + 2·all_red. Keep that well under 10 s (here 4+3+1.5 = 8.5)
+## so a car waiting out one normal cycle is never mistaken for gridlock and despawned.
+## all_red_time is the all-red clearance between the NS and EW greens, so the box
+## empties before the cross street goes green.
+@export var green_time: float = 4.0
+@export var yellow_time: float = 1.5
+@export var all_red_time: float = 0.75
 ## Only signal these districts (the dense urban cores); empty = every district.
 @export var districts: PackedStringArray = ["downtown_miami", "brickell"]
 
@@ -116,6 +124,18 @@ func reset_all() -> void:
 		_paint_junction(j)
 
 
+## Advance every junction's clock by `seconds` and repaint. Pairs with reset_all for
+## deterministic time-stepping in probes: reset pins the start of NS-green, advance
+## walks the cycle to a chosen phase (e.g. into the all-red clearance interval).
+func advance_all(seconds: float) -> void:
+	for j in _junctions:
+		var clock: TrafficSignal = j["clock"]
+		clock.tick(seconds)
+		if clock.phase() != j["last"]:
+			j["last"] = clock.phase()
+			_paint_junction(j)
+
+
 ## True if a signalled junction ahead shows red/yellow for this car's approach.
 ## Scans all junctions; only one can be within a car's stop band at a time.
 func must_hold(car_pos: Vector3, car_heading: Vector3, car_speed: float) -> bool:
@@ -181,8 +201,13 @@ func _build(frames: Array) -> void:
 				_lens_mm.set_instance_transform(
 					li, head * Transform3D(Basis(), Vector3(0.0, LENS_Y[s], -0.18))
 				)
-		var clock := TrafficSignal.new(green_time, yellow_time)
-		clock.tick(_rng.randf() * (2.0 * green_time + 2.0 * yellow_time))  # desync
+		var clock := TrafficSignal.new(green_time, yellow_time, all_red_time)
+		# Green-wave desync: stagger each junction's start by a position-based offset
+		# so a grid never flips in unison and greens sweep across the city, plus a
+		# little jitter so corridors aren't in rigid lockstep.
+		var period := clock.cycle_length()
+		var offset := TrafficJunctions.phase_offset(center, period) + _rng.randf() * yellow_time
+		clock.tick(fposmod(offset, period))
 		var rec := {"clock": clock, "center": center, "lens_base": i * 12, "last": -1}
 		_junctions.append(rec)
 		_paint_junction(rec)
