@@ -9,6 +9,7 @@ extends Node3D
 const WATER_VOLUME_SCRIPT := preload("res://scripts/world/water_volume.gd")
 const OCEAN_SCRIPT := preload("res://scripts/world/ocean.gd")
 const SOUTH_BEACH_SURF_SCRIPT := preload("res://scripts/world/south_beach_surf.gd")
+const GROUND_MATERIAL_BINDINGS := preload("res://scripts/world/ground_material_bindings.gd")
 @export var map_scale: float = 4.6
 @export var water_size_m: float = 12000.0
 @export var ocean_y: float = -0.18
@@ -99,6 +100,7 @@ func _make_materials() -> void:
 	_land_mat = _shader_or_fallback("res://shaders/florida_land.gdshader", Color(0.22, 0.35, 0.18))
 
 	_sand_mat = _shader_or_fallback("res://shaders/florida_sand.gdshader", Color(0.86, 0.77, 0.55))
+	GROUND_MATERIAL_BINDINGS.apply_to_sand(_sand_mat)
 
 	_road_mat = _shader_or_fallback("res://shaders/road.gdshader", Color(0.035, 0.04, 0.045))
 

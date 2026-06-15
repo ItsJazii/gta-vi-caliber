@@ -41,6 +41,7 @@ const ROOFTOP_KEYS := [
 	"rooftop_ac", "rooftop_tanks", "rooftop_houses", "rooftop_masts", "rooftop_beacons"
 ]
 const ROOFTOP_NAMES := ["ACUnits", "WaterTanks", "Penthouses", "Masts", "Beacons"]
+const GROUND_MATERIAL_BINDINGS := preload("res://scripts/world/ground_material_bindings.gd")
 
 ## res:// path to the district JSON (OSM-derived, ODbL).
 @export_file("*.json") var district_path: String = "res://assets/world/downtown_miami.json"
@@ -823,6 +824,7 @@ func _make_materials() -> void:
 	_sidewalk_mat = _shader_or_fallback("res://shaders/sidewalk.gdshader", Color(0.62, 0.60, 0.56))
 	# Photoreal asphalt grain from the Codex-generated tileable albedo.
 	_set_detail_texture(_road_mat, "res://assets/textures/asphalt_albedo.png")
+	GROUND_MATERIAL_BINDINGS.apply_to_sidewalk(_sidewalk_mat)
 	# #160 facade PBR: bind the texture set onto the consolidated facade shader.
 	FacadeMaterialBindings.apply_to(_building_mat)
 

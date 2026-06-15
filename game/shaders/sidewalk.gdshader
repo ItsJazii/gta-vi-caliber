@@ -1,15 +1,16 @@
 shader_type spatial;
 render_mode cull_disabled;
-// Procedural concrete sidewalk — no textures. Expansion-joint grooves (one
-// transverse every panel_len metres, one longitudinal down the walking top), a
-// distinct curb-face tint band, and faint patch noise so long runs don't read
-// flat. UV: U across the strip (0 at the curb face .. 1 at the outer edge),
-// V metres along the centreline — mesh-local, so the pattern is stable under
-// FloatingOrigin shifts and streaming.
+// Concrete sidewalk with procedural joints/curb plus optional texture breakup
+// from the shipped concrete set. UV: U across the strip (0 at the curb face ..
+// 1 at the outer edge), V metres along the centreline — mesh-local, so the
+// pattern is stable under FloatingOrigin shifts and streaming.
 
 uniform vec3 concrete_color : source_color = vec3(0.62, 0.60, 0.56);
 uniform vec3 joint_color : source_color = vec3(0.40, 0.39, 0.37);
 uniform vec3 curb_color : source_color = vec3(0.70, 0.68, 0.64);
+uniform sampler2D detail_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform sampler2D detail_roughness_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform float detail_uv_scale = 0.32;
 // Expansion-joint spacing along the walk, metres.
 uniform float panel_len = 1.5;
 // Joint groove width, metres.
@@ -69,6 +70,12 @@ void fragment() {
 	float curb = 1.0 - smoothstep(curb_frac, curb_frac + 0.01, u);
 	col = mix(col, curb_color + vec3(patch), curb);
 
+	vec2 detail_uv = vec2(u, along) * detail_uv_scale;
+	vec3 detail_col = texture(detail_tex, detail_uv).rgb;
+	float top_area = on_top * (1.0 - joint);
+	float curb_area = curb * 0.35;
+	col *= mix(vec3(1.0), detail_col, top_area * 0.72 + curb_area);
+
 	// Concrete micro-surface bump from the hash-based patch noise, giving the
 	// flat slabs a tactile quality under raking light.
 	vec3 sx = dFdx(VERTEX);
@@ -84,6 +91,8 @@ void fragment() {
 	ALBEDO = col * mix(1.0, 0.7, wet);
 	NORMAL = normalize(abs(det) * NORMAL - (0.03 * (1.0 - aa)) * bump_grad);
 	ROUGHNESS = mix(mix(0.93, 1.0, aa * 0.4), 0.24, wet);
+	float detail_rough = texture(detail_roughness_tex, detail_uv).r;
+	ROUGHNESS = clamp(mix(ROUGHNESS, ROUGHNESS * detail_rough, top_area * 0.7), 0.12, 1.0);
 	METALLIC = 0.0;
 	SPECULAR = mix(mix(0.3, 0.12, aa), 0.6, wet);
 

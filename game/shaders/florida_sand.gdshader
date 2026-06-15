@@ -1,12 +1,14 @@
 shader_type spatial;
 render_mode world_vertex_coords;
 
-// Shell sand with wind streaks and darker wet bands. Used by the original
-// coastline and key islands so beaches do not read as flat painted strips.
+// Shell sand with wind streaks, darker wet bands, and optional bound albedo
+// texture so beaches do not read as flat painted strips.
 
 uniform vec3 dry_color : source_color = vec3(0.86, 0.77, 0.55);
 uniform vec3 wet_color : source_color = vec3(0.56, 0.47, 0.33);
 uniform vec3 shell_color : source_color = vec3(0.96, 0.88, 0.72);
+uniform sampler2D detail_tex : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform float detail_uv_scale = 0.045;
 uniform float streak_scale = 0.018;
 uniform float grain_scale = 0.22;
 
@@ -43,6 +45,8 @@ void fragment() {
 	vec3 col = mix(dry_color, wet_color, wet);
 	col = mix(col, shell_color, shells * 0.38);
 	col *= 0.86 + grain * 0.28;
+	vec3 detail_col = texture(detail_tex, p * detail_uv_scale).rgb;
+	col *= mix(vec3(1.0), detail_col, 0.46);
 
 	// Specular anti-aliasing: wet bands used to drop roughness to 0.58 and raise
 	// specular, so the procedural wet streaks caught a hard sheen that shimmered
