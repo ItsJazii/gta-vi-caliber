@@ -4,11 +4,21 @@ extends Node3D
 ## (typically straight from NavGrid.find_path) by turn-rate-limited steering, so
 ## it arcs through corners and faces where it's going. Visual-only — it carries
 ## a decimated production coupe or sedan so a street of these matches the
-## player's vehicles without the cost of a full VehicleBody3D per car.
+## player's vehicles. It still steers kinematically (far cheaper than a full
+## VehicleBody3D per car) but carries a solid collision body on the world layer,
+## so the player, NPCs and other vehicles can't walk or drive through it.
 ##
-## Steering maths is the pure, tested TrafficMotion; this node only owns the
-## state and the mesh. Hand it a route with set_route(); poll is_done() to know
+## Steering maths is the pure, tested TrafficMotion; this node owns the state, the
+## mesh and the collider. Hand it a route with set_route(); poll is_done() to know
 ## when to give it a new one (the TrafficDirector does this).
+
+## World collision layer (matches BuildingCollision.WORLD_LAYER) — the solid layer
+## the player, NPCs and vehicles all collide against, so a body placed here blocks
+## every one of them.
+const SOLID_LAYER := 1
+## Fallback collision-box extents (m: width, height, length), used only if the
+## decimated visual has no mesh AABB to size the body from.
+const DEFAULT_CAR_EXTENTS := Vector3(1.9, 1.4, 4.4)
 
 @export var speed: float = 9.0
 @export var max_turn_rate: float = 2.2  # rad/s
@@ -28,13 +38,18 @@ var _index: int = 0
 var _heading: Vector3 = Vector3(0, 0, 1)
 var _tick_pos: Vector3 = Vector3.INF
 var _stuck_time: float = 0.0
+var _body: AnimatableBody3D = null
 
 
 func _ready() -> void:
+	# Joins "ambient_cars" so the player can walk up and jack any of them — the
+	# Player swaps the car it finds here for a real drivable Car of the same model.
+	add_to_group("ambient_cars")
 	var visual := VehicleVisualLibrary.instantiate_traffic(model_variant)
 	if visual != null:
 		visual.name = "VehicleVisual"
 		add_child(visual)
+	_add_solid_body(visual)
 
 
 ## Start following a new route. The car snaps its heading toward the first leg so
@@ -69,6 +84,48 @@ func note_tick(dt: float, progress: float = 0.5) -> void:
 
 func stuck_time() -> float:
 	return _stuck_time
+
+
+## True once the car carries its solid collision body on the world layer.
+func is_solid() -> bool:
+	return _body != null and (_body.collision_layer & SOLID_LAYER) != 0
+
+
+## The {size, center} of a collision box wrapping a visual's local mesh `aabb`,
+## lifted by `lift` (the visual's own y offset) so the box hugs the bodywork.
+## Pure, so the sizing is unit-tested without a scene.
+static func solid_box(aabb: AABB, lift: float) -> Dictionary:
+	return {
+		"size": aabb.size,
+		"center": aabb.position + aabb.size * 0.5 + Vector3(0.0, lift, 0.0),
+	}
+
+
+## Give the car a solid body so the player, NPCs and other vehicles can't pass
+## through it. The car drives kinematically, so an AnimatableBody3D — repositioned
+## by our transform each physics frame — is a moving obstacle on the world layer
+## that never gets knocked off its route (its own mask is 0, so nothing pushes
+## IT). sync_to_physics stays off: we only need it to BLOCK, and leaving it off
+## keeps the spawn teleport from imparting a shove. Sized to the visual mesh.
+func _add_solid_body(visual: MeshInstance3D) -> void:
+	var box := BoxShape3D.new()
+	var center := Vector3(0.0, DEFAULT_CAR_EXTENTS.y * 0.5, 0.0)
+	if visual != null and visual.mesh != null:
+		var spec := solid_box(visual.mesh.get_aabb(), visual.position.y)
+		box.size = spec["size"]
+		center = spec["center"]
+	else:
+		box.size = DEFAULT_CAR_EXTENTS
+	var shape := CollisionShape3D.new()
+	shape.shape = box
+	shape.position = center
+	_body = AnimatableBody3D.new()
+	_body.name = "SolidBody"
+	_body.sync_to_physics = false
+	_body.collision_layer = SOLID_LAYER
+	_body.collision_mask = 0
+	_body.add_child(shape)
+	add_child(_body)
 
 
 func _physics_process(delta: float) -> void:

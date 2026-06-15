@@ -379,6 +379,12 @@ func _toggle_vehicle() -> bool:
 	if vehicle != null and not vehicle.has_driver():
 		_enter_vehicle(vehicle)
 		return true
+	# No drivable car in reach — jack the nearest street car (moving OR parked):
+	# swap it for a real drivable Car of the same model, then climb in.
+	var jacked := _jack_nearest_streetcar()
+	if jacked != null:
+		_enter_vehicle(jacked)
+		return true
 	return false
 
 
@@ -454,6 +460,82 @@ func _nearest_vehicle() -> Node3D:
 			best = body
 			best_distance = distance
 	return best
+
+
+## Jack the nearest street car — a moving ambient car or a parked one, whichever is
+## closer — and return the drivable Car spawned in its place, or null if none is in
+## reach. This is how the player drives ANY car on the street.
+func _jack_nearest_streetcar() -> Node3D:
+	var ambient := _nearest_ambient_car()
+	var ambient_d := (
+		global_position.distance_to(ambient.global_position) if ambient != null else INF
+	)
+	var parked := _nearest_parked()
+	var parked_d: float = parked["dist"] if not parked.is_empty() else INF
+	if not parked.is_empty() and parked_d <= ambient_d:
+		var info: Dictionary = (parked["layer"] as ParkedCarLayer).take(parked["index"])
+		if not info.is_empty():
+			return _spawn_drivable(int(info["variant"]), info["transform"])
+	if ambient != null:
+		var variant := int(ambient.model_variant) if "model_variant" in ambient else 0
+		var drivable := _spawn_drivable(variant, ambient.global_transform)
+		if drivable != null:
+			ambient.queue_free()
+		return drivable
+	return null
+
+
+## Nearest moving ambient car (group "ambient_cars") within reach, or null. These
+## are lightweight visuals; jacking one swaps it for a real drivable Car.
+func _nearest_ambient_car() -> Node3D:
+	var best: Node3D = null
+	var best_distance := enter_vehicle_range
+	for car in get_tree().get_nodes_in_group("ambient_cars"):
+		var body := car as Node3D
+		if body == null:
+			continue
+		var distance := global_position.distance_to(body.global_position)
+		if distance <= best_distance:
+			best = body
+			best_distance = distance
+	return best
+
+
+## Nearest parked car across every ParkedCarLayer within reach: {layer, index,
+## dist}, or empty if none. Jacking takes the instance and drops a drivable Car.
+func _nearest_parked() -> Dictionary:
+	var best := {}
+	var best_d := enter_vehicle_range
+	for node in get_tree().get_nodes_in_group("parked_cars"):
+		var layer := node as ParkedCarLayer
+		if layer == null:
+			continue
+		var idx := layer.nearest(global_position, best_d)
+		if idx < 0:
+			continue
+		var d := global_position.distance_to(layer.car_position(idx))
+		if d <= best_d:
+			best_d = d
+			best = {"layer": layer, "index": idx, "dist": d}
+	return best
+
+
+## Spawn a drivable Car of `variant` at world transform `xf` (lifted a touch so the
+## body doesn't start inside the road) and return it.
+func _spawn_drivable(variant: int, xf: Transform3D) -> Node3D:
+	var drivable := VehicleVisualLibrary.instantiate_drivable(variant)
+	if drivable == null:
+		return null
+	get_parent().add_child(drivable)
+	xf.origin += Vector3(0.0, 0.4, 0.0)
+	drivable.global_transform = xf
+	return drivable
+
+
+## True while the player is driving — the traffic director reads this to halt
+## ambient cars next to an on-foot player so they can be jacked (not driven off).
+func is_driving() -> bool:
+	return _vehicle != null
 
 
 func _update_jump_timers(delta: float) -> void:

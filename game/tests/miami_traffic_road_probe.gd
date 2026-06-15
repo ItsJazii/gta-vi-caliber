@@ -85,6 +85,12 @@ func _run_checks(td: Node) -> void:
 	if spread < MIN_SPREAD:
 		_failures.append("cars are clustered, not spread (bbox diagonal %.1f m)" % spread)
 
+	# Every ambient car must be a solid obstacle — no walking/driving through them.
+	if not td.cars_are_solid():
+		_failures.append(
+			"ambient cars have no solid collision body (player/NPCs would clip through)"
+		)
+
 
 ## Bounding-box diagonal of the car positions on the flat (XZ).
 func _spread(positions: PackedVector3Array) -> float:

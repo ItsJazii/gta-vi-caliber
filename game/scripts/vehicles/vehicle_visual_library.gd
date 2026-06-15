@@ -18,10 +18,23 @@ const TRAFFIC_SCENES: Array[PackedScene] = [
 	preload("res://assets/vehicles/coastal_sport_coupe/coastal_sport_coupe_traffic.glb"),
 	preload("res://assets/vehicles/coastal_classic_sedan/coastal_classic_sedan_traffic.glb"),
 ]
+## The full DRIVABLE car scenes (Car physics + camera + exit point), one per
+## variant. Spawned when the player jacks an ambient car, so the lightweight
+## traffic car becomes a real car they can drive — same model they walked up to.
+const DRIVABLE_SCENES: Array[PackedScene] = [
+	preload("res://scenes/vehicles/coastal_sport_coupe.tscn"),
+	preload("res://scenes/vehicles/coastal_classic_sedan.tscn"),
+]
 
 
 static func variant_count() -> int:
 	return PLAYABLE_SCENES.size()
+
+
+## Instantiate the drivable Car for `variant` (the enter/exit/has_driver vehicle),
+## already in group "vehicles". Used to turn a jacked ambient car into a real one.
+static func instantiate_drivable(variant: int) -> Node3D:
+	return DRIVABLE_SCENES[normalize_variant(variant)].instantiate() as Node3D
 
 
 static func normalize_variant(variant: int) -> int:

@@ -184,6 +184,12 @@ func _apply_flow() -> void:
 	var live: Array[TrafficCar] = []
 	var positions := PackedVector3Array()
 	_flow_grid.clear()
+	# A player on foot becomes an obstacle in the car-following below: cars brake for
+	# them only when they step into a lane ahead (so they can be jacked and aren't
+	# run over), without freezing every car nearby into a knot.
+	var pl := _player()
+	var on_foot: bool = pl != null and pl.has_method("is_driving") and not pl.is_driving()
+	var pl_pos: Vector3 = pl.global_position if pl != null else Vector3.ZERO
 	for car in _cars:
 		if not is_instance_valid(car):
 			continue
@@ -198,6 +204,10 @@ func _apply_flow() -> void:
 		var candidates := PackedVector3Array()
 		for id in near:
 			candidates.append(positions[id])
+		# Treat the on-foot player as one more car ahead, so a car brakes for them
+		# only when they're in its lane (not because they're merely nearby).
+		if on_foot and TrafficMotion.planar_distance(pos, pl_pos) <= flow_range:
+			candidates.append(pl_pos)
 		var gap := TrafficFlow.gap_ahead(
 			pos, car.heading(), candidates, flow_range, flow_lane_half_width
 		)
@@ -342,17 +352,18 @@ func _assign_route(car: TrafficCar, center: Vector3) -> void:
 ## {pos, heading} (world/local), or {} if no spot was found this tick.
 func _spawn_spot(center: Vector3) -> Dictionary:
 	if _roads != null:
-		return _road_spawn_point(center)
+		return _road_spawn_point(center, lane_half_width)
 	var pos := _walkable_point(center, spawn_min_radius, spawn_max_radius)
 	if pos == Vector3.INF:
 		return {}
 	return {"pos": Vector3(pos.x, road_surface_y, pos.z), "heading": Vector3.ZERO}
 
 
-## Sample the spawn annulus and snap to the nearest road, keeping to the right
-## lane. Retries because a sample can land far from any street. Road coordinates
-## are absolute, so convert to/from the engine frame with the floating offset.
-func _road_spawn_point(center: Vector3) -> Dictionary:
+## Sample the spawn annulus and snap to the nearest road, offset `lateral` metres
+## to the RIGHT of the centreline (lane_half_width keeps a car in the right lane).
+## Retries because a sample can land far from any street. Road coordinates are
+## absolute, so convert to/from the engine frame with the floating offset.
+func _road_spawn_point(center: Vector3, lateral: float) -> Dictionary:
 	var center_abs := center - _origin_offset
 	for _a in maxi(walkable_attempts, 1):
 		var ang := _rng.randf() * TAU
@@ -362,7 +373,7 @@ func _road_spawn_point(center: Vector3) -> Dictionary:
 		var np := _roads.nearest_point(center_abs + Vector3(cos(ang) * r, 0.0, sin(ang) * r))
 		if np.is_empty():
 			continue
-		var on_road: Vector3 = np["pos"] + TrafficRouting.right_of(np["heading"]) * lane_half_width
+		var on_road: Vector3 = np["pos"] + TrafficRouting.right_of(np["heading"]) * lateral
 		var local: Vector3 = on_road + _origin_offset
 		var d := TrafficMotion.planar_distance(local, center)
 		if d < spawn_min_radius or d > spawn_max_radius:
@@ -431,6 +442,31 @@ func population() -> int:
 	return live
 
 
+## How many live cars are currently stuck — no real progress for longer than
+## `threshold` seconds. Lets a probe measure jams; a healthy fleet keeps this near
+## zero (cars flow, queue briefly, then move on).
+func stuck_count(threshold: float = 3.0) -> int:
+	var n := 0
+	for car in _cars:
+		if is_instance_valid(car) and car.stuck_time() > threshold:
+			n += 1
+	return n
+
+
+## Stuck cars (no progress > `threshold`s) within `radius` of `origin`. The spawn
+## player stands mid-street, clear of junctions, so a knot of stuck cars right by
+## them means traffic is BUNCHING at the player — not a normal signal queue.
+func stuck_count_near(origin: Vector3, radius: float, threshold: float) -> int:
+	var n := 0
+	for car in _cars:
+		if not is_instance_valid(car):
+			continue
+		var near := TrafficMotion.planar_distance(car.global_position, origin) <= radius
+		if near and car.stuck_time() > threshold:
+			n += 1
+	return n
+
+
 ## True once the off-thread road graph is built and in use.
 func roads_ready() -> bool:
 	return _roads != null
@@ -443,6 +479,15 @@ func car_positions() -> PackedVector3Array:
 		if is_instance_valid(car):
 			out.append(car.global_position)
 	return out
+
+
+## True if every live ambient car carries its solid collision body — lets a probe
+## prove cars are hard obstacles nothing can walk through.
+func cars_are_solid() -> bool:
+	for car in _cars:
+		if is_instance_valid(car) and not car.is_solid():
+			return false
+	return true
 
 
 ## Planar distance from a world position to the nearest road, or -1 when there is

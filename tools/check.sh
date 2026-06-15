@@ -215,6 +215,8 @@ step "miami traffic law probe"
 run_godot_checked "miami traffic law probe" "$GODOT_BIN" --headless --path game --script res://tests/miami_traffic_law_probe.gd
 step "miami traffic road probe"
 run_godot_checked "miami traffic road probe" "$GODOT_BIN" --headless --path game --script res://tests/miami_traffic_road_probe.gd
+step "miami traffic jam probe"
+run_godot_checked "miami traffic jam probe" "$GODOT_BIN" --headless --path game --script res://tests/miami_traffic_jam_probe.gd
 step "contraband market probe"
 run_godot_checked "contraband market probe" "$GODOT_BIN" --headless --path game --script res://tests/contraband_market_probe.gd
 step "contraband bust probe"
