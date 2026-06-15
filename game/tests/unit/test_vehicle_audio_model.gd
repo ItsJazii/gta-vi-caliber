@@ -105,6 +105,19 @@ func test_noise_stays_in_range() -> bool:
 	return true
 
 
+func test_noise_loop_seam_is_continuous() -> bool:
+	# The skid stream loops continuously, so the wrap from last frame to first
+	# must be no worse than a typical adjacent step (no click).
+	var frames := VehicleAudioModel.noise_loop_frames(22050, 0.7, 1234)
+	var n := frames.size()
+	var total := 0.0
+	for i in range(1, n):
+		total += absf(frames[i] - frames[i - 1])
+	var mean_step := total / float(n - 1)
+	var seam_step := absf(frames[0] - frames[n - 1])
+	return seam_step < mean_step * 4.0 + 0.001
+
+
 func test_wav16_is_two_bytes_per_frame() -> bool:
 	var frames := PackedFloat32Array([0.0, 0.5, -0.5, 1.0])
 	return VehicleAudioModel.frames_to_wav16(frames).size() == 8
