@@ -1,9 +1,10 @@
 extends SceneTree
 ## Probe: a downed NPC topples over and rests flat on the floor instead of freezing
 ## upright and floating. The only death clip lays the body down through root motion
-## that the retarget strips, so AnimatedRig topples the visual about its feet and
-## clamps the lowest posed bone to the floor. Guards that fall+settle against
-## regressing back to the "standing corpse in the air" bug.
+## that the retarget strips, so AnimatedRig freezes the skinned pose on death and
+## topples the visual about its feet, clamping the lowest posed bone to the floor.
+## Guards that fall+settle against regressing back to the "standing corpse in the
+## air" / "floating upside-down" bug.
 
 const CIVILIAN_RIG_PATH := "res://scenes/npc/civilian_rig.tscn"
 const WARMUP_FRAMES: int = 6
@@ -44,16 +45,11 @@ func _process(_delta: float) -> bool:
 	return true
 
 
-# Headless frame deltas are too small to advance the clip or the timed topple, so
-# drive both deterministically: jump the death clip to its held end, then push the
-# topple past death_fall_time with one large manual step. Real frames afterward let
-# the retarget modifier refresh the visible pose and the ground clamp converge.
+# play_death freezes the skinned pose, so the body lies down purely from the rig
+# topple. Headless frame deltas are too small to advance the timed topple, so push
+# it past death_fall_time with one large manual step; real frames afterward let the
+# ground clamp converge on the frozen pose.
 func _force_death_pose() -> void:
-	var tree := _rig.get_node_or_null("AnimationTree") as AnimationTree
-	var player := _rig.get_node_or_null("AnimationPlayer") as AnimationPlayer
-	if tree != null:
-		var clip_len := player.get_animation(&"Death01").length if player != null else 2.4
-		tree.advance(clip_len + 1.0)
 	_rig.call("_process", 1.0)
 
 

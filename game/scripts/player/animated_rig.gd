@@ -112,7 +112,7 @@ const CORPSE_GROUND_SINK := 0.06
 ## retargeted pose freezes standing and floating. On death we topple the visual
 ## about its feet to lie it flat, then clamp it to the floor. Pitch sign chooses
 ## the direction (negative = backward, as if shot); time is the topple duration.
-@export var death_fall_time: float = 0.7
+@export var death_fall_time: float = 0.4
 @export var death_fall_pitch_deg: float = -90.0
 
 var _facing: float = 0.0
@@ -266,14 +266,18 @@ func play_hit() -> void:
 	_start_action(STATE_HIT, &"Hit_Chest")
 
 
-## Drop into the terminal death pose and hold it until revive().
+## Drop into the terminal death pose and hold it until revive(). The lone death
+## clip lays the body down through root translation the retarget strips, so playing
+## it just curls the legs up in the air (read as "floating / upside-down"). Instead
+## we freeze the skinned pose where the NPC stood and topple the whole visual flat
+## via _process, which lands a stable, clearly-prone corpse.
 func play_death() -> void:
 	if _downed:
 		return
 	_downed = true
 	_action = &""
-	if _playback != null:
-		_playback.travel(STATE_DEATH)
+	if _tree != null:
+		_tree.active = false
 
 
 ## Clear the death pose on respawn and return to locomotion.
@@ -283,6 +287,8 @@ func revive() -> void:
 	_downed_elapsed = 0.0
 	rotation.x = 0.0
 	position.y = 0.0
+	if _tree != null:
+		_tree.active = true
 	if _playback != null:
 		_playback.travel(AnimRouter.STATE_MOVE)
 

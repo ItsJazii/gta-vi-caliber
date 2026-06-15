@@ -57,8 +57,10 @@ var _weapon_audio: WeaponAudio = null
 # bone during its own _ready, which invalidates the authored node paths.
 var _muzzle: Node3D = null
 var _gun_mount: Node3D = null
-# The owner's AnimatedRig, driven for the draw/aim/shoot/reload poses.
-var _rig: AnimatedRig = null
+# The owner's rig node, driven for the draw/aim/shoot/reload poses. Typed loosely
+# (Node3D) and called by name: the player uses McPlayerRig, but any rig exposing
+# set_armed/set_aiming/play_shoot/play_reload works, with no AnimatedRig coupling.
+var _rig: Node3D = null
 
 @onready var _camera: Camera3D = get_node_or_null(camera_path)
 @onready var _camera_rig: OrbitCamera = _resolve_camera_rig()
@@ -220,18 +222,18 @@ func _process(delta: float) -> void:
 	if not _armed or weapon == null:
 		_set_camera_aim(false)
 		if _rig != null:
-			_rig.set_armed(false)
+			_rig.call(&"set_armed", false)
 		return
 
 	_aiming = Input.is_action_pressed("aim")
 	_set_camera_aim(_aiming)
 	if _rig != null:
-		_rig.set_armed(true)
-		_rig.set_aiming(_aiming, _camera_pitch())
+		_rig.call(&"set_armed", true)
+		_rig.call(&"set_aiming", _aiming, _camera_pitch())
 
 	if Input.is_action_just_pressed("reload") and weapon.start_reload():
 		if _rig != null:
-			_rig.play_reload()
+			_rig.call(&"play_reload")
 		_emit_state()
 
 	var trigger := (
@@ -247,7 +249,7 @@ func _try_fire(weapon: Weapon) -> void:
 	if not weapon.fire():
 		return
 	if _rig != null:
-		_rig.play_shoot()
+		_rig.call(&"play_shoot")
 	var space := get_world_3d().direct_space_state
 	var cam := _camera.global_transform
 	var origin := cam.origin
@@ -390,7 +392,7 @@ func _resolve_gun_nodes() -> void:
 	if _muzzle == null and _gun_mount != null:
 		_muzzle = _gun_mount.find_child("Muzzle", true, false) as Node3D
 	if owner_node != null:
-		_rig = owner_node.get_node_or_null("Rig") as AnimatedRig
+		_rig = owner_node.get_node_or_null("Rig") as Node3D
 
 
 # --- procedural FX: short-lived nodes, freed by a one-shot timer ----------
