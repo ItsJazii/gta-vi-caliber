@@ -1,4 +1,4 @@
-[gd_scene load_steps=95 format=3]
+[gd_scene load_steps=96 format=3]
 
 ; Miami / Vice City — THE game map. The streamer pages real Miami districts
 ; (downtown, Brickell, South Beach, Mid-Beach, Wynwood) from the manifest at
@@ -75,6 +75,7 @@
 [ext_resource type="Script" path="res://scripts/ai/traffic_signal_field.gd" id="68_signals"]
 [ext_resource type="Script" path="res://scripts/world/chop_shop_trigger.gd" id="69_chop"]
 [ext_resource type="Script" path="res://scripts/world/garage_storage_trigger.gd" id="70_garage"]
+[ext_resource type="PackedScene" path="res://scenes/props/loot_crate.tscn" id="69_lootcrate"]
 
 [sub_resource type="BoxShape3D" id="payspray_shape"]
 size = Vector3(12, 6, 12)
@@ -665,3 +666,14 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0.5, -10)
 
 [node name="Armor2" parent="Pickups" instance=ExtResource("27_armor")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0.5, 18)
+
+[node name="LootCrates" type="Node3D" parent="."]
+
+[node name="LootCrate1" parent="LootCrates" instance=ExtResource("69_lootcrate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, 8)
+
+[node name="LootCrate2" parent="LootCrates" instance=ExtResource("69_lootcrate")]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, -24, 0, 20)
+
+[node name="LootCrate3" parent="LootCrates" instance=ExtResource("69_lootcrate")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 30, 0, -14)

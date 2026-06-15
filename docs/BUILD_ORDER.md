@@ -101,9 +101,9 @@ pattern and a runtime probe (repo rule: no probe, it does not count):
 3. **Combat depth:** `CombatCover`, `StealthDetection`, `PursuitTactics`,
    `MeleeCombat`.
 4. **Activities:** `StreetRace`, `HeistCrew` (`SideJob` is already wired).
-5. **Support polish:** `LootTable` on death/crates, then keep expanding the
-   already-wired `GpsNavigation` minimap feed and `RadioNewsDirector` HUD readout
-   with mission/nav content.
+5. **Support polish:** cash/ammo pickup kinds for already-wired `LootTable`
+   death/crate drops, then keep expanding the already-wired `GpsNavigation`
+   minimap feed and `RadioNewsDirector` HUD readout with mission/nav content.
 
 ### 3. Prove streaming at city scale (L1 / Phase B / M3): in parallel, the bottleneck
 This is what gates content volume. Build it GDScript-first; the native
