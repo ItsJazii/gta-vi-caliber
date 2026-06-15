@@ -295,7 +295,7 @@ func _service_success_line(kind: String, contact: String, cost: int) -> String:
 		"heat":
 			return "%s cooled the heat ($%d)." % [contact, cost]
 		"vehicle":
-			return "%s is sending a ride ($%d)." % [contact, cost]
+			return "%s patched up your ride ($%d)." % [contact, cost]
 		"weapons":
 			return "%s marked a drop ($%d)." % [contact, cost]
 		"transport":

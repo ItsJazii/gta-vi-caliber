@@ -28,9 +28,40 @@ jobs:
     name: Import, smoke & unit tests (headless Godot)
     runs-on: ubuntu-latest
     steps:
+      # Do NOT let checkout smudge LFS here: a plain `lfs: true` re-downloads the
+      # whole asset set on every run, which exhausts the repo's monthly LFS
+      # bandwidth and then leaves pointer files behind (every .glb preload fails).
+      # Instead leave pointers in place, restore the objects from cache, and only
+      # hit the LFS endpoint on a cache miss (with a retry for transient throttling).
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
+      - name: Build LFS object manifest
+        run: git lfs ls-files --long | cut -d' ' -f1 | sort > .lfs-manifest
+      - name: Cache LFS objects
+        uses: actions/cache@v4
+        with:
+          path: .git/lfs/objects
+          key: lfs-objects-${{ hashFiles('.lfs-manifest') }}
+          restore-keys: |
+            lfs-objects-
+      - name: Fetch LFS objects (cache miss only) and materialize
+        run: |
+          for attempt in 1 2 3; do
+            if git lfs pull; then break; fi
+            echo "git lfs pull failed (attempt ${attempt}); backing off..."
+            sleep $((attempt * 15))
+          done
+          git lfs checkout
+      - name: Verify LFS assets materialized
+        run: |
+          # Fail loudly here (clear message) rather than deep in a parse error if
+          # the objects are still pointers.
+          if git lfs ls-files | grep -q '^[0-9a-f]* -'; then
+            echo "::error::Some LFS objects are still pointers after pull (bandwidth quota?)."
+            git lfs ls-files | grep '^[0-9a-f]* -' | head
+            exit 1
+          fi
       - name: Cache Godot
         id: cache-godot
         uses: actions/cache@v4

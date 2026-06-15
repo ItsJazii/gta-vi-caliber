@@ -48,15 +48,17 @@ Between **L1 and L2**. A vertical slice exists; the breadth above it does not.
   probe in `tools/check.sh`: player health/stats, crime to wanted to police
   dispatch, a 5-mission campaign, pay-n-spray, the busted/arrest fail loop,
   crowd/traffic/police directors, NPC barks.
-- 167 unit-test files. `gdUnit4` vendored and running. Gate green on a clean clone.
+- The front door is routed and legacy-unit guarded:
+  `intro_video.tscn` -> `main_menu.tscn` -> `miami.tscn`.
+- Unit coverage is broad across legacy suites and gdUnit4; the gate is green on
+  a clean clone.
 - Interaction layer landed (context-sensitive interact key, generic
   `interactables` contract) and building entry on top of it (street doors, fade
   transition into a footprint-built interior).
 
 **L0 Foundation, nearly done, loose ends (Phase A):** land the Vice City pivot
-fully (retire legacy `los_angeles_*`/demo scenes), `main_menu` Play straight into
-`miami.tscn`, and route the premium cinematic lighting in behind a quality
-setting.
+fully (retire legacy `los_angeles_*`/demo scenes), and route the premium
+cinematic lighting in behind a quality setting.
 
 **L1 World substrate, partial and the real bottleneck:** a GDScript tile
 streamer and floating origin exist, but city-scale streaming is **not proven**,
@@ -80,9 +82,9 @@ cinematic capture tooling that lives in the atmosphere/polish layers.
 ## What to build next, in order
 
 ### 1. Close the foundation (L0 / Phase A)
-Everything rests on it, so finish it before widening. Land the pivot, wire
-`main_menu` to `miami.tscn`, and gate the cinematic lighting in for the dense
-district with a measured budget. See `plan.md` Phase A for the exact list.
+Everything rests on it, so finish it before widening. Finish the remaining pivot
+cleanup, and gate the cinematic lighting in for the dense district with a
+measured budget. See `plan.md` Phase A for the exact list.
 
 ### 2. Wire the parts bin (L2 / Phase C): needs no streaming, so do it now
 Ordered by dependency, each wired with the `SYSTEMS.md` self-wiring-coordinator
